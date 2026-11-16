@@ -7,6 +7,7 @@ import 'ui/mycarwash_login.dart';
 import 'ui/company_settings_page.dart';
 import 'ui/company_operations_page.dart';
 import 'ui/company_wash_workflow_page.dart';
+import 'ui/company_booking_page.dart';
 
 import 'package:flutter/material.dart';
 
@@ -176,6 +177,9 @@ const _menu = [
   _NavItem('Órdenes de lavado', Icons.local_car_wash_outlined),
   _NavItem('Asignaciones', Icons.groups_outlined),
   _NavItem('Cola de lavado', Icons.view_list_outlined),
+  _NavItem('Turnos de trabajo', Icons.work_history_outlined),
+  _NavItem('Asignaciones de turnos', Icons.assignment_ind_outlined),
+  _NavItem('Bloqueos de agenda', Icons.event_busy_outlined),
   _NavItem('Inventario', Icons.inventory_2_outlined),
   _NavItem('Caja y ventas', Icons.point_of_sale_outlined),
   _NavItem('Sitio web', Icons.language_outlined),
@@ -405,6 +409,16 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     };
     if (catalog != null) {
       return CompanyOperationsPage(catalog: catalog);
+    }
+    final bookingModule = switch (_menu[selected].title) {
+      'Reservas' => BookingModule.bookings,
+      'Turnos de trabajo' => BookingModule.shifts,
+      'Asignaciones de turnos' => BookingModule.roster,
+      'Bloqueos de agenda' => BookingModule.blocks,
+      _ => null,
+    };
+    if (bookingModule != null) {
+      return CompanyBookingPage(module: bookingModule);
     }
     final washModule = switch (_menu[selected].title) {
       'Puestos de lavado' => WashModule.bays,

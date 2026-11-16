@@ -238,6 +238,22 @@ class CompanyOperationsController extends Controller
         $this->authorizeCompany($request, $company, 'company.update');
         $this->row($resource, $company, $record);
         $data = $this->validateInput($request, $resource, $company, false, $record);
+        if (($data['is_active'] ?? true) === false) {
+            if (in_array($resource, ['vehicles', 'services'], true) &&
+                \Illuminate\Support\Facades\Schema::hasTable('wash_bookings')) {
+                $field = $resource === 'vehicles' ? 'vehicle_id' : 'service_id';
+                if (DB::table('wash_bookings')->where('company_id', $company)->where($field, $record)
+                    ->whereNull('deleted_at')->where('status', 'CONFIRMED')->exists()) {
+                    return response()->json(['message' => 'No se puede desactivar con reservas confirmadas.'], 409);
+                }
+            }
+            if ($resource === 'employees' &&
+                \Illuminate\Support\Facades\Schema::hasTable('staff_shift_assignments') &&
+                DB::table('staff_shift_assignments')->where('company_id', $company)->where('employee_id', $record)
+                    ->whereNull('deleted_at')->where('is_active', true)->exists()) {
+                return response()->json(['message' => 'No se puede desactivar un lavador con turnos asignados.'], 409);
+            }
+        }
         $data['updated_at'] = now();
         $this->scoped($resource, $company)->where('id', $record)->update($data);
         return response()->json(['message' => 'Registro actualizado.', 'data' => $this->decorate($resource, $company, $this->row($resource, $company, $record))]);
@@ -247,6 +263,20 @@ class CompanyOperationsController extends Controller
     {
         $this->authorizeCompany($request, $company, 'company.update');
         $this->row($resource, $company, $record);
+        if (in_array($resource, ['vehicles', 'services'], true) &&
+            \Illuminate\Support\Facades\Schema::hasTable('wash_bookings')) {
+            $field = $resource === 'vehicles' ? 'vehicle_id' : 'service_id';
+            if (DB::table('wash_bookings')->where('company_id', $company)->where($field, $record)
+                ->whereNull('deleted_at')->where('status', 'CONFIRMED')->exists()) {
+                return response()->json(['message' => 'Registro con reservas futuras o confirmadas. Cancélalas primero.'], 409);
+            }
+        }
+        if ($resource === 'employees' &&
+            \Illuminate\Support\Facades\Schema::hasTable('staff_shift_assignments') &&
+            DB::table('staff_shift_assignments')->where('company_id', $company)
+                ->where('employee_id', $record)->whereNull('deleted_at')->where('is_active', true)->exists()) {
+            return response()->json(['message' => 'El empleado tiene turnos asignados. Desasígnalo primero.'], 409);
+        }
         if ($resource === 'clients' && $this->scoped('vehicles', $company)->where('client_id', $record)->exists()) {
             return response()->json(['message' => 'Este cliente tiene vehículos. Archívalos primero.'], 409);
         }

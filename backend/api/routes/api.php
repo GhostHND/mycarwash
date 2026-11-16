@@ -178,3 +178,14 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
     Route::patch('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'update'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
     Route::delete('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'destroy'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
 });
+
+// BLOQUE 17 - Agenda administrativa: reservas, bloqueos, turnos y plantilla de personal.
+Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/schedule/options', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'options'])->whereNumber('company');
+    Route::get('/companies/{company}/schedule/bookings/{booking}/history', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'history'])->whereNumber('company')->whereNumber('booking');
+    Route::get('/companies/{company}/schedule/{resource}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'index'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster');
+    Route::post('/companies/{company}/schedule/{resource}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'store'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster');
+    Route::get('/companies/{company}/schedule/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'show'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster')->whereNumber('record');
+    Route::patch('/companies/{company}/schedule/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'update'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster')->whereNumber('record');
+    Route::delete('/companies/{company}/schedule/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'destroy'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster')->whereNumber('record');
+});

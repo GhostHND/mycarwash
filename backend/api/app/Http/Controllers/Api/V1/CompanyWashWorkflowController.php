@@ -273,6 +273,12 @@ class CompanyWashWorkflowController extends Controller
             $current = $this->scoped($resource, $company)->where('id', $record)->lockForUpdate()->first();
             if (!$current) abort(404);
             if ($resource === 'bays') {
+                if (($data['is_active'] ?? true) === false &&
+                    \Illuminate\Support\Facades\Schema::hasTable('wash_bookings') &&
+                    DB::table('wash_bookings')->where('company_id', $company)->where('bay_id', $record)
+                        ->whereNull('deleted_at')->where('status', 'CONFIRMED')->exists()) {
+                    return ['conflict' => 'Puesto con reservas confirmadas; cancélalas primero.'];
+                }
                 if (isset($data['code']) && $this->scoped('bays', $company)->where('branch_id', $current->branch_id)
                     ->where('code', $data['code'])->where('id', '!=', $record)->exists()) {
                     throw ValidationException::withMessages(['code' => 'Código duplicado.']);
@@ -312,6 +318,11 @@ class CompanyWashWorkflowController extends Controller
             $current = $this->scoped($resource, $company)->where('id', $record)->lockForUpdate()->first();
             if (!$current) abort(404);
             if ($resource === 'bays') {
+                if (\Illuminate\Support\Facades\Schema::hasTable('wash_bookings') &&
+                    DB::table('wash_bookings')->where('company_id', $company)->where('bay_id', $record)
+                        ->whereNull('deleted_at')->where('status', 'CONFIRMED')->exists()) {
+                    return 'El puesto tiene reservas confirmadas; cancélalas primero.';
+                }
                 if (DB::table('wash_orders')->where('company_id', $company)->where('bay_id', $record)
                     ->whereIn('status', ['EN_ESPERA', 'ASIGNADO', 'EN_PROCESO'])->exists()) return 'No puedes archivar un puesto con órdenes activas.';
                 $this->scoped('bays', $company)->where('id', $record)->update(['deleted_at' => now(), 'updated_at' => now()]);
