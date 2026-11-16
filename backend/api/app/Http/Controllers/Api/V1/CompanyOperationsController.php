@@ -250,6 +250,21 @@ class CompanyOperationsController extends Controller
         if ($resource === 'clients' && $this->scoped('vehicles', $company)->where('client_id', $record)->exists()) {
             return response()->json(['message' => 'Este cliente tiene vehículos. Archívalos primero.'], 409);
         }
+        if (in_array($resource, ['vehicles', 'services'], true) &&
+            \Illuminate\Support\Facades\Schema::hasTable('wash_orders')) {
+            $field = $resource === 'vehicles' ? 'vehicle_id' : 'service_id';
+            if (DB::table('wash_orders')->where('company_id', $company)
+                ->where($field, $record)
+                ->whereIn('status', ['EN_ESPERA', 'ASIGNADO', 'EN_PROCESO'])->exists()) {
+                return response()->json(['message' => 'Registro utilizado por una orden activa.'], 409);
+            }
+        }
+        if ($resource === 'employees' &&
+            \Illuminate\Support\Facades\Schema::hasTable('wash_assignments') &&
+            DB::table('wash_assignments')->where('company_id', $company)
+                ->where('employee_id', $record)->where('is_active', true)->exists()) {
+            return response()->json(['message' => 'Lavador asignado a una orden. Libera primero su asignación.'], 409);
+        }
         $this->scoped($resource, $company)->where('id', $record)
             ->update(['deleted_at' => now(), 'updated_at' => now()]);
         return response()->json(['message' => 'Registro archivado.']);

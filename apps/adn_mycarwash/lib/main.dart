@@ -6,6 +6,7 @@ import 'core/business_identity.dart';
 import 'ui/mycarwash_login.dart';
 import 'ui/company_settings_page.dart';
 import 'ui/company_operations_page.dart';
+import 'ui/company_wash_workflow_page.dart';
 
 import 'package:flutter/material.dart';
 
@@ -171,6 +172,10 @@ const _menu = [
   _NavItem('Vehículos', Icons.directions_car_outlined),
   _NavItem('Empleados', Icons.badge_outlined),
   _NavItem('Servicios', Icons.design_services_outlined),
+  _NavItem('Puestos de lavado', Icons.grid_view_outlined),
+  _NavItem('Órdenes de lavado', Icons.local_car_wash_outlined),
+  _NavItem('Asignaciones', Icons.groups_outlined),
+  _NavItem('Cola de lavado', Icons.view_list_outlined),
   _NavItem('Inventario', Icons.inventory_2_outlined),
   _NavItem('Caja y ventas', Icons.point_of_sale_outlined),
   _NavItem('Sitio web', Icons.language_outlined),
@@ -400,6 +405,16 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     };
     if (catalog != null) {
       return CompanyOperationsPage(catalog: catalog);
+    }
+    final washModule = switch (_menu[selected].title) {
+      'Puestos de lavado' => WashModule.bays,
+      'Órdenes de lavado' => WashModule.orders,
+      'Asignaciones' => WashModule.assignments,
+      'Cola de lavado' => WashModule.queue,
+      _ => null,
+    };
+    if (washModule != null) {
+      return CompanyWashWorkflowPage(module: washModule);
     }
     final isHome = selected == 0;
     return Column(

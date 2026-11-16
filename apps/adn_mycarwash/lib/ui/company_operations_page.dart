@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
+import 'company_media_photo_dialog.dart';
 
 enum OperationsCatalog { clients, vehicles, employees, services }
 
@@ -827,6 +828,31 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                 ],
                               ),
                             ),
+                            if (widget.catalog == OperationsCatalog.vehicles ||
+                                widget.catalog == OperationsCatalog.employees)
+                              IconButton(
+                                tooltip: 'Fotografía',
+                                icon: const Icon(
+                                  Icons.photo_camera_outlined,
+                                  color: _turquoise,
+                                ),
+                                onPressed: () async {
+                                  await showDialog<void>(
+                                    context: context,
+                                    builder: (_) => CompanyMediaPhotoDialog(
+                                      client: _client,
+                                      kind:
+                                          widget.catalog ==
+                                              OperationsCatalog.vehicles
+                                          ? 'vehicles'
+                                          : 'employees',
+                                      recordId: int.parse('${record['id']}'),
+                                      title: _rowTitle(record),
+                                    ),
+                                  );
+                                  if (mounted) _load();
+                                },
+                              ),
                             IconButton(
                               tooltip: 'Editar',
                               icon: const Icon(

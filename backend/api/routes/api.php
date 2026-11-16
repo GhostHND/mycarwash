@@ -160,3 +160,21 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
     Route::delete('/companies/{company}/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'destroy'])
         ->whereNumber('company')->whereNumber('record')->where('resource', 'clients|vehicles|employees|services');
 });
+
+// BLOQUE 16 - puestos, ordenes, asignaciones y fotos de vehiculos/lavadores.
+Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
+    Route::get('/companies/{company}/workflow/branches', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'branches'])->whereNumber('company');
+    Route::get('/companies/{company}/workflow/queue', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'queue'])->whereNumber('company');
+    Route::post('/companies/{company}/workflow/orders/{order}/transition', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'transition'])->whereNumber('company')->whereNumber('order');
+    Route::get('/companies/{company}/workflow/orders/{order}/history', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'history'])->whereNumber('company')->whereNumber('order');
+    Route::get('/companies/{company}/workflow/{resource}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'index'])->whereNumber('company')->where('resource', 'bays|orders|assignments');
+    Route::post('/companies/{company}/workflow/{resource}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'store'])->whereNumber('company')->where('resource', 'bays|orders|assignments');
+    Route::get('/companies/{company}/workflow/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'show'])->whereNumber('company')->where('resource', 'bays|orders|assignments')->whereNumber('record');
+    Route::patch('/companies/{company}/workflow/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'update'])->whereNumber('company')->where('resource', 'bays|orders|assignments')->whereNumber('record');
+    Route::delete('/companies/{company}/workflow/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'destroy'])->whereNumber('company')->where('resource', 'bays|orders|assignments')->whereNumber('record');
+    Route::get('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'show'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
+    Route::get('/companies/{company}/media/{kind}/{record}/file', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'file'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
+    Route::post('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'store'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
+    Route::patch('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'update'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
+    Route::delete('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'destroy'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
+});
