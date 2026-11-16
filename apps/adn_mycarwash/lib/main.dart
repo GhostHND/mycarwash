@@ -200,6 +200,61 @@ const _menu = [
   _NavItem('Configuración', Icons.settings_outlined),
 ];
 
+// ADN MyCarWash - Navegacion compacta 20.1.
+class _CompactNavGroup {
+  const _CompactNavGroup(this.label, this.icon, this.entries);
+  final String label;
+  final IconData icon;
+  final List<String> entries;
+}
+
+const _compactNavGroups20_1 = <_CompactNavGroup>[
+  _CompactNavGroup('Lavados', Icons.local_car_wash_outlined, [
+    'Órdenes de lavado',
+    'Cola de lavado',
+    'Asignaciones',
+    'Puestos de lavado',
+    'Servicios',
+    'Lavados',
+  ]),
+  _CompactNavGroup('Agenda y reservas', Icons.event_available_outlined, [
+    'Reservas',
+    'Bloqueos de agenda',
+  ]),
+  _CompactNavGroup('Clientes y vehículos', Icons.people_outline_rounded, [
+    'Clientes',
+    'Vehículos',
+  ]),
+  _CompactNavGroup('Personal', Icons.badge_outlined, [
+    'Empleados',
+    'Turnos de trabajo',
+    'Asignaciones de turnos',
+  ]),
+  _CompactNavGroup('Inventario', Icons.inventory_2_outlined, [
+    'Inventario',
+    'Categorías de inventario',
+    'Proveedores',
+    'Movimientos de inventario',
+  ]),
+  _CompactNavGroup('Caja y bancos', Icons.account_balance_outlined, [
+    'Caja y ventas',
+    'Sesiones de caja',
+    'Movimientos de caja',
+    'Categorías de egresos',
+    'Cuentas bancarias',
+  ]),
+  _CompactNavGroup('Ventas y cobros', Icons.payments_outlined, [
+    'Cobros de lavados',
+    'Medios de pago',
+    'Descuentos de lavados',
+  ]),
+  _CompactNavGroup('Mi empresa', Icons.business_outlined, [
+    'Mi Empresa',
+    'Sitio web',
+    'Configuración',
+  ]),
+];
+
 class DashboardPreview extends StatefulWidget {
   const DashboardPreview({super.key});
 
@@ -215,6 +270,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
   }
 
   int selected = 0;
+  String? _expandedNavGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +300,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
       body: Row(
         children: [
           if (MediaQuery.sizeOf(context).width >= 900)
-            SizedBox(width: 260, child: _sidebar()),
+            SizedBox(width: 232, child: _sidebar()),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(26),
@@ -252,6 +308,173 @@ class _DashboardPreviewState extends State<DashboardPreview> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Navegacion compacta, un grupo desplegado a la vez y submodulos originales.
+  Widget _buildCompactNavigation() {
+    final known = <String>{'Resumen'};
+    for (final group in _compactNavGroups20_1) {
+      known.addAll(group.entries);
+    }
+    final extra = <int>[
+      for (var index = 1; index < _menu.length; index++)
+        if (!known.contains(_menu[index].title)) index,
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(9, 4, 9, 10),
+      children: [
+        _compactNavEntry(0),
+        const SizedBox(height: 8),
+        for (final group in _compactNavGroups20_1) _compactNavSection(group),
+        for (final index in extra) _compactNavEntry(index),
+      ],
+    );
+  }
+
+  Widget _compactNavSection(_CompactNavGroup group) {
+    final indices = <int>[
+      for (final title in group.entries)
+        _menu.indexWhere((item) => item.title == title),
+    ].where((index) => index >= 0).toList();
+    if (indices.isEmpty) return const SizedBox.shrink();
+    final expanded = _expandedNavGroup == group.label;
+    final containsActive = indices.contains(selected);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(9),
+              onTap: () => setState(() {
+                _expandedNavGroup = expanded ? null : group.label;
+              }),
+              child: Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(9),
+                  color: containsActive
+                      ? AdnColors.turquoise.withValues(alpha: 0.10)
+                      : Colors.transparent,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      group.icon,
+                      size: 18,
+                      color: containsActive || expanded
+                          ? AdnColors.turquoiseLight
+                          : AdnColors.muted,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        group.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: containsActive || expanded
+                              ? AdnColors.white
+                              : AdnColors.muted,
+                          fontWeight: containsActive || expanded
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      expanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      size: 17,
+                      color: AdnColors.muted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.only(left: 10, top: 2, bottom: 3),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final index in indices)
+                    _compactNavEntry(index, nested: true),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactNavEntry(int index, {bool nested = false}) {
+    final item = _menu[index];
+    final active = selected == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: ValueKey<String>('menu_${item.title}'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: () {
+            setState(() => selected = index);
+            if (MediaQuery.sizeOf(context).width < 900) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 34),
+            padding: EdgeInsets.symmetric(
+              horizontal: nested ? 8 : 10,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: active
+                  ? AdnColors.turquoise.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: active
+                  ? const Border(
+                      left: BorderSide(color: AdnColors.turquoise, width: 2),
+                    )
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  item.icon,
+                  size: nested ? 15 : 18,
+                  color: active ? AdnColors.turquoiseLight : AdnColors.muted,
+                ),
+                SizedBox(width: nested ? 9 : 10),
+                Expanded(
+                  child: Text(
+                    item.title == 'Lavados' && nested
+                        ? 'Vista general de lavados'
+                        : item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: active ? AdnColors.white : AdnColors.muted,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -349,48 +572,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
             },
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              itemCount: _menu.length,
-              itemBuilder: (context, index) {
-                final item = _menu[index];
-                final active = selected == index;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: ListTile(
-                    dense: true,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    selected: active,
-                    selectedTileColor: AdnColors.turquoise.withValues(
-                      alpha: 0.16,
-                    ),
-                    leading: Icon(
-                      item.icon,
-                      color: active
-                          ? AdnColors.turquoiseLight
-                          : AdnColors.muted,
-                    ),
-                    title: Text(
-                      item.title,
-                      style: TextStyle(
-                        color: active ? AdnColors.white : AdnColors.muted,
-                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() => selected = index);
-                      if (MediaQuery.sizeOf(context).width < 900) {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
+          Expanded(child: _buildCompactNavigation()),
           const Divider(color: AdnColors.border, height: 1),
           TextButton.icon(
             onPressed: () => Navigator.of(context).pop(),
