@@ -182,8 +182,11 @@ class CompanySalesController extends Controller
             else return array_merge($data, $this->paymentInfo($company, $record));
         }
         if ($resource === 'banks') {
-            $data['received_total'] = $this->fmt($this->cents((string) DB::table('sale_bank_movements')
-                ->where('company_id', $company)->where('bank_account_id', $record->id)->sum('amount')));
+            $wash = $this->cents((string) DB::table('sale_bank_movements')
+                ->where('company_id', $company)->where('bank_account_id', $record->id)->sum('amount'));
+            $pos = $this->cents((string) DB::table('pos_sale_payments')
+                ->where('company_id', $company)->where('bank_account_id', $record->id)->sum('amount'));
+            $data['received_total'] = $this->fmt($wash + $pos);
         }
         return $data;
     }
@@ -351,7 +354,8 @@ class CompanySalesController extends Controller
             }
             if ($resource === 'methods') {
                 if (isset($data['channel']) && $data['channel'] !== $old->channel &&
-                    DB::table('wash_order_payments')->where('company_id', $company)->where('payment_method_id', $record)->exists()) {
+                    (DB::table('wash_order_payments')->where('company_id', $company)->where('payment_method_id', $record)->exists()
+                    || DB::table('pos_sale_payments')->where('company_id', $company)->where('payment_method_id', $record)->exists())) {
                     throw ValidationException::withMessages(['channel' => 'No cambies el canal de un método con cobros registrados.']);
                 }
                 if (isset($data['name']) && $this->scoped('methods', $company)->where('name', trim($data['name']))
@@ -404,12 +408,14 @@ class CompanySalesController extends Controller
         $this->check($request, $company, 'company.update');
         DB::transaction(function () use ($request, $company, $resource, $record): void {
             $old = $this->record($resource, $company, $record);
-            if ($resource === 'banks' && DB::table('wash_order_payments')->where('company_id', $company)
-                ->where('bank_account_id', $record)->exists()) {
+            if ($resource === 'banks' && (
+                DB::table('wash_order_payments')->where('company_id', $company)->where('bank_account_id', $record)->exists()
+                || DB::table('pos_sale_payments')->where('company_id', $company)->where('bank_account_id', $record)->exists())) {
                 throw ValidationException::withMessages(['id' => 'Cuenta con historial: desactívala.']);
             }
-            if ($resource === 'methods' && DB::table('wash_order_payments')->where('company_id', $company)
-                ->where('payment_method_id', $record)->exists()) {
+            if ($resource === 'methods' && (
+                DB::table('wash_order_payments')->where('company_id', $company)->where('payment_method_id', $record)->exists()
+                || DB::table('pos_sale_payments')->where('company_id', $company)->where('payment_method_id', $record)->exists())) {
                 throw ValidationException::withMessages(['id' => 'Método utilizado: desactívalo.']);
             }
             if ($resource === 'discounts') $this->editableOrder($company, (int) $old->order_id, true);

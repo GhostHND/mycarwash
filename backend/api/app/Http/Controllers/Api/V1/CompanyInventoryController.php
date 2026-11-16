@@ -324,10 +324,16 @@ class CompanyInventoryController extends Controller
         $this->table($resource);
         $result=DB::transaction(function() use($request,$company,$resource,$record):object {
             $existing=$this->row($resource,$company,$record);
+            if ($resource==='movements' && ($existing->source_pos_sale_item_id ?? null) !== null) {
+                throw ValidationException::withMessages(['id'=>'Salida POS confirmada: su historial no se modifica ni elimina.']);
+            }
             if ($resource==='movements') {
                 $locked=$this->scoped('items',$company)->where('id',$existing->item_id)->lockForUpdate()->first();
                 if (!$locked) abort(409,'Producto no disponible.');
                 $existing=$this->row($resource,$company,$record);
+                if ($resource==='movements' && ($existing->source_pos_sale_item_id ?? null) !== null) {
+                    throw ValidationException::withMessages(['id'=>'Salida POS confirmada: su historial no se modifica ni elimina.']);
+                }
             }
             $data=$this->validated($request,$company,$resource,false,$existing);
             if (array_key_exists('is_active',$data) && !$data['is_active']) {
@@ -356,12 +362,18 @@ class CompanyInventoryController extends Controller
         $this->table($resource);
         DB::transaction(function()use($request,$company,$resource,$record):void {
             $existing=$this->row($resource,$company,$record);
+            if ($resource==='movements' && ($existing->source_pos_sale_item_id ?? null) !== null) {
+                throw ValidationException::withMessages(['id'=>'Salida POS confirmada: su historial no se modifica ni elimina.']);
+            }
             if (in_array($resource,['categories','suppliers'],true)) $this->assertNoLinkedItems($resource,$company,$record);
             if ($resource==='items') $this->assertItemCanArchive($company,$record);
             if ($resource==='movements') {
                 $lock=$this->scoped('items',$company)->where('id',$existing->item_id)->lockForUpdate()->first();
                 if (!$lock) abort(409,'Producto no disponible.');
                 $existing=$this->row($resource,$company,$record);
+                if ($resource==='movements' && ($existing->source_pos_sale_item_id ?? null) !== null) {
+                    throw ValidationException::withMessages(['id'=>'Salida POS confirmada: su historial no se modifica ni elimina.']);
+                }
                 // Eliminar un ingreso revierte su saldo; prohibido si causa stock negativo.
                 $balance=$this->balanceMilli($company,(int)$existing->branch_id,(int)$existing->item_id,$record);
                 if ($balance < 0) throw ValidationException::withMessages(['id'=>'No puedes eliminar el movimiento: dejaría stock negativo.']);

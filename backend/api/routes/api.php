@@ -224,3 +224,12 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::patch('/companies/{company}/sales/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'update'])->whereNumber('company')->where('resource','banks|methods|discounts|payments')->whereNumber('record');
     Route::delete('/companies/{company}/sales/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'destroy'])->whereNumber('company')->where('resource','banks|methods|discounts|payments')->whereNumber('record');
 });
+
+// BLOQUE 21A - Smart POS artículos y accesorios (comprobante no fiscal).
+Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/pos/options', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'options'])->whereNumber('company');
+    Route::get('/companies/{company}/pos/products', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'products'])->whereNumber('company');
+    Route::get('/companies/{company}/pos/sales', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'index'])->whereNumber('company');
+    Route::post('/companies/{company}/pos/sales', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'checkout'])->whereNumber('company');
+    Route::get('/companies/{company}/pos/sales/{sale}', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'show'])->whereNumber('company')->whereNumber('sale');
+});

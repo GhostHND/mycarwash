@@ -25,6 +25,7 @@ class CompanySalesTest extends TestCase
         }
         // Orden inverso de dependencias: nunca se toca la BD real, solo SQLite :memory:.
         foreach ([
+            'pos_sale_payments', 'pos_sale_items', 'pos_sales',
             'cash_movement_events', 'sale_bank_movements', 'cash_movements', 'wash_order_payments',
             'wash_order_discounts', 'sale_payment_methods', 'sale_bank_accounts',
             'booking_events', 'wash_bookings', 'booking_blocks', 'staff_shift_assignments', 'staff_shifts',
@@ -77,8 +78,10 @@ class CompanySalesTest extends TestCase
         DB::table('employees')->insert(['id'=>1,'company_id'=>1,'full_name'=>'Lavador Uno','position'=>'washer','is_active'=>true]);
         DB::table('employees')->insert(['id'=>2,'company_id'=>1,'full_name'=>'Lavador Dos','position'=>'washer','is_active'=>true]);
         DB::table('wash_services')->insert(['id'=>1,'company_id'=>1,'name'=>'Completo','price'=>220,'duration_minutes'=>45,'is_active'=>true]);
+        (require database_path('migrations/2026_11_16_000004_create_inventory_catalogs.php'))->up();
         (require database_path('migrations/2026_11_16_000005_create_cash_management.php'))->up();
         (require database_path('migrations/2026_11_16_000006_create_wash_sales.php'))->up();
+        (require database_path('migrations/2026_11_16_000007_create_pos_sales.php'))->up();
         DB::table('wash_services')->where('id', 1)->update(['price' => '350.00']);
         DB::table('cash_registers')->insert([
             'id'=>1,'company_id'=>1,'branch_id'=>1,'code'=>'CAJA1','name'=>'Caja principal',
