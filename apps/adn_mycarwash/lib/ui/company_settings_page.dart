@@ -7,6 +7,11 @@ import 'package:http/http.dart' as http;
 import '../core/mycarwash_session.dart';
 import '../core/business_identity.dart';
 import 'business_identity_editor.dart';
+import 'company_fiscal_section.dart';
+import 'company_addresses_section.dart';
+import 'company_schedule_section.dart';
+import 'company_social_links_section.dart';
+import 'company_preferences_section.dart';
 
 class CompanySettingsPage extends StatefulWidget {
   const CompanySettingsPage({super.key, this.client});
@@ -1303,12 +1308,26 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               _tab('Información', Icons.business_outlined, 0),
               _tab('Contactos', Icons.contacts_outlined, 1),
               _tab('Identidad visual', Icons.palette_outlined, 2),
+              _tab('Datos fiscales', Icons.receipt_long_outlined, 3),
+              _tab('Direcciones', Icons.place_outlined, 4),
+              _tab('Horarios', Icons.schedule_outlined, 5),
+              _tab('Redes sociales', Icons.public_outlined, 6),
+              _tab('Preferencias', Icons.tune_outlined, 7),
             ],
           ),
           const SizedBox(height: 19),
           if (_section == 0) _profileSection(),
           if (_section == 1) _contactSection(),
           if (_section == 2) _brandingSection(),
+          if (_section == 3) CompanyFiscalSection(client: _client),
+          if (_section == 4) CompanyAddressesSection(client: _client),
+          if (_section == 5) CompanyScheduleSection(client: _client),
+          if (_section == 6) CompanySocialLinksSection(client: _client),
+          if (_section == 7)
+            CompanyPreferencesSection(
+              client: _client,
+              companyName: _companyName,
+            ),
           const SizedBox(height: 20),
           const Row(
             children: [

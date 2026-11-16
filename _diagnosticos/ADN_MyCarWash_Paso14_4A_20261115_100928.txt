@@ -1,0 +1,926 @@
+ADN MYCARWASH - PASO 14.4A
+Generado: 2026-11-15 10:09:40
+
+========================================
+ ADN MYCARWASH - ESQUEMA EMPRESARIAL
+========================================
+
+Base de datos: mycarwash_core
+
+===== TODAS LAS TABLAS =====
+- branch_user
+- branches
+- cache
+- cache_locks
+- companies
+- company_addresses
+- company_brandings
+- company_business_hours
+- company_contacts
+- company_fiscal_profiles
+- company_media_assets
+- company_preferences
+- company_profiles
+- company_social_links
+- company_special_hours
+- company_user
+- failed_jobs
+- job_batches
+- jobs
+- migrations
+- onboarding_progress
+- password_reset_tokens
+- permissions
+- personal_access_tokens
+- role_permission
+- roles
+- sessions
+- user_preferences
+- user_roles
+- users
+
+===== TABLAS EMPRESARIALES Y RELACIONADAS =====
+
+----------------------------------------
+TABLA: branch_user
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+branch_id | bigint unsigned | NOT NULL
+user_id | bigint unsigned | NOT NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- branch_id -> branches.id
+- company_id -> company_user.company_id
+- company_id -> branches.company_id
+- user_id -> company_user.user_id
+
+----------------------------------------
+TABLA: branches
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+name | varchar(180) | NOT NULL
+slug | varchar(120) | NOT NULL
+database_name | varchar(100) | NULL
+address | varchar(255) | NULL
+phone | varchar(35) | NULL
+timezone | varchar(80) | NOT NULL DEFAULT America/Tegucigalpa
+is_active | tinyint(1) | NOT NULL DEFAULT 1
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_addresses
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+type | varchar(40) | NOT NULL DEFAULT principal
+country | varchar(100) | NOT NULL DEFAULT Honduras
+department | varchar(120) | NULL
+municipality | varchar(120) | NULL
+neighborhood | varchar(180) | NULL
+street | varchar(255) | NULL
+building_number | varchar(50) | NULL
+postal_code | varchar(30) | NULL
+full_address | text | NULL
+reference | text | NULL
+latitude | decimal(10,7) | NULL
+longitude | decimal(10,7) | NULL
+is_primary | tinyint(1) | NOT NULL DEFAULT 0
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_brandings
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+logo_path | varchar(500) | NULL
+logo_light_path | varchar(500) | NULL
+logo_dark_path | varchar(500) | NULL
+isotype_path | varchar(500) | NULL
+favicon_path | varchar(500) | NULL
+cover_path | varchar(500) | NULL
+background_image_path | varchar(500) | NULL
+primary_color | varchar(7) | NOT NULL DEFAULT #0FA7B4
+secondary_color | varchar(7) | NOT NULL DEFAULT #1D1D1B
+accent_color | varchar(7) | NOT NULL DEFAULT #ED7E24
+background_color | varchar(7) | NOT NULL DEFAULT #FFFFFF
+surface_color | varchar(7) | NOT NULL DEFAULT #F5F7F8
+text_color | varchar(7) | NOT NULL DEFAULT #1D1D1B
+muted_text_color | varchar(7) | NOT NULL DEFAULT #64748B
+sidebar_color | varchar(7) | NOT NULL DEFAULT #1D1D1B
+button_color | varchar(7) | NOT NULL DEFAULT #0FA7B4
+success_color | varchar(7) | NOT NULL DEFAULT #16A34A
+warning_color | varchar(7) | NOT NULL DEFAULT #F59E0B
+danger_color | varchar(7) | NOT NULL DEFAULT #DC2626
+font_family | varchar(100) | NOT NULL DEFAULT Inter
+button_style | varchar(30) | NOT NULL DEFAULT rounded
+sidebar_style | varchar(30) | NOT NULL DEFAULT expanded
+border_radius | tinyint unsigned | NOT NULL DEFAULT 12
+compact_mode | tinyint(1) | NOT NULL DEFAULT 0
+show_business_name | tinyint(1) | NOT NULL DEFAULT 1
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+business_logo_path | varchar(500) | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_business_hours
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+day_of_week | tinyint unsigned | NOT NULL
+opens_at | time | NULL
+closes_at | time | NULL
+break_starts_at | time | NULL
+break_ends_at | time | NULL
+is_closed | tinyint(1) | NOT NULL DEFAULT 0
+notes | varchar(255) | NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_contacts
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+type | varchar(40) | NOT NULL
+label | varchar(100) | NULL
+value | varchar(255) | NOT NULL
+normalized_value | varchar(190) | NULL
+contact_person | varchar(180) | NULL
+department | varchar(100) | NULL
+is_primary | tinyint(1) | NOT NULL DEFAULT 0
+is_public | tinyint(1) | NOT NULL DEFAULT 1
+sort_order | int unsigned | NOT NULL DEFAULT 0
+notes | text | NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_fiscal_profiles
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+legal_name | varchar(180) | NULL
+tax_id | varchar(60) | NULL
+taxpayer_type | varchar(100) | NULL
+tax_regime | varchar(120) | NULL
+tax_status | varchar(100) | NULL
+commercial_registration | varchar(120) | NULL
+billing_email | varchar(190) | NULL
+billing_phone | varchar(40) | NULL
+fiscal_address | text | NULL
+invoice_footer | text | NULL
+fiscal_notes | text | NULL
+is_tax_exempt | tinyint(1) | NOT NULL DEFAULT 0
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_media_assets
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+category | varchar(60) | NOT NULL DEFAULT general
+disk | varchar(50) | NOT NULL DEFAULT public
+path | varchar(600) | NOT NULL
+original_filename | varchar(255) | NULL
+mime_type | varchar(120) | NULL
+file_size | bigint unsigned | NULL
+alt_text | varchar(255) | NULL
+is_public | tinyint(1) | NOT NULL DEFAULT 0
+sort_order | int unsigned | NOT NULL DEFAULT 0
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_preferences
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+locale | varchar(12) | NOT NULL DEFAULT es-HN
+currency_code | varchar(3) | NOT NULL DEFAULT HNL
+timezone | varchar(80) | NOT NULL DEFAULT America/Tegucigalpa
+date_format | varchar(30) | NOT NULL DEFAULT dd/MM/yyyy
+time_format | varchar(15) | NOT NULL DEFAULT 24h
+default_theme | varchar(12) | NOT NULL DEFAULT system
+invoice_paper_size | varchar(30) | NOT NULL DEFAULT letter
+country_phone_code | varchar(10) | NOT NULL DEFAULT +504
+decimal_places | tinyint unsigned | NOT NULL DEFAULT 2
+enable_sound_alerts | tinyint(1) | NOT NULL DEFAULT 1
+receipt_footer | text | NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_profiles
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+commercial_name | varchar(180) | NULL
+business_category | varchar(120) | NULL
+business_type | varchar(100) | NULL
+slogan | varchar(255) | NULL
+public_email | varchar(190) | NULL
+support_email | varchar(190) | NULL
+website_url | varchar(500) | NULL
+legal_representative | varchar(180) | NULL
+registration_number | varchar(100) | NULL
+founded_at | date | NULL
+short_description | text | NULL
+description | longtext | NULL
+history | longtext | NULL
+mission | longtext | NULL
+vision | longtext | NULL
+business_values | longtext | NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_social_links
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+platform | varchar(60) | NOT NULL
+username | varchar(150) | NULL
+url | varchar(600) | NOT NULL
+is_visible | tinyint(1) | NOT NULL DEFAULT 1
+sort_order | int unsigned | NOT NULL DEFAULT 0
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_special_hours
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+special_date | date | NOT NULL
+reason | varchar(190) | NULL
+is_closed | tinyint(1) | NOT NULL DEFAULT 0
+opens_at | time | NULL
+closes_at | time | NULL
+notes | text | NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: company_user
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+user_id | bigint unsigned | NOT NULL
+status | varchar(25) | NOT NULL DEFAULT active
+access_all_branches | tinyint(1) | NOT NULL DEFAULT 0
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+- user_id -> users.id
+
+----------------------------------------
+TABLA: permissions
+----------------------------------------
+id | bigint unsigned | NOT NULL
+code | varchar(150) | NOT NULL
+module | varchar(100) | NOT NULL
+description | varchar(255) | NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+----------------------------------------
+TABLA: role_permission
+----------------------------------------
+id | bigint unsigned | NOT NULL
+role_id | bigint unsigned | NOT NULL
+permission_id | bigint unsigned | NOT NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- permission_id -> permissions.id
+- role_id -> roles.id
+
+----------------------------------------
+TABLA: roles
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+name | varchar(100) | NOT NULL
+code | varchar(80) | NOT NULL
+is_system | tinyint(1) | NOT NULL DEFAULT 0
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> companies.id
+
+----------------------------------------
+TABLA: user_roles
+----------------------------------------
+id | bigint unsigned | NOT NULL
+company_id | bigint unsigned | NOT NULL
+user_id | bigint unsigned | NOT NULL
+role_id | bigint unsigned | NOT NULL
+created_at | timestamp | NULL
+updated_at | timestamp | NULL
+
+Relaciones:
+- company_id -> company_user.company_id
+- role_id -> roles.id
+- user_id -> company_user.user_id
+- company_id -> roles.company_id
+
+===== PERMISOS EMPRESARIALES =====
+- company.branding.manage
+- company.contacts.manage
+- company.fiscal.manage
+- company.hours.manage
+- company.media.manage
+- company.update
+- company.view
+
+INSPECCION MYSQL FINALIZADA
+
+========================================
+ARCHIVO: F:\Archivos\2024\Documentos\Ghost PERSONAL\mycarwash\backend\api\app\Http\Controllers\Api\V1\CompanySettingsController.php
+========================================
+   1: <?php
+   2: 
+   3: namespace App\Http\Controllers\Api\V1;
+   4: 
+   5: use App\Http\Controllers\Controller;
+   6: use Illuminate\Http\JsonResponse;
+   7: use Illuminate\Http\Request;
+   8: use Illuminate\Support\Facades\DB;
+   9: use Illuminate\Validation\Rule;
+  10: 
+  11: class CompanySettingsController extends Controller
+  12: {
+  13:     private function authorizeCompany(
+  14:         Request $request,
+  15:         int $companyId,
+  16:         string $permission
+  17:     ): void {
+  18:         $userId = $request->user()->id;
+  19: 
+  20:         $membership = DB::table('company_user')
+  21:             ->join(
+  22:                 'companies',
+  23:                 'companies.id',
+  24:                 '=',
+  25:                 'company_user.company_id'
+  26:             )
+  27:             ->where('company_user.company_id', $companyId)
+  28:             ->where('company_user.user_id', $userId)
+  29:             ->where('company_user.status', 'active')
+  30:             ->where('companies.is_active', true)
+  31:             ->exists();
+  32: 
+  33:         if (!$membership) {
+  34:             abort(404, 'Empresa no disponible.');
+  35:         }
+  36: 
+  37:         $allowed = DB::table('user_roles as ur')
+  38:             ->join('roles as r', function ($join) {
+  39:                 $join->on('r.id', '=', 'ur.role_id')
+  40:                     ->on('r.company_id', '=', 'ur.company_id');
+  41:             })
+  42:             ->join('role_permission as rp', 'rp.role_id', '=', 'r.id')
+  43:             ->join('permissions as p', 'p.id', '=', 'rp.permission_id')
+  44:             ->where('ur.company_id', $companyId)
+  45:             ->where('ur.user_id', $userId)
+  46:             ->where('p.code', $permission)
+  47:             ->exists();
+  48: 
+  49:         if (!$allowed) {
+  50:             abort(403, 'No tienes permiso para esta operación.');
+  51:         }
+  52:     }
+  53: 
+  54:     public function show(Request $request, int $company): JsonResponse
+  55:     {
+  56:         $this->authorizeCompany($request, $company, 'company.view');
+  57: 
+  58:         return response()->json([
+  59:             'company' => DB::table('companies')
+  60:                 ->where('id', $company)
+  61:                 ->first(['id', 'name', 'slug']),
+  62:             'profile' => DB::table('company_profiles')
+  63:                 ->where('company_id', $company)
+  64:                 ->first(),
+  65:             'branding' => DB::table('company_brandings')
+  66:                 ->where('company_id', $company)
+  67:                 ->first(),
+  68:             'preferences' => DB::table('company_preferences')
+  69:                 ->where('company_id', $company)
+  70:                 ->first(),
+  71:         ]);
+  72:     }
+  73: 
+  74:     public function updateProfile(
+  75:         Request $request,
+  76:         int $company
+  77:     ): JsonResponse {
+  78:         $this->authorizeCompany($request, $company, 'company.update');
+  79: 
+  80:         $data = $request->validate([
+  81:             'commercial_name' => ['sometimes', 'nullable', 'string', 'max:180'],
+  82:             'business_category' => ['sometimes', 'nullable', 'string', 'max:120'],
+  83:             'business_type' => ['sometimes', 'nullable', 'string', 'max:100'],
+  84:             'slogan' => ['sometimes', 'nullable', 'string', 'max:255'],
+  85:             'public_email' => ['sometimes', 'nullable', 'email', 'max:190'],
+  86:             'support_email' => ['sometimes', 'nullable', 'email', 'max:190'],
+  87:             'website_url' => ['sometimes', 'nullable', 'url', 'max:500'],
+  88:             'legal_representative' => ['sometimes', 'nullable', 'string', 'max:180'],
+  89:             'registration_number' => ['sometimes', 'nullable', 'string', 'max:100'],
+  90:             'founded_at' => ['sometimes', 'nullable', 'date'],
+  91:             'short_description' => ['sometimes', 'nullable', 'string', 'max:3000'],
+  92:             'description' => ['sometimes', 'nullable', 'string', 'max:20000'],
+  93:             'history' => ['sometimes', 'nullable', 'string', 'max:20000'],
+  94:             'mission' => ['sometimes', 'nullable', 'string', 'max:10000'],
+  95:             'vision' => ['sometimes', 'nullable', 'string', 'max:10000'],
+  96:             'business_values' => ['sometimes', 'nullable', 'string', 'max:10000'],
+  97:         ]);
+  98: 
+  99:         if (count($data) === 0) {
+ 100:             return response()->json([
+ 101:                 'message' => 'No se recibieron campos válidos.',
+ 102:             ], 422);
+ 103:         }
+ 104: 
+ 105:         $this->saveSingleRecord('company_profiles', $company, $data);
+ 106: 
+ 107:         return response()->json([
+ 108:             'message' => 'Información empresarial guardada.',
+ 109:             'profile' => DB::table('company_profiles')
+ 110:                 ->where('company_id', $company)
+ 111:                 ->first(),
+ 112:         ]);
+ 113:     }
+ 114: 
+ 115:     public function updateBranding(
+ 116:         Request $request,
+ 117:         int $company
+ 118:     ): JsonResponse {
+ 119:         $this->authorizeCompany(
+ 120:             $request,
+ 121:             $company,
+ 122:             'company.branding.manage'
+ 123:         );
+ 124: 
+ 125:         $colorRules = [
+ 126:             'sometimes',
+ 127:             'regex:/^#[0-9A-Fa-f]{6}$/',
+ 128:         ];
+ 129: 
+ 130:         $rules = [];
+ 131: 
+ 132:         foreach ([
+ 133:             'primary_color',
+ 134:             'secondary_color',
+ 135:             'accent_color',
+ 136:             'background_color',
+ 137:             'surface_color',
+ 138:             'text_color',
+ 139:             'muted_text_color',
+ 140:             'sidebar_color',
+ 141:             'button_color',
+ 142:             'success_color',
+ 143:             'warning_color',
+ 144:             'danger_color',
+ 145:         ] as $field) {
+ 146:             $rules[$field] = $colorRules;
+ 147:         }
+ 148: 
+ 149:         $rules['font_family'] = ['prohibited'];
+ 150: 
+ 151:         $rules['button_style'] = [
+ 152:             'sometimes',
+ 153:             Rule::in(['rounded', 'square', 'pill']),
+ 154:         ];
+ 155: 
+ 156:         $rules['sidebar_style'] = [
+ 157:             'sometimes',
+ 158:             Rule::in(['expanded', 'compact']),
+ 159:         ];
+ 160: 
+ 161:         $rules['border_radius'] = [
+ 162:             'sometimes', 'integer', 'between:0,40',
+ 163:         ];
+ 164: 
+ 165:         $rules['compact_mode'] = ['sometimes', 'boolean'];
+ 166:         $rules['show_business_name'] = ['sometimes', 'boolean'];
+ 167: 
+ 168:         $data = $request->validate($rules);
+ 169: 
+ 170:         if (count($data) === 0) {
+ 171:             return response()->json([
+ 172:                 'message' => 'No se recibieron cambios de apariencia.',
+ 173:             ], 422);
+ 174:         }
+ 175: 
+ 176:         // Los logos oficiales ADN no son configurables
+ 177:         // desde esta API.
+ 178: 
+ 179:         $this->saveSingleRecord('company_brandings', $company, $data);
+ 180: 
+ 181:         return response()->json([
+ 182:             'message' => 'Apariencia empresarial guardada.',
+ 183:             'branding' => DB::table('company_brandings')
+ 184:                 ->where('company_id', $company)
+ 185:                 ->first(),
+ 186:         ]);
+ 187:     }
+ 188: 
+ 189:     private function saveSingleRecord(
+ 190:         string $table,
+ 191:         int $company,
+ 192:         array $data
+ 193:     ): void {
+ 194:         DB::transaction(function () use ($table, $company, $data) {
+ 195:             $exists = DB::table($table)
+ 196:                 ->where('company_id', $company)
+ 197:                 ->exists();
+ 198: 
+ 199:             if ($exists) {
+ 200:                 DB::table($table)
+ 201:                     ->where('company_id', $company)
+ 202:                     ->update(array_merge($data, [
+ 203:                         'updated_at' => now(),
+ 204:                     ]));
+ 205:             } else {
+ 206:                 DB::table($table)->insert(
+ 207:                     array_merge($data, [
+ 208:                         'company_id' => $company,
+ 209:                         'created_at' => now(),
+ 210:                         'updated_at' => now(),
+ 211:                     ])
+ 212:                 );
+ 213:             }
+ 214:         });
+ 215:     }
+ 216: 
+ 217:     public function contacts(Request $request, int $company): JsonResponse
+ 218:     {
+ 219:         $this->authorizeCompany($request, $company, 'company.view');
+ 220: 
+ 221:         $data = $request->validate([
+ 222:             'q' => ['sometimes', 'nullable', 'string', 'max:100'],
+ 223:         ]);
+ 224: 
+ 225:         $search = trim($data['q'] ?? '');
+ 226: 
+ 227:         $query = DB::table('company_contacts')
+ 228:             ->where('company_id', $company);
+ 229: 
+ 230:         if ($search !== '') {
+ 231:             $digits = preg_replace('/\D+/', '', $search);
+ 232:             $like = '%' . $search . '%';
+ 233: 
+ 234:             $query->where(function ($builder) use (
+ 235:                 $search,
+ 236:                 $like,
+ 237:                 $digits
+ 238:             ) {
+ 239:                 $builder
+ 240:                     ->where('value', 'like', $like)
+ 241:                     ->orWhere('label', 'like', $like)
+ 242:                     ->orWhere('contact_person', 'like', $like)
+ 243:                     ->orWhere('department', 'like', $like)
+ 244:                     ->orWhere('type', 'like', $like);
+ 245: 
+ 246:                 if (ctype_digit($search)) {
+ 247:                     $builder->orWhere('id', (int) $search);
+ 248:                 }
+ 249: 
+ 250:                 if ($digits !== '') {
+ 251:                     $builder->orWhere(
+ 252:                         'normalized_value',
+ 253:                         'like',
+ 254:                         '%' . $digits . '%'
+ 255:                     );
+ 256:                 }
+ 257:             });
+ 258:         }
+ 259: 
+ 260:         return response()->json(
+ 261:             $query
+ 262:                 ->orderByDesc('is_primary')
+ 263:                 ->orderBy('sort_order')
+ 264:                 ->orderBy('id')
+ 265:                 ->paginate(20)
+ 266:         );
+ 267:     }
+ 268: 
+ 269:     private function contactRules(bool $create): array
+ 270:     {
+ 271:         $prefix = $create ? 'required' : 'sometimes';
+ 272: 
+ 273:         return [
+ 274:             'type' => [
+ 275:                 $prefix,
+ 276:                 Rule::in(['phone', 'email', 'whatsapp', 'other']),
+ 277:             ],
+ 278:             'value' => [
+ 279:                 $prefix, 'string', 'max:255',
+ 280:             ],
+ 281:             'label' => [
+ 282:                 'sometimes', 'nullable', 'string', 'max:100',
+ 283:             ],
+ 284:             'contact_person' => [
+ 285:                 'sometimes', 'nullable', 'string', 'max:180',
+ 286:             ],
+ 287:             'department' => [
+ 288:                 'sometimes', 'nullable', 'string', 'max:100',
+ 289:             ],
+ 290:             'is_primary' => ['sometimes', 'boolean'],
+ 291:             'is_public' => ['sometimes', 'boolean'],
+ 292:             'sort_order' => [
+ 293:                 'sometimes', 'integer', 'between:0,100000',
+ 294:             ],
+ 295:             'notes' => [
+ 296:                 'sometimes', 'nullable', 'string', 'max:2000',
+ 297:             ],
+ 298:         ];
+ 299:     }
+ 300: 
+ 301:     private function normalizeContact(string $type, string $value): string
+ 302:     {
+ 303:         if (in_array($type, ['phone', 'whatsapp'], true)) {
+ 304:             return preg_replace('/\D+/', '', $value);
+ 305:         }
+ 306: 
+ 307:         return mb_strtolower(trim($value));
+ 308:     }
+ 309: 
+ 310:     public function storeContact(
+ 311:         Request $request,
+ 312:         int $company
+ 313:     ): JsonResponse {
+ 314:         $this->authorizeCompany(
+ 315:             $request,
+ 316:             $company,
+ 317:             'company.contacts.manage'
+ 318:         );
+ 319: 
+ 320:         $data = $request->validate($this->contactRules(true));
+ 321: 
+ 322:         $data['value'] = trim($data['value']);
+ 323: 
+ 324:         $data['normalized_value'] = $this->normalizeContact(
+ 325:             $data['type'],
+ 326:             $data['value']
+ 327:         );
+ 328: 
+ 329:         $id = DB::table('company_contacts')->insertGetId(
+ 330:             array_merge($data, [
+ 331:                 'company_id' => $company,
+ 332:                 'created_at' => now(),
+ 333:                 'updated_at' => now(),
+ 334:             ])
+ 335:         );
+ 336: 
+ 337:         return response()->json([
+ 338:             'message' => 'Contacto creado.',
+ 339:             'contact' => DB::table('company_contacts')
+ 340:                 ->where('company_id', $company)
+ 341:                 ->where('id', $id)
+ 342:                 ->first(),
+ 343:         ], 201);
+ 344:     }
+ 345: 
+ 346:     public function updateContact(
+ 347:         Request $request,
+ 348:         int $company,
+ 349:         int $contact
+ 350:     ): JsonResponse {
+ 351:         $this->authorizeCompany(
+ 352:             $request,
+ 353:             $company,
+ 354:             'company.contacts.manage'
+ 355:         );
+ 356: 
+ 357:         $existing = DB::table('company_contacts')
+ 358:             ->where('company_id', $company)
+ 359:             ->where('id', $contact)
+ 360:             ->first();
+ 361: 
+ 362:         if (!$existing) {
+ 363:             abort(404, 'Contacto no encontrado.');
+ 364:         }
+ 365: 
+ 366:         $data = $request->validate($this->contactRules(false));
+ 367: 
+ 368:         if (!$data) {
+ 369:             return response()->json([
+ 370:                 'message' => 'No se recibieron cambios.',
+ 371:             ], 422);
+ 372:         }
+ 373: 
+ 374:         if (array_key_exists('value', $data)) {
+ 375:             $data['value'] = trim($data['value']);
+ 376:         }
+ 377: 
+ 378:         if (
+ 379:             array_key_exists('value', $data)
+ 380:             || array_key_exists('type', $data)
+ 381:         ) {
+ 382:             $data['normalized_value'] = $this->normalizeContact(
+ 383:                 $data['type'] ?? $existing->type,
+ 384:                 $data['value'] ?? $existing->value
+ 385:             );
+ 386:         }
+ 387: 
+ 388:         DB::table('company_contacts')
+ 389:             ->where('company_id', $company)
+ 390:             ->where('id', $contact)
+ 391:             ->update(array_merge($data, [
+ 392:                 'updated_at' => now(),
+ 393:             ]));
+ 394: 
+ 395:         return response()->json([
+ 396:             'message' => 'Contacto actualizado.',
+ 397:             'contact' => DB::table('company_contacts')
+ 398:                 ->where('company_id', $company)
+ 399:                 ->where('id', $contact)
+ 400:                 ->first(),
+ 401:         ]);
+ 402:     }
+ 403: 
+ 404:     public function deleteContact(
+ 405:         Request $request,
+ 406:         int $company,
+ 407:         int $contact
+ 408:     ): JsonResponse {
+ 409:         $this->authorizeCompany(
+ 410:             $request,
+ 411:             $company,
+ 412:             'company.contacts.manage'
+ 413:         );
+ 414: 
+ 415:         $deleted = DB::table('company_contacts')
+ 416:             ->where('company_id', $company)
+ 417:             ->where('id', $contact)
+ 418:             ->delete();
+ 419: 
+ 420:         if (!$deleted) {
+ 421:             abort(404, 'Contacto no encontrado.');
+ 422:         }
+ 423: 
+ 424:         return response()->json([
+ 425:             'message' => 'Contacto eliminado.',
+ 426:         ]);
+ 427:     }
+ 428: }
+
+========================================
+ARCHIVO: F:\Archivos\2024\Documentos\Ghost PERSONAL\mycarwash\backend\api\routes\api.php
+========================================
+   1: <?php
+   2: 
+   3: use App\Http\Controllers\Api\V1\PreferenceController;
+   4: use App\Http\Controllers\Api\V1\SessionController;
+   5: use App\Http\Controllers\Api\V1\CompanySettingsController;
+   6: use App\Http\Controllers\Api\V1\BusinessLogoController;
+   7: use Illuminate\Support\Facades\Route;
+   8: 
+   9: Route::prefix('v1')->group(function (): void {
+  10: 
+  11:     Route::post(
+  12:         '/auth/token',
+  13:         [SessionController::class, 'token']
+  14:     )->middleware('throttle:5,1');
+  15: 
+  16:     Route::middleware('auth:sanctum')->group(function (): void {
+  17: 
+  18:         Route::get(
+  19:             '/me',
+  20:             [SessionController::class, 'me']
+  21:         );
+  22: 
+  23:         Route::post(
+  24:             '/auth/logout',
+  25:             [SessionController::class, 'logout']
+  26:         );
+  27: 
+  28:         Route::get(
+  29:             '/preferences',
+  30:             [PreferenceController::class, 'show']
+  31:         );
+  32: 
+  33:         Route::put(
+  34:             '/preferences/theme',
+  35:             [PreferenceController::class, 'updateTheme']
+  36:         );
+  37: 
+  38:         // MI EMPRESA
+  39: 
+  40:         Route::get(
+  41:             '/companies/{company}/settings',
+  42:             [CompanySettingsController::class, 'show']
+  43:         )->whereNumber('company');
+  44: 
+  45:         Route::patch(
+  46:             '/companies/{company}/settings/profile',
+  47:             [CompanySettingsController::class, 'updateProfile']
+  48:         )->whereNumber('company');
+  49: 
+  50:         Route::patch(
+  51:             '/companies/{company}/settings/branding',
+  52:             [CompanySettingsController::class, 'updateBranding']
+  53:         )->whereNumber('company');
+  54: 
+  55:         Route::get(
+  56:             '/companies/{company}/contacts',
+  57:             [CompanySettingsController::class, 'contacts']
+  58:         )->whereNumber('company');
+  59: 
+  60:         Route::post(
+  61:             '/companies/{company}/contacts',
+  62:             [CompanySettingsController::class, 'storeContact']
+  63:         )->whereNumber('company');
+  64: 
+  65:         Route::patch(
+  66:             '/companies/{company}/contacts/{contact}',
+  67:             [CompanySettingsController::class, 'updateContact']
+  68:         )->whereNumber('company')->whereNumber('contact');
+  69: 
+  70:         Route::delete(
+  71:             '/companies/{company}/contacts/{contact}',
+  72:             [CompanySettingsController::class, 'deleteContact']
+  73:         )->whereNumber('company')->whereNumber('contact');
+  74: 
+  75:         // LOGOTIPO PARTICULAR DEL NEGOCIO
+  76: 
+  77:         Route::get(
+  78:             '/companies/{company}/settings/logo',
+  79:             [BusinessLogoController::class, 'show']
+  80:         )->whereNumber('company');
+  81: 
+  82:         Route::post(
+  83:             '/companies/{company}/settings/logo',
+  84:             [BusinessLogoController::class, 'upload']
+  85:         )->whereNumber('company');
+  86: 
+  87:         Route::delete(
+  88:             '/companies/{company}/settings/logo',
+  89:             [BusinessLogoController::class, 'remove']
+  90:         )->whereNumber('company');
+  91:     });
+  92: });
+
+========================================
+RUTAS API EMPRESARIALES
+========================================
+
+  GET|HEAD   api/v1/companies/{company}/contacts ............................................................................... Api\V1\CompanySettingsController@contacts
+  POST       api/v1/companies/{company}/contacts ........................................................................... Api\V1\CompanySettingsController@storeContact
+  PATCH      api/v1/companies/{company}/contacts/{contact} ................................................................ Api\V1\CompanySettingsController@updateContact
+  DELETE     api/v1/companies/{company}/contacts/{contact} ................................................................ Api\V1\CompanySettingsController@deleteContact
+  GET|HEAD   api/v1/companies/{company}/settings ................................................................................... Api\V1\CompanySettingsController@show
+  PATCH      api/v1/companies/{company}/settings/branding ................................................................ Api\V1\CompanySettingsController@updateBranding
+  GET|HEAD   api/v1/companies/{company}/settings/logo ................................................................................. Api\V1\BusinessLogoController@show
+  POST       api/v1/companies/{company}/settings/logo ............................................................................... Api\V1\BusinessLogoController@upload
+  DELETE     api/v1/companies/{company}/settings/logo ............................................................................... Api\V1\BusinessLogoController@remove
+  PATCH      api/v1/companies/{company}/settings/profile .................................................................. Api\V1\CompanySettingsController@updateProfile
+
+                                                                                                                                                       Showing [10] routes
+

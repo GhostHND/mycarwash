@@ -1,0 +1,1606 @@
+ADN MYCARWASH - PASO 14.4C
+INFORME DE INTEGRACION FLUTTER
+Fecha: 2026-11-15 10:25:38
+
+========================================
+ARCHIVO: lib\ui\company_settings_page.dart
+========================================
+   1: import 'dart:async';
+   2: import 'dart:convert';
+   3: 
+   4: import 'package:flutter/material.dart';
+   5: import 'package:http/http.dart' as http;
+   6: 
+   7: import '../core/mycarwash_session.dart';
+   8: import '../core/business_identity.dart';
+   9: import 'business_identity_editor.dart';
+  10: 
+  11: class CompanySettingsPage extends StatefulWidget {
+  12:   const CompanySettingsPage({super.key, this.client});
+  13: 
+  14:   final http.Client? client;
+  15: 
+  16:   @override
+  17:   State<CompanySettingsPage> createState() => _CompanySettingsPageState();
+  18: }
+  19: 
+  20: class _CompanySettingsPageState extends State<CompanySettingsPage> {
+  21:   static const turquoise = Color(0xFF0FA7B4);
+  22:   static const surface = Color(0xFF0A1519);
+  23:   static const border = Color(0xFF20343C);
+  24:   static const muted = Color(0xFF9BAEB6);
+  25: 
+  26:   static const profileLabels = <String, String>{
+  27:     'commercial_name': 'Nombre comercial',
+  28:     'business_category': 'Categoría del negocio',
+  29:     'business_type': 'Tipo de empresa',
+  30:     'slogan': 'Eslogan',
+  31:     'public_email': 'Correo público',
+  32:     'support_email': 'Correo de soporte',
+  33:     'website_url': 'Sitio web',
+  34:     'legal_representative': 'Representante legal',
+  35:     'registration_number': 'Número de registro',
+  36:     'founded_at': 'Fecha de fundación (AAAA-MM-DD)',
+  37:     'short_description': 'Descripción breve',
+  38:     'description': 'Descripción completa',
+  39:     'history': 'Historia',
+  40:     'mission': 'Misión',
+  41:     'vision': 'Visión',
+  42:     'business_values': 'Valores empresariales',
+  43:   };
+  44: 
+  45:   static const colorLabels = <String, String>{
+  46:     'primary_color': 'Principal',
+  47:     'secondary_color': 'Secundario',
+  48:     'accent_color': 'Acento',
+  49:     'background_color': 'Fondo',
+  50:     'surface_color': 'Superficies',
+  51:     'text_color': 'Texto',
+  52:     'muted_text_color': 'Texto secundario',
+  53:     'sidebar_color': 'Menú lateral',
+  54:     'button_color': 'Botones',
+  55:     'success_color': 'Éxito',
+  56:     'warning_color': 'Advertencia',
+  57:     'danger_color': 'Error',
+  58:   };
+  59: 
+  60:   static const defaultColors = <String, String>{
+  61:     'primary_color': '#0FA7B4',
+  62:     'secondary_color': '#1D1D1B',
+  63:     'accent_color': '#ED7E24',
+  64:     'background_color': '#FFFFFF',
+  65:     'surface_color': '#F5F7F8',
+  66:     'text_color': '#1D1D1B',
+  67:     'muted_text_color': '#64748B',
+  68:     'sidebar_color': '#1D1D1B',
+  69:     'button_color': '#0FA7B4',
+  70:     'success_color': '#16A34A',
+  71:     'warning_color': '#F59E0B',
+  72:     'danger_color': '#DC2626',
+  73:   };
+  74: 
+  75:   late final http.Client _client;
+  76:   late final bool _ownsClient;
+  77: 
+  78:   final Map<String, TextEditingController> _profile = {};
+  79:   final Map<String, TextEditingController> _colors = {};
+  80: 
+  81:   final _search = TextEditingController();
+  82: 
+  83:   Timer? _debounce;
+  84: 
+  85:   int _section = 0;
+  86:   int _contactPage = 1;
+  87:   int _lastPage = 1;
+  88:   int _searchVersion = 0;
+  89: 
+  90:   bool _loading = true;
+  91:   bool _saving = false;
+  92:   bool _contactsLoading = false;
+  93:   bool _contactsLoaded = false;
+  94: 
+  95:   String? _error;
+  96:   String? _contactsError;
+  97:   String _companyName = 'Mi Empresa';
+  98: 
+  99:   String _buttonStyle = 'rounded';
+ 100:   String _sidebarStyle = 'expanded';
+ 101:   int _radius = 12;
+ 102:   bool _compactMode = false;
+ 103:   bool _showBusinessName = true;
+ 104: 
+ 105:   List<Map<String, dynamic>> _contacts = [];
+ 106: 
+ 107:   @override
+ 108:   void initState() {
+ 109:     super.initState();
+ 110: 
+ 111:     _ownsClient = widget.client == null;
+ 112:     _client = widget.client ?? http.Client();
+ 113: 
+ 114:     for (final key in profileLabels.keys) {
+ 115:       _profile[key] = TextEditingController();
+ 116:     }
+ 117: 
+ 118:     for (final key in colorLabels.keys) {
+ 119:       _colors[key] = TextEditingController(text: defaultColors[key]);
+ 120:     }
+ 121: 
+ 122:     _loadSettings();
+ 123:   }
+ 124: 
+ 125:   @override
+ 126:   void dispose() {
+ 127:     _debounce?.cancel();
+ 128: 
+ 129:     for (final controller in _profile.values) {
+ 130:       controller.dispose();
+ 131:     }
+ 132: 
+ 133:     for (final controller in _colors.values) {
+ 134:       controller.dispose();
+ 135:     }
+ 136: 
+ 137:     _search.dispose();
+ 138: 
+ 139:     if (_ownsClient) {
+ 140:       _client.close();
+ 141:     }
+ 142: 
+ 143:     super.dispose();
+ 144:   }
+ 145: 
+ 146:   Uri _url(String path, [Map<String, String>? query]) {
+ 147:     final base = MyCarWashSession.apiBaseUrl;
+ 148:     final companyId = MyCarWashSession.companyId;
+ 149: 
+ 150:     return Uri.parse('$base/companies/$companyId$path')
+ 151:         .replace(queryParameters: query);
+ 152:   }
+ 153: 
+ 154:   Future<Map<String, dynamic>> _request(
+ 155:     String method,
+ 156:     String path, {
+ 157:     Map<String, dynamic>? body,
+ 158:     Map<String, String>? query,
+ 159:   }) async {
+ 160:     if (!MyCarWashSession.isAuthenticated) {
+ 161:       throw const _ApiFailure('La sesión no está activa.');
+ 162:     }
+ 163: 
+ 164:     final uri = _url(path, query);
+ 165:     final headers = MyCarWashSession.headers;
+ 166: 
+ 167:     late http.Response response;
+ 168: 
+ 169:     try {
+ 170:       switch (method) {
+ 171:         case 'GET':
+ 172:           response = await _client.get(uri, headers: headers);
+ 173:         case 'POST':
+ 174:           response = await _client.post(
+ 175:             uri,
+ 176:             headers: headers,
+ 177:             body: jsonEncode(body ?? {}),
+ 178:           );
+ 179:         case 'PATCH':
+ 180:           response = await _client.patch(
+ 181:             uri,
+ 182:             headers: headers,
+ 183:             body: jsonEncode(body ?? {}),
+ 184:           );
+ 185:         case 'DELETE':
+ 186:           response = await _client.delete(uri, headers: headers);
+ 187:         default:
+ 188:           throw const _ApiFailure('Método HTTP no permitido.');
+ 189:       }
+ 190:     } on _ApiFailure {
+ 191:       rethrow;
+ 192:     } catch (_) {
+ 193:       throw const _ApiFailure(
+ 194:         'No se pudo conectar con Laravel. Comprueba el servidor.',
+ 195:       );
+ 196:     }
+ 197: 
+ 198:     dynamic decoded;
+ 199: 
+ 200:     try {
+ 201:       decoded = jsonDecode(response.body);
+ 202:     } catch (_) {
+ 203:       throw const _ApiFailure('El servidor devolvió una respuesta inválida.');
+ 204:     }
+ 205: 
+ 206:     if (decoded is! Map<String, dynamic>) {
+ 207:       throw const _ApiFailure('El formato de respuesta no es válido.');
+ 208:     }
+ 209: 
+ 210:     if (response.statusCode >= 400) {
+ 211:       if (response.statusCode == 401) {
+ 212:         throw const _ApiFailure(
+ 213:           'Tu sesión expiró. Cierra sesión e ingresa nuevamente.',
+ 214:         );
+ 215:       }
+ 216: 
+ 217:       if (response.statusCode == 403) {
+ 218:         throw const _ApiFailure(
+ 219:           'No tienes permiso para realizar esta operación.',
+ 220:         );
+ 221:       }
+ 222: 
+ 223:       final errors = decoded['errors'];
+ 224: 
+ 225:       if (errors is Map && errors.isNotEmpty) {
+ 226:         final first = errors.values.first;
+ 227: 
+ 228:         if (first is List && first.isNotEmpty) {
+ 229:           throw _ApiFailure(first.first.toString());
+ 230:         }
+ 231:       }
+ 232: 
+ 233:       throw _ApiFailure(
+ 234:         (decoded['message'] ?? 'Error ${response.statusCode}').toString(),
+ 235:       );
+ 236:     }
+ 237: 
+ 238:     return decoded;
+ 239:   }
+ 240: 
+ 241:   void _notify(String message, {bool error = false}) {
+ 242:     if (!mounted) return;
+ 243: 
+ 244:     ScaffoldMessenger.of(context).showSnackBar(
+ 245:       SnackBar(
+ 246:         content: Text(message),
+ 247:         backgroundColor: error
+ 248:             ? const Color(0xFF9C3541)
+ 249:             : const Color(0xFF126F75),
+ 250:         behavior: SnackBarBehavior.floating,
+ 251:       ),
+ 252:     );
+ 253:   }
+ 254: 
+ 255:   Future<void> _loadSettings() async {
+ 256:     setState(() {
+ 257:       _loading = true;
+ 258:       _error = null;
+ 259:     });
+ 260: 
+ 261:     try {
+ 262:       final data = await _request('GET', '/settings');
+ 263: 
+ 264:       if (!mounted) return;
+ 265: 
+ 266:       final company = data['company'];
+ 267:       final profile = data['profile'];
+ 268:       final branding = data['branding'];
+ 269: 
+ 270:       if (company is Map) {
+ 271:         _companyName = (company['name'] ?? 'Mi Empresa').toString();
+ 272:       }
+ 273: 
+ 274:       for (final entry in _profile.entries) {
+ 275:         entry.value.text = profile is Map
+ 276:             ? (profile[entry.key] ?? '').toString()
+ 277:             : '';
+ 278:       }
+ 279: 
+ 280:       for (final entry in _colors.entries) {
+ 281:         entry.value.text = branding is Map
+ 282:             ? (branding[entry.key] ?? defaultColors[entry.key]).toString()
+ 283:             : defaultColors[entry.key]!;
+ 284:       }
+ 285: 
+ 286:       if (branding is Map) {
+ 287:         _buttonStyle = (branding['button_style'] ?? 'rounded').toString();
+ 288:         _sidebarStyle = (branding['sidebar_style'] ?? 'expanded').toString();
+ 289:         _radius =
+ 290:             int.tryParse((branding['border_radius'] ?? 12).toString()) ?? 12;
+ 291:         _compactMode =
+ 292:             branding['compact_mode'] == true || branding['compact_mode'] == 1;
+ 293:         _showBusinessName =
+ 294:             branding['show_business_name'] == true ||
+ 295:             branding['show_business_name'] == 1;
+ 296:       }
+ 297: 
+ 298:       setState(() => _loading = false);
+ 299:     } catch (error) {
+ 300:       if (!mounted) return;
+ 301: 
+ 302:       setState(() {
+ 303:         _error = error.toString();
+ 304:         _loading = false;
+ 305:       });
+ 306:     }
+ 307:   }
+ 308: 
+ 309:   Future<void> _saveProfile() async {
+ 310:     if (_saving) return;
+ 311: 
+ 312:     final payload = <String, dynamic>{};
+ 313: 
+ 314:     for (final entry in _profile.entries) {
+ 315:       final value = entry.value.text.trim();
+ 316:       payload[entry.key] = value.isEmpty ? null : value;
+ 317:     }
+ 318: 
+ 319:     setState(() => _saving = true);
+ 320: 
+ 321:     try {
+ 322:       await _request('PATCH', '/settings/profile', body: payload);
+ 323: 
+ 324:       await BusinessIdentity.refresh(client: _client);
+ 325:       _notify('Información empresarial guardada en MySQL.');
+ 326:     } catch (error) {
+ 327:       _notify(error.toString(), error: true);
+ 328:     } finally {
+ 329:       if (mounted) setState(() => _saving = false);
+ 330:     }
+ 331:   }
+ 332: 
+ 333:   Color _parseColor(String value, Color fallback) {
+ 334:     final color = value.trim();
+ 335: 
+ 336:     if (!RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color)) {
+ 337:       return fallback;
+ 338:     }
+ 339: 
+ 340:     return Color(int.parse('FF${color.substring(1)}', radix: 16));
+ 341:   }
+ 342: 
+ 343:   Future<void> _saveBranding() async {
+ 344:     if (_saving) return;
+ 345: 
+ 346:     final payload = <String, dynamic>{};
+ 347: 
+ 348:     for (final entry in _colors.entries) {
+ 349:       final value = entry.value.text.trim();
+ 350: 
+ 351:       if (!RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) {
+ 352:         _notify(
+ 353:           'El color ${colorLabels[entry.key]} debe tener formato #RRGGBB.',
+ 354:           error: true,
+ 355:         );
+ 356:         return;
+ 357:       }
+ 358: 
+ 359:       payload[entry.key] = value.toUpperCase();
+ 360:     }
+ 361: 
+ 362:     payload.addAll({
+ 363:       'button_style': _buttonStyle,
+ 364:       'sidebar_style': _sidebarStyle,
+ 365:       'border_radius': _radius,
+ 366:       'compact_mode': _compactMode,
+ 367:       'show_business_name': _showBusinessName,
+ 368:     });
+ 369: 
+ 370:     setState(() => _saving = true);
+ 371: 
+ 372:     try {
+ 373:       await _request('PATCH', '/settings/branding', body: payload);
+ 374: 
+ 375:       await BusinessIdentity.refresh(client: _client);
+ 376:       _notify('Identidad visual empresarial guardada en MySQL.');
+ 377:     } catch (error) {
+ 378:       _notify(error.toString(), error: true);
+ 379:     } finally {
+ 380:       if (mounted) setState(() => _saving = false);
+ 381:     }
+ 382:   }
+ 383: 
+ 384:   Future<void> _loadContacts() async {
+ 385:     final version = ++_searchVersion;
+ 386: 
+ 387:     setState(() {
+ 388:       _contactsLoading = true;
+ 389:       _contactsError = null;
+ 390:     });
+ 391: 
+ 392:     try {
+ 393:       final data = await _request(
+ 394:         'GET',
+ 395:         '/contacts',
+ 396:         query: {'q': _search.text.trim(), 'page': _contactPage.toString()},
+ 397:       );
+ 398: 
+ 399:       if (!mounted || version != _searchVersion) return;
+ 400: 
+ 401:       final rows = data['data'];
+ 402: 
+ 403:       setState(() {
+ 404:         _contacts = rows is List
+ 405:             ? rows
+ 406:                   .whereType<Map>()
+ 407:                   .map((row) => Map<String, dynamic>.from(row))
+ 408:                   .toList()
+ 409:             : [];
+ 410: 
+ 411:         _contactPage =
+ 412:             int.tryParse((data['current_page'] ?? 1).toString()) ?? 1;
+ 413: 
+ 414:         _lastPage = int.tryParse((data['last_page'] ?? 1).toString()) ?? 1;
+ 415: 
+ 416:         _contactsLoaded = true;
+ 417:         _contactsLoading = false;
+ 418:       });
+ 419:     } catch (error) {
+ 420:       if (!mounted || version != _searchVersion) return;
+ 421: 
+ 422:       setState(() {
+ 423:         _contactsError = error.toString();
+ 424:         _contactsLoading = false;
+ 425:       });
+ 426:     }
+ 427:   }
+ 428: 
+ 429:   void _onSearch(String value) {
+ 430:     _debounce?.cancel();
+ 431:     _contactPage = 1;
+ 432: 
+ 433:     _debounce = Timer(const Duration(milliseconds: 280), () {
+ 434:       if (mounted) _loadContacts();
+ 435:     });
+ 436:   }
+ 437: 
+ 438:   void _changeSection(int section) {
+ 439:     setState(() => _section = section);
+ 440: 
+ 441:     if (section == 1 && !_contactsLoaded) {
+ 442:       _loadContacts();
+ 443:     }
+ 444:   }
+ 445: 
+ 446:   Future<void> _editContact([Map<String, dynamic>? existing]) async {
+ 447:     final formKey = GlobalKey<FormState>();
+ 448: 
+ 449:     final value = TextEditingController(
+ 450:       text: (existing?['value'] ?? '').toString(),
+ 451:     );
+ 452: 
+ 453:     final label = TextEditingController(
+ 454:       text: (existing?['label'] ?? '').toString(),
+ 455:     );
+ 456: 
+ 457:     final person = TextEditingController(
+ 458:       text: (existing?['contact_person'] ?? '').toString(),
+ 459:     );
+ 460: 
+ 461:     final department = TextEditingController(
+ 462:       text: (existing?['department'] ?? '').toString(),
+ 463:     );
+ 464: 
+ 465:     var type = (existing?['type'] ?? 'phone').toString();
+ 466:     var isPrimary =
+ 467:         existing?['is_primary'] == true || existing?['is_primary'] == 1;
+ 468:     var isPublic =
+ 469:         existing?['is_public'] == null ||
+ 470:         existing?['is_public'] == true ||
+ 471:         existing?['is_public'] == 1;
+ 472: 
+ 473:     var saving = false;
+ 474:     String? dialogError;
+ 475: 
+ 476:     final changed = await showDialog<bool>(
+ 477:       context: context,
+ 478:       barrierDismissible: false,
+ 479:       builder: (dialogContext) {
+ 480:         return StatefulBuilder(
+ 481:           builder: (context, updateDialog) {
+ 482:             return AlertDialog(
+ 483:               backgroundColor: surface,
+ 484:               title: Text(
+ 485:                 existing == null ? 'Nuevo contacto' : 'Editar contacto',
+ 486:                 style: const TextStyle(color: Colors.white),
+ 487:               ),
+ 488:               content: SizedBox(
+ 489:                 width: 470,
+ 490:                 child: SingleChildScrollView(
+ 491:                   child: Form(
+ 492:                     key: formKey,
+ 493:                     child: Column(
+ 494:                       mainAxisSize: MainAxisSize.min,
+ 495:                       children: [
+ 496:                         DropdownButtonFormField<String>(
+ 497:                           initialValue: type,
+ 498:                           dropdownColor: surface,
+ 499:                           style: const TextStyle(color: Colors.white),
+ 500:                           decoration: _inputDecoration('Tipo de contacto'),
+ 501:                           items: const [
+ 502:                             DropdownMenuItem(
+ 503:                               value: 'phone',
+ 504:                               child: Text('Teléfono'),
+ 505:                             ),
+ 506:                             DropdownMenuItem(
+ 507:                               value: 'email',
+ 508:                               child: Text('Correo electrónico'),
+ 509:                             ),
+ 510:                             DropdownMenuItem(
+ 511:                               value: 'whatsapp',
+ 512:                               child: Text('WhatsApp de contacto'),
+ 513:                             ),
+ 514:                             DropdownMenuItem(
+ 515:                               value: 'other',
+ 516:                               child: Text('Otro'),
+ 517:                             ),
+ 518:                           ],
+ 519:                           onChanged: saving
+ 520:                               ? null
+ 521:                               : (next) {
+ 522:                                   if (next != null) {
+ 523:                                     updateDialog(() => type = next);
+ 524:                                   }
+ 525:                                 },
+ 526:                         ),
+ 527:                         const SizedBox(height: 12),
+ 528:                         TextFormField(
+ 529:                           controller: value,
+ 530:                           style: const TextStyle(color: Colors.white),
+ 531:                           decoration: _inputDecoration('Número, correo o dato'),
+ 532:                           validator: (text) {
+ 533:                             if (text == null || text.trim().isEmpty) {
+ 534:                               return 'Este dato es obligatorio.';
+ 535:                             }
+ 536:                             return null;
+ 537:                           },
+ 538:                         ),
+ 539:                         const SizedBox(height: 12),
+ 540:                         TextFormField(
+ 541:                           controller: label,
+ 542:                           style: const TextStyle(color: Colors.white),
+ 543:                           decoration: _inputDecoration('Etiqueta'),
+ 544:                         ),
+ 545:                         const SizedBox(height: 12),
+ 546:                         TextFormField(
+ 547:                           controller: person,
+ 548:                           style: const TextStyle(color: Colors.white),
+ 549:                           decoration: _inputDecoration('Persona de contacto'),
+ 550:                         ),
+ 551:                         const SizedBox(height: 12),
+ 552:                         TextFormField(
+ 553:                           controller: department,
+ 554:                           style: const TextStyle(color: Colors.white),
+ 555:                           decoration: _inputDecoration('Departamento'),
+ 556:                         ),
+ 557:                         const SizedBox(height: 8),
+ 558:                         SwitchListTile(
+ 559:                           title: const Text(
+ 560:                             'Contacto principal',
+ 561:                             style: TextStyle(color: Colors.white),
+ 562:                           ),
+ 563:                           value: isPrimary,
+ 564:                           activeThumbColor: turquoise,
+ 565:                           onChanged: saving
+ 566:                               ? null
+ 567:                               : (value) =>
+ 568:                                     updateDialog(() => isPrimary = value),
+ 569:                         ),
+ 570:                         SwitchListTile(
+ 571:                           title: const Text(
+ 572:                             'Visible públicamente',
+ 573:                             style: TextStyle(color: Colors.white),
+ 574:                           ),
+ 575:                           value: isPublic,
+ 576:                           activeThumbColor: turquoise,
+ 577:                           onChanged: saving
+ 578:                               ? null
+ 579:                               : (value) => updateDialog(() => isPublic = value),
+ 580:                         ),
+ 581:                         if (dialogError != null)
+ 582:                           Padding(
+ 583:                             padding: const EdgeInsets.only(top: 8),
+ 584:                             child: Text(
+ 585:                               dialogError!,
+ 586:                               style: const TextStyle(color: Color(0xFFFF8995)),
+ 587:                             ),
+ 588:                           ),
+ 589:                       ],
+ 590:                     ),
+ 591:                   ),
+ 592:                 ),
+ 593:               ),
+ 594:               actions: [
+ 595:                 TextButton(
+ 596:                   onPressed: saving
+ 597:                       ? null
+ 598:                       : () => Navigator.of(dialogContext).pop(false),
+ 599:                   child: const Text('Cancelar'),
+ 600:                 ),
+ 601:                 FilledButton(
+ 602:                   onPressed: saving
+ 603:                       ? null
+ 604:                       : () async {
+ 605:                           if (!formKey.currentState!.validate()) return;
+ 606: 
+ 607:                           updateDialog(() {
+ 608:                             saving = true;
+ 609:                             dialogError = null;
+ 610:                           });
+ 611: 
+ 612:                           try {
+ 613:                             final payload = <String, dynamic>{
+ 614:                               'type': type,
+ 615:                               'value': value.text.trim(),
+ 616:                               'label': label.text.trim(),
+ 617:                               'contact_person': person.text.trim(),
+ 618:                               'department': department.text.trim(),
+ 619:                               'is_primary': isPrimary,
+ 620:                               'is_public': isPublic,
+ 621:                             };
+ 622: 
+ 623:                             if (existing == null) {
+ 624:                               await _request(
+ 625:                                 'POST',
+ 626:                                 '/contacts',
+ 627:                                 body: payload,
+ 628:                               );
+ 629:                             } else {
+ 630:                               await _request(
+ 631:                                 'PATCH',
+ 632:                                 '/contacts/${existing['id']}',
+ 633:                                 body: payload,
+ 634:                               );
+ 635:                             }
+ 636: 
+ 637:                             if (dialogContext.mounted) {
+ 638:                               Navigator.of(dialogContext).pop(true);
+ 639:                             }
+ 640:                           } catch (error) {
+ 641:                             if (dialogContext.mounted) {
+ 642:                               updateDialog(() {
+ 643:                                 dialogError = error.toString();
+ 644:                                 saving = false;
+ 645:                               });
+ 646:                             }
+ 647:                           }
+ 648:                         },
+ 649:                   style: FilledButton.styleFrom(backgroundColor: turquoise),
+ 650:                   child: Text(saving ? 'Guardando...' : 'Guardar'),
+ 651:                 ),
+ 652:               ],
+ 653:             );
+ 654:           },
+ 655:         );
+ 656:       },
+ 657:     );
+ 658: 
+ 659:     value.dispose();
+ 660:     label.dispose();
+ 661:     person.dispose();
+ 662:     department.dispose();
+ 663: 
+ 664:     if (changed == true && mounted) {
+ 665:       _notify('Contacto guardado correctamente.');
+ 666:       await _loadContacts();
+ 667:     }
+ 668:   }
+ 669: 
+ 670:   Future<void> _deleteContact(Map<String, dynamic> contact) async {
+ 671:     final confirm = await showDialog<bool>(
+ 672:       context: context,
+ 673:       builder: (context) {
+ 674:         return AlertDialog(
+ 675:           backgroundColor: surface,
+ 676:           title: const Text(
+ 677:             'Eliminar contacto',
+ 678:             style: TextStyle(color: Colors.white),
+ 679:           ),
+ 680:           content: Text(
+ 681:             '¿Eliminar "${contact['value']}"? Esta acción no se puede deshacer.',
+ 682:             style: const TextStyle(color: muted),
+ 683:           ),
+ 684:           actions: [
+ 685:             TextButton(
+ 686:               onPressed: () => Navigator.pop(context, false),
+ 687:               child: const Text('Cancelar'),
+ 688:             ),
+ 689:             FilledButton(
+ 690:               onPressed: () => Navigator.pop(context, true),
+ 691:               style: FilledButton.styleFrom(
+ 692:                 backgroundColor: const Color(0xFFB63D4A),
+ 693:               ),
+ 694:               child: const Text('Eliminar'),
+ 695:             ),
+ 696:           ],
+ 697:         );
+ 698:       },
+ 699:     );
+ 700: 
+ 701:     if (confirm != true || !mounted) return;
+ 702: 
+ 703:     try {
+ 704:       await _request('DELETE', '/contacts/${contact['id']}');
+ 705:       _notify('Contacto eliminado.');
+ 706:       await _loadContacts();
+ 707:     } catch (error) {
+ 708:       _notify(error.toString(), error: true);
+ 709:     }
+ 710:   }
+ 711: 
+ 712:   InputDecoration _inputDecoration(String label) {
+ 713:     return InputDecoration(
+ 714:       labelText: label,
+ 715:       labelStyle: const TextStyle(color: muted),
+ 716:       filled: true,
+ 717:       fillColor: const Color(0xFF111F25),
+ 718:       enabledBorder: OutlineInputBorder(
+ 719:         borderSide: const BorderSide(color: border),
+ 720:         borderRadius: BorderRadius.circular(10),
+ 721:       ),
+ 722:       focusedBorder: OutlineInputBorder(
+ 723:         borderSide: const BorderSide(color: turquoise),
+ 724:         borderRadius: BorderRadius.circular(10),
+ 725:       ),
+ 726:       errorBorder: OutlineInputBorder(
+ 727:         borderSide: const BorderSide(color: Color(0xFFE84657)),
+ 728:         borderRadius: BorderRadius.circular(10),
+ 729:       ),
+ 730:       focusedErrorBorder: OutlineInputBorder(
+ 731:         borderSide: const BorderSide(color: Color(0xFFE84657)),
+ 732:         borderRadius: BorderRadius.circular(10),
+ 733:       ),
+ 734:     );
+ 735:   }
+ 736: 
+ 737:   Widget _card({required Widget child}) {
+ 738:     return Container(
+ 739:       width: double.infinity,
+ 740:       padding: const EdgeInsets.all(22),
+ 741:       decoration: BoxDecoration(
+ 742:         color: surface,
+ 743:         borderRadius: BorderRadius.circular(16),
+ 744:         border: Border.all(color: border),
+ 745:       ),
+ 746:       child: child,
+ 747:     );
+ 748:   }
+ 749: 
+ 750:   Widget _field(String key, String label) {
+ 751:     final longText = [
+ 752:       'description',
+ 753:       'history',
+ 754:       'mission',
+ 755:       'vision',
+ 756:       'business_values',
+ 757:       'short_description',
+ 758:     ].contains(key);
+ 759: 
+ 760:     return TextField(
+ 761:       controller: _profile[key],
+ 762:       maxLines: longText ? 3 : 1,
+ 763:       style: const TextStyle(color: Colors.white),
+ 764:       decoration: _inputDecoration(label),
+ 765:     );
+ 766:   }
+ 767: 
+ 768:   Widget _profileSection() {
+ 769:     return _card(
+ 770:       child: Column(
+ 771:         crossAxisAlignment: CrossAxisAlignment.start,
+ 772:         children: [
+ 773:           const Text(
+ 774:             'Información general',
+ 775:             style: TextStyle(
+ 776:               color: Colors.white,
+ 777:               fontSize: 20,
+ 778:               fontWeight: FontWeight.w800,
+ 779:             ),
+ 780:           ),
+ 781:           const SizedBox(height: 8),
+ 782:           const Text(
+ 783:             'Completa los datos de tu negocio. Los cambios se guardan en MySQL.',
+ 784:             style: TextStyle(color: muted),
+ 785:           ),
+ 786:           const SizedBox(height: 22),
+ 787:           LayoutBuilder(
+ 788:             builder: (context, constraints) {
+ 789:               final width = constraints.maxWidth >= 700
+ 790:                   ? (constraints.maxWidth - 14) / 2
+ 791:                   : constraints.maxWidth;
+ 792: 
+ 793:               return Wrap(
+ 794:                 spacing: 14,
+ 795:                 runSpacing: 14,
+ 796:                 children: [
+ 797:                   for (final entry in profileLabels.entries)
+ 798:                     SizedBox(
+ 799:                       width: width,
+ 800:                       child: _field(entry.key, entry.value),
+ 801:                     ),
+ 802:                 ],
+ 803:               );
+ 804:             },
+ 805:           ),
+ 806:           const SizedBox(height: 24),
+ 807:           _saveButton(
+ 808:             label: 'Guardar información empresarial',
+ 809:             onPressed: _saveProfile,
+ 810:           ),
+ 811:         ],
+ 812:       ),
+ 813:     );
+ 814:   }
+ 815: 
+ 816:   Widget _saveButton({required String label, required VoidCallback onPressed}) {
+ 817:     return FilledButton.icon(
+ 818:       onPressed: _saving ? null : onPressed,
+ 819:       icon: _saving
+ 820:           ? const SizedBox(
+ 821:               width: 16,
+ 822:               height: 16,
+ 823:               child: CircularProgressIndicator(
+ 824:                 strokeWidth: 2,
+ 825:                 color: Colors.white,
+ 826:               ),
+ 827:             )
+ 828:           : const Icon(Icons.save_outlined),
+ 829:       label: Text(_saving ? 'Guardando...' : label),
+ 830:       style: FilledButton.styleFrom(
+ 831:         backgroundColor: turquoise,
+ 832:         foregroundColor: Colors.white,
+ 833:         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17),
+ 834:       ),
+ 835:     );
+ 836:   }
+ 837: 
+ 838:   Widget _contactSection() {
+ 839:     return _card(
+ 840:       child: Column(
+ 841:         crossAxisAlignment: CrossAxisAlignment.start,
+ 842:         children: [
+ 843:           Wrap(
+ 844:             spacing: 14,
+ 845:             runSpacing: 12,
+ 846:             alignment: WrapAlignment.spaceBetween,
+ 847:             children: [
+ 848:               const Column(
+ 849:                 crossAxisAlignment: CrossAxisAlignment.start,
+ 850:                 children: [
+ 851:                   Text(
+ 852:                     'Contactos',
+ 853:                     style: TextStyle(
+ 854:                       color: Colors.white,
+ 855:                       fontSize: 20,
+ 856:                       fontWeight: FontWeight.w800,
+ 857:                     ),
+ 858:                   ),
+ 859:                   SizedBox(height: 7),
+ 860:                   Text(
+ 861:                     'Teléfonos, correos y responsables del negocio.',
+ 862:                     style: TextStyle(color: muted),
+ 863:                   ),
+ 864:                 ],
+ 865:               ),
+ 866:               FilledButton.icon(
+ 867:                 onPressed: () => _editContact(),
+ 868:                 icon: const Icon(Icons.add),
+ 869:                 label: const Text('Nuevo contacto'),
+ 870:                 style: FilledButton.styleFrom(backgroundColor: turquoise),
+ 871:               ),
+ 872:             ],
+ 873:           ),
+ 874:           const SizedBox(height: 22),
+ 875:           TextField(
+ 876:             controller: _search,
+ 877:             onChanged: _onSearch,
+ 878:             style: const TextStyle(color: Colors.white),
+ 879:             decoration:
+ 880:                 _inputDecoration(
+ 881:                   'Buscar por ID, nombre, teléfono, correo o departamento',
+ 882:                 ).copyWith(
+ 883:                   prefixIcon: const Icon(Icons.search, color: turquoise),
+ 884:                   suffixIcon: _search.text.isEmpty
+ 885:                       ? null
+ 886:                       : IconButton(
+ 887:                           tooltip: 'Limpiar búsqueda',
+ 888:                           icon: const Icon(Icons.close, color: muted),
+ 889:                           onPressed: () {
+ 890:                             _search.clear();
+ 891:                             setState(() {});
+ 892:                             _onSearch('');
+ 893:                           },
+ 894:                         ),
+ 895:                 ),
+ 896:           ),
+ 897:           const SizedBox(height: 18),
+ 898:           if (_contactsLoading)
+ 899:             const Center(
+ 900:               child: Padding(
+ 901:                 padding: EdgeInsets.all(22),
+ 902:                 child: CircularProgressIndicator(color: turquoise),
+ 903:               ),
+ 904:             )
+ 905:           else if (_contactsError != null)
+ 906:             Text(
+ 907:               _contactsError!,
+ 908:               style: const TextStyle(color: Color(0xFFFF8995)),
+ 909:             )
+ 910:           else if (_contacts.isEmpty)
+ 911:             const Padding(
+ 912:               padding: EdgeInsets.symmetric(vertical: 32),
+ 913:               child: Center(
+ 914:                 child: Text(
+ 915:                   'No se encontraron contactos.',
+ 916:                   style: TextStyle(color: muted),
+ 917:                 ),
+ 918:               ),
+ 919:             )
+ 920:           else
+ 921:             for (final contact in _contacts)
+ 922:               Container(
+ 923:                 margin: const EdgeInsets.only(bottom: 10),
+ 924:                 padding: const EdgeInsets.all(14),
+ 925:                 decoration: BoxDecoration(
+ 926:                   borderRadius: BorderRadius.circular(12),
+ 927:                   border: Border.all(color: border),
+ 928:                 ),
+ 929:                 child: Row(
+ 930:                   children: [
+ 931:                     const Icon(Icons.contact_phone_outlined, color: turquoise),
+ 932:                     const SizedBox(width: 12),
+ 933:                     Expanded(
+ 934:                       child: Column(
+ 935:                         crossAxisAlignment: CrossAxisAlignment.start,
+ 936:                         children: [
+ 937:                           Text(
+ 938:                             (contact['contact_person'] ??
+ 939:                                     contact['label'] ??
+ 940:                                     'Contacto')
+ 941:                                 .toString(),
+ 942:                             style: const TextStyle(
+ 943:                               color: Colors.white,
+ 944:                               fontWeight: FontWeight.w700,
+ 945:                             ),
+ 946:                           ),
+ 947:                           const SizedBox(height: 5),
+ 948:                           Text(
+ 949:                             '${contact['value']} · ${contact['type']} · ID ${contact['id']}',
+ 950:                             style: const TextStyle(color: muted, fontSize: 12),
+ 951:                           ),
+ 952:                           if ((contact['department'] ?? '')
+ 953:                               .toString()
+ 954:                               .isNotEmpty)
+ 955:                             Text(
+ 956:                               contact['department'].toString(),
+ 957:                               style: const TextStyle(
+ 958:                                 color: muted,
+ 959:                                 fontSize: 11,
+ 960:                               ),
+ 961:                             ),
+ 962:                         ],
+ 963:                       ),
+ 964:                     ),
+ 965:                     IconButton(
+ 966:                       tooltip: 'Editar',
+ 967:                       onPressed: () => _editContact(contact),
+ 968:                       icon: const Icon(Icons.edit_outlined, color: turquoise),
+ 969:                     ),
+ 970:                     IconButton(
+ 971:                       tooltip: 'Eliminar',
+ 972:                       onPressed: () => _deleteContact(contact),
+ 973:                       icon: const Icon(
+ 974:                         Icons.delete_outline,
+ 975:                         color: Color(0xFFE84657),
+ 976:                       ),
+ 977:                     ),
+ 978:                   ],
+ 979:                 ),
+ 980:               ),
+ 981:           const SizedBox(height: 14),
+ 982:           Row(
+ 983:             mainAxisAlignment: MainAxisAlignment.end,
+ 984:             children: [
+ 985:               IconButton(
+ 986:                 tooltip: 'Página anterior',
+ 987:                 onPressed: _contactsLoading || _contactPage <= 1
+ 988:                     ? null
+ 989:                     : () {
+ 990:                         _contactPage--;
+ 991:                         _loadContacts();
+ 992:                       },
+ 993:                 icon: const Icon(Icons.chevron_left),
+ 994:               ),
+ 995:               Text(
+ 996:                 'Página $_contactPage de $_lastPage',
+ 997:                 style: const TextStyle(color: muted),
+ 998:               ),
+ 999:               IconButton(
+1000:                 tooltip: 'Página siguiente',
+1001:                 onPressed: _contactsLoading || _contactPage >= _lastPage
+1002:                     ? null
+1003:                     : () {
+1004:                         _contactPage++;
+1005:                         _loadContacts();
+1006:                       },
+1007:                 icon: const Icon(Icons.chevron_right),
+1008:               ),
+1009:             ],
+1010:           ),
+1011:         ],
+1012:       ),
+1013:     );
+1014:   }
+1015: 
+1016:   Widget _brandingSection() {
+1017:     final primary = _parseColor(_colors['primary_color']!.text, turquoise);
+1018: 
+1019:     final sidebar = _parseColor(
+1020:       _colors['sidebar_color']!.text,
+1021:       const Color(0xFF1D1D1B),
+1022:     );
+1023: 
+1024:     return _card(
+1025:       child: Column(
+1026:         crossAxisAlignment: CrossAxisAlignment.start,
+1027:         children: [
+1028:           const Text(
+1029:             'Identidad visual de tu negocio',
+1030:             style: TextStyle(
+1031:               color: Colors.white,
+1032:               fontSize: 20,
+1033:               fontWeight: FontWeight.w800,
+1034:             ),
+1035:           ),
+1036:           const SizedBox(height: 8),
+1037:           const Text(
+1038:             'Personaliza los colores del negocio. La identidad oficial ADN no se modifica.',
+1039:             style: TextStyle(color: muted),
+1040:           ),
+1041:           const SizedBox(height: 22),
+1042:           Container(
+1043:             decoration: BoxDecoration(
+1044:               color: sidebar,
+1045:               borderRadius: BorderRadius.circular(14),
+1046:               border: Border.all(color: border),
+1047:             ),
+1048:             padding: const EdgeInsets.all(18),
+1049:             child: Row(
+1050:               children: [
+1051:                 Container(
+1052:                   width: 55,
+1053:                   height: 55,
+1054:                   padding: const EdgeInsets.all(5),
+1055:                   decoration: BoxDecoration(
+1056:                     color: Colors.white,
+1057:                     borderRadius: BorderRadius.circular(12),
+1058:                   ),
+1059:                   child: Image.asset(
+1060:                     'assets/branding/logo_adn.png',
+1061:                     fit: BoxFit.contain,
+1062:                   ),
+1063:                 ),
+1064:                 const SizedBox(width: 14),
+1065:                 const Expanded(
+1066:                   child: Column(
+1067:                     crossAxisAlignment: CrossAxisAlignment.start,
+1068:                     children: [
+1069:                       Text(
+1070:                         'ADN MyCarWash',
+1071:                         style: TextStyle(
+1072:                           color: Colors.white,
+1073:                           fontWeight: FontWeight.w800,
+1074:                         ),
+1075:                       ),
+1076:                       Text(
+1077:                         'Powered by ADN Publicidad',
+1078:                         style: TextStyle(color: muted, fontSize: 11),
+1079:                       ),
+1080:                     ],
+1081:                   ),
+1082:                 ),
+1083:                 Container(
+1084:                   width: 28,
+1085:                   height: 28,
+1086:                   decoration: BoxDecoration(
+1087:                     color: primary,
+1088:                     borderRadius: BorderRadius.circular(8),
+1089:                   ),
+1090:                 ),
+1091:               ],
+1092:             ),
+1093:           ),
+1094:           const SizedBox(height: 12),
+1095:           const Text(
+1096:             'Vista previa de marca. El cambio global del tema se integrará después.',
+1097:             style: TextStyle(color: muted, fontSize: 12),
+1098:           ),
+1099:           const SizedBox(height: 22),
+1100:           LayoutBuilder(
+1101:             builder: (context, constraints) {
+1102:               final width = constraints.maxWidth >= 700
+1103:                   ? (constraints.maxWidth - 14) / 2
+1104:                   : constraints.maxWidth;
+1105: 
+1106:               return Wrap(
+1107:                 spacing: 14,
+1108:                 runSpacing: 14,
+1109:                 children: [
+1110:                   for (final entry in colorLabels.entries)
+1111:                     SizedBox(
+1112:                       width: width,
+1113:                       child: Row(
+1114:                         children: [
+1115:                           Container(
+1116:                             width: 35,
+1117:                             height: 35,
+1118:                             decoration: BoxDecoration(
+1119:                               color: _parseColor(
+1120:                                 _colors[entry.key]!.text,
+1121:                                 Colors.grey,
+1122:                               ),
+1123:                               border: Border.all(color: Colors.white24),
+1124:                               borderRadius: BorderRadius.circular(8),
+1125:                             ),
+1126:                           ),
+1127:                           const SizedBox(width: 12),
+1128:                           Expanded(
+1129:                             child: TextField(
+1130:                               controller: _colors[entry.key],
+1131:                               style: const TextStyle(color: Colors.white),
+1132:                               decoration: _inputDecoration(entry.value),
+1133:                               onChanged: (_) => setState(() {}),
+1134:                             ),
+1135:                           ),
+1136:                         ],
+1137:                       ),
+1138:                     ),
+1139:                 ],
+1140:               );
+1141:             },
+1142:           ),
+1143:           const SizedBox(height: 20),
+1144:           BusinessIdentityEditor(client: _client),
+1145:           const SizedBox(height: 12),
+1146:           Wrap(
+1147:             spacing: 14,
+1148:             runSpacing: 12,
+1149:             children: [
+1150:               DropdownButton<String>(
+1151:                 value: _buttonStyle,
+1152:                 dropdownColor: surface,
+1153:                 style: const TextStyle(color: Colors.white),
+1154:                 items: const [
+1155:                   DropdownMenuItem(
+1156:                     value: 'rounded',
+1157:                     child: Text('Botones redondeados'),
+1158:                   ),
+1159:                   DropdownMenuItem(
+1160:                     value: 'square',
+1161:                     child: Text('Botones cuadrados'),
+1162:                   ),
+1163:                   DropdownMenuItem(
+1164:                     value: 'pill',
+1165:                     child: Text('Botones tipo píldora'),
+1166:                   ),
+1167:                 ],
+1168:                 onChanged: (value) {
+1169:                   if (value != null) setState(() => _buttonStyle = value);
+1170:                 },
+1171:               ),
+1172:               DropdownButton<String>(
+1173:                 value: _sidebarStyle,
+1174:                 dropdownColor: surface,
+1175:                 style: const TextStyle(color: Colors.white),
+1176:                 items: const [
+1177:                   DropdownMenuItem(
+1178:                     value: 'expanded',
+1179:                     child: Text('Menú expandido'),
+1180:                   ),
+1181:                   DropdownMenuItem(
+1182:                     value: 'compact',
+1183:                     child: Text('Menú compacto'),
+1184:                   ),
+1185:                 ],
+1186:                 onChanged: (value) {
+1187:                   if (value != null) setState(() => _sidebarStyle = value);
+1188:                 },
+1189:               ),
+1190:             ],
+1191:           ),
+1192:           SwitchListTile(
+1193:             title: const Text(
+1194:               'Interfaz compacta',
+1195:               style: TextStyle(color: Colors.white),
+1196:             ),
+1197:             value: _compactMode,
+1198:             activeThumbColor: turquoise,
+1199:             onChanged: (value) => setState(() => _compactMode = value),
+1200:           ),
+1201:           SwitchListTile(
+1202:             title: const Text(
+1203:               'Mostrar nombre comercial',
+1204:               style: TextStyle(color: Colors.white),
+1205:             ),
+1206:             value: _showBusinessName,
+1207:             activeThumbColor: turquoise,
+1208:             onChanged: (value) => setState(() => _showBusinessName = value),
+1209:           ),
+1210:           const SizedBox(height: 14),
+1211:           _saveButton(
+1212:             label: 'Guardar identidad visual',
+1213:             onPressed: _saveBranding,
+1214:           ),
+1215:         ],
+1216:       ),
+1217:     );
+1218:   }
+1219: 
+1220:   Widget _tab(String title, IconData icon, int index) {
+1221:     final active = _section == index;
+1222: 
+1223:     return InkWell(
+1224:       onTap: () => _changeSection(index),
+1225:       borderRadius: BorderRadius.circular(11),
+1226:       child: Container(
+1227:         padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 13),
+1228:         decoration: BoxDecoration(
+1229:           color: active ? turquoise.withValues(alpha: 0.16) : surface,
+1230:           border: Border.all(color: active ? turquoise : border),
+1231:           borderRadius: BorderRadius.circular(11),
+1232:         ),
+1233:         child: Row(
+1234:           mainAxisSize: MainAxisSize.min,
+1235:           children: [
+1236:             Icon(icon, size: 19, color: active ? turquoise : muted),
+1237:             const SizedBox(width: 9),
+1238:             Text(
+1239:               title,
+1240:               style: TextStyle(
+1241:                 color: active ? Colors.white : muted,
+1242:                 fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+1243:               ),
+1244:             ),
+1245:           ],
+1246:         ),
+1247:       ),
+1248:     );
+1249:   }
+1250: 
+1251:   @override
+1252:   Widget build(BuildContext context) {
+1253:     return Column(
+1254:       crossAxisAlignment: CrossAxisAlignment.start,
+1255:       children: [
+1256:         const Text(
+1257:           'ADN PUBLICIDAD · SOFTWARE',
+1258:           style: TextStyle(
+1259:             color: turquoise,
+1260:             fontSize: 11,
+1261:             letterSpacing: 1.3,
+1262:             fontWeight: FontWeight.w800,
+1263:           ),
+1264:         ),
+1265:         const SizedBox(height: 13),
+1266:         const Text(
+1267:           'Mi Empresa',
+1268:           style: TextStyle(
+1269:             fontSize: 31,
+1270:             color: Colors.white,
+1271:             fontWeight: FontWeight.w800,
+1272:           ),
+1273:         ),
+1274:         const SizedBox(height: 7),
+1275:         Text(_companyName, style: const TextStyle(color: muted)),
+1276:         const SizedBox(height: 23),
+1277:         if (_loading)
+1278:           const Center(
+1279:             child: Padding(
+1280:               padding: EdgeInsets.all(48),
+1281:               child: CircularProgressIndicator(color: turquoise),
+1282:             ),
+1283:           )
+1284:         else if (_error != null)
+1285:           _card(
+1286:             child: Column(
+1287:               crossAxisAlignment: CrossAxisAlignment.start,
+1288:               children: [
+1289:                 Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
+1290:                 const SizedBox(height: 15),
+1291:                 OutlinedButton(
+1292:                   onPressed: _loadSettings,
+1293:                   child: const Text('Reintentar'),
+1294:                 ),
+1295:               ],
+1296:             ),
+1297:           )
+1298:         else ...[
+1299:           Wrap(
+1300:             spacing: 10,
+1301:             runSpacing: 10,
+1302:             children: [
+1303:               _tab('Información', Icons.business_outlined, 0),
+1304:               _tab('Contactos', Icons.contacts_outlined, 1),
+1305:               _tab('Identidad visual', Icons.palette_outlined, 2),
+1306:             ],
+1307:           ),
+1308:           const SizedBox(height: 19),
+1309:           if (_section == 0) _profileSection(),
+1310:           if (_section == 1) _contactSection(),
+1311:           if (_section == 2) _brandingSection(),
+1312:           const SizedBox(height: 20),
+1313:           const Row(
+1314:             children: [
+1315:               Icon(Icons.lock_outline, color: muted, size: 16),
+1316:               SizedBox(width: 8),
+1317:               Expanded(
+1318:                 child: Text(
+1319:                   'La identidad oficial de ADN MyCarWash permanece visible y protegida.',
+1320:                   style: TextStyle(color: muted, fontSize: 12),
+1321:                 ),
+1322:               ),
+1323:             ],
+1324:           ),
+1325:         ],
+1326:       ],
+1327:     );
+1328:   }
+1329: }
+1330: 
+1331: class _ApiFailure implements Exception {
+1332:   const _ApiFailure(this.message);
+1333: 
+1334:   final String message;
+1335: 
+1336:   @override
+1337:   String toString() => message;
+1338: }
+
+========================================
+ARCHIVO: lib\core\mycarwash_session.dart
+========================================
+   1: class MyCarWashSession {
+   2:   MyCarWashSession._();
+   3: 
+   4:   static String? _accessToken;
+   5:   static String? _apiBaseUrl;
+   6:   static int? _companyId;
+   7: 
+   8:   static bool get isAuthenticated => _accessToken != null && _companyId != null;
+   9: 
+  10:   static int get companyId {
+  11:     final id = _companyId;
+  12: 
+  13:     if (id == null) {
+  14:       throw StateError('No hay empresa autenticada.');
+  15:     }
+  16: 
+  17:     return id;
+  18:   }
+  19: 
+  20:   static String get apiBaseUrl {
+  21:     final url = _apiBaseUrl;
+  22: 
+  23:     if (url == null) {
+  24:       throw StateError('La sesion no esta activa.');
+  25:     }
+  26: 
+  27:     return url;
+  28:   }
+  29: 
+  30:   static Map<String, String> get headers {
+  31:     final token = _accessToken;
+  32: 
+  33:     if (token == null) {
+  34:       throw StateError('No existe una sesion autenticada.');
+  35:     }
+  36: 
+  37:     return {
+  38:       'Accept': 'application/json',
+  39:       'Content-Type': 'application/json',
+  40:       'Authorization': 'Bearer $token',
+  41:     };
+  42:   }
+  43: 
+  44:   static void begin({
+  45:     required String accessToken,
+  46:     required int companyId,
+  47:     required String apiBaseUrl,
+  48:   }) {
+  49:     if (accessToken.isEmpty || companyId <= 0 || apiBaseUrl.isEmpty) {
+  50:       throw ArgumentError('Datos de sesion invalidos.');
+  51:     }
+  52: 
+  53:     _accessToken = accessToken;
+  54:     _companyId = companyId;
+  55:     _apiBaseUrl = apiBaseUrl;
+  56:   }
+  57: 
+  58:   static void clear() {
+  59:     _accessToken = null;
+  60:     _companyId = null;
+  61:     _apiBaseUrl = null;
+  62:   }
+  63: }
+
+========================================
+ARCHIVO: test\company_settings_page_test.dart
+========================================
+   1: import 'dart:convert';
+   2: 
+   3: import 'package:adn_mycarwash/core/mycarwash_session.dart';
+   4: import 'package:adn_mycarwash/ui/company_settings_page.dart';
+   5: import 'package:flutter/material.dart';
+   6: import 'package:flutter_test/flutter_test.dart';
+   7: import 'package:http/http.dart' as http;
+   8: import 'package:http/testing.dart';
+   9: 
+  10: void main() {
+  11:   setUp(() {
+  12:     MyCarWashSession.begin(
+  13:       accessToken: 'token-de-pruebas',
+  14:       companyId: 1,
+  15:       apiBaseUrl: 'http://127.0.0.1:8000/api/v1',
+  16:     );
+  17:   });
+  18: 
+  19:   tearDown(MyCarWashSession.clear);
+  20: 
+  21:   testWidgets('Mi Empresa carga datos reales mediante la API', (tester) async {
+  22:     final client = MockClient((request) async {
+  23:       expect(request.headers['Authorization'], 'Bearer token-de-pruebas');
+  24: 
+  25:       return http.Response(
+  26:         jsonEncode({
+  27:           'company': {
+  28:             'id': 1,
+  29:             'name': 'CarWash de Pruebas',
+  30:             'slug': 'carwash-pruebas',
+  31:           },
+  32:           'profile': {'commercial_name': 'CarWash de Pruebas'},
+  33:           'branding': {'primary_color': '#0FA7B4'},
+  34:           'preferences': {},
+  35:         }),
+  36:         200,
+  37:         headers: {'content-type': 'application/json'},
+  38:       );
+  39:     });
+  40: 
+  41:     await tester.pumpWidget(
+  42:       MaterialApp(
+  43:         home: Scaffold(
+  44:           body: SingleChildScrollView(
+  45:             child: CompanySettingsPage(client: client),
+  46:           ),
+  47:         ),
+  48:       ),
+  49:     );
+  50: 
+  51:     await tester.pumpAndSettle();
+  52: 
+  53:     expect(find.text('Mi Empresa'), findsOneWidget);
+  54:     expect(find.text('CarWash de Pruebas'), findsWidgets);
+  55:     expect(find.text('Información general'), findsOneWidget);
+  56: 
+  57:     client.close();
+  58:   });
+  59: 
+  60:   testWidgets('La pestaña Contactos consulta la API autenticada', (
+  61:     tester,
+  62:   ) async {
+  63:     var contactsRequested = false;
+  64: 
+  65:     final client = MockClient((request) async {
+  66:       if (request.url.path.endsWith('/contacts')) {
+  67:         contactsRequested = true;
+  68: 
+  69:         return http.Response(
+  70:           jsonEncode({
+  71:             'data': [
+  72:               {
+  73:                 'id': 5,
+  74:                 'type': 'phone',
+  75:                 'value': '9851-8558',
+  76:                 'contact_person': 'Contacto QA',
+  77:                 'label': 'Principal',
+  78:                 'department': 'Administración',
+  79:               },
+  80:             ],
+  81:             'current_page': 1,
+  82:             'last_page': 1,
+  83:           }),
+  84:           200,
+  85:           headers: {'content-type': 'application/json'},
+  86:         );
+  87:       }
+  88: 
+  89:       return http.Response(
+  90:         jsonEncode({
+  91:           'company': {'id': 1, 'name': 'CarWash de Pruebas'},
+  92:           'profile': {},
+  93:           'branding': {},
+  94:           'preferences': {},
+  95:         }),
+  96:         200,
+  97:         headers: {'content-type': 'application/json'},
+  98:       );
+  99:     });
+ 100: 
+ 101:     await tester.pumpWidget(
+ 102:       MaterialApp(
+ 103:         home: Scaffold(
+ 104:           body: SingleChildScrollView(
+ 105:             child: CompanySettingsPage(client: client),
+ 106:           ),
+ 107:         ),
+ 108:       ),
+ 109:     );
+ 110: 
+ 111:     await tester.pumpAndSettle();
+ 112: 
+ 113:     await tester.tap(find.text('Contactos'));
+ 114:     await tester.pumpAndSettle();
+ 115: 
+ 116:     expect(contactsRequested, isTrue);
+ 117:     expect(find.text('Contacto QA'), findsOneWidget);
+ 118:     expect(find.textContaining('9851-8558'), findsOneWidget);
+ 119: 
+ 120:     client.close();
+ 121:   });
+ 122: }
+
+========================================
+REFERENCIAS DE MI EMPRESA EN MAIN.DART
+========================================
+ 169:   _NavItem('Clientes', Icons.people_outline_rounded),
+ 170:   _NavItem('Vehículos', Icons.directions_car_outlined),
+ 171:   _NavItem('Empleados', Icons.badge_outlined),
+ 172:   _NavItem('Inventario', Icons.inventory_2_outlined),
+ 173:   _NavItem('Caja y ventas', Icons.point_of_sale_outlined),
+ 174:   _NavItem('Sitio web', Icons.language_outlined),
+ 175:   _NavItem('Mi Empresa', Icons.business_outlined),
+ 176:   _NavItem('Configuración', Icons.settings_outlined),
+ 177: ];
+ 178: 
+ 179: class DashboardPreview extends StatefulWidget {
+ 180:   const DashboardPreview({super.key});
+ 181: 
+ 182:   @override
+ 183:   State<DashboardPreview> createState() => _DashboardPreviewState();
+---
+ 295:                     Expanded(
+ 296:                       child: Column(
+ 297:                         crossAxisAlignment: CrossAxisAlignment.start,
+ 298:                         children: [
+ 299:                           Text(
+ 300:                             identity.companyName.isEmpty
+ 301:                                 ? 'Mi Empresa'
+ 302:                                 : identity.companyName,
+ 303:                             maxLines: 2,
+ 304:                             overflow: TextOverflow.ellipsis,
+ 305:                             style: const TextStyle(
+ 306:                               color: Colors.white,
+ 307:                               fontWeight: FontWeight.w700,
+ 308:                               fontSize: 12,
+ 309:                             ),
+---
+ 383:         ],
+ 384:       ),
+ 385:     );
+ 386:   }
+ 387: 
+ 388:   Widget _mainContent() {
+ 389:     if (_menu[selected].title == 'Mi Empresa') {
+ 390:       return const CompanySettingsPage();
+ 391:     }
+ 392:     final isHome = selected == 0;
+ 393:     return Column(
+ 394:       crossAxisAlignment: CrossAxisAlignment.start,
+ 395:       children: [
+ 396:         Row(
+ 397:           children: [
+---
+ 384:       ),
+ 385:     );
+ 386:   }
+ 387: 
+ 388:   Widget _mainContent() {
+ 389:     if (_menu[selected].title == 'Mi Empresa') {
+ 390:       return const CompanySettingsPage();
+ 391:     }
+ 392:     final isHome = selected == 0;
+ 393:     return Column(
+ 394:       crossAxisAlignment: CrossAxisAlignment.start,
+ 395:       children: [
+ 396:         Row(
+ 397:           children: [
+ 398:             const Expanded(child: _Eyebrow(text: 'ADN PUBLICIDAD · SOFTWARE')),
+---
