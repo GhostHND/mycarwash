@@ -146,3 +146,17 @@ Route::prefix('v1')->group(function (): void {
 
     });
 });
+
+// BLOQUE 15 - CATALOGOS OPERATIVOS (4 CRUD)
+Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
+    Route::get('/companies/{company}/{resource}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'index'])
+        ->whereNumber('company')->where('resource', 'clients|vehicles|employees|services');
+    Route::get('/companies/{company}/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'show'])
+        ->whereNumber('company')->whereNumber('record')->where('resource', 'clients|vehicles|employees|services');
+    Route::post('/companies/{company}/{resource}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'store'])
+        ->whereNumber('company')->where('resource', 'clients|vehicles|employees|services');
+    Route::patch('/companies/{company}/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'update'])
+        ->whereNumber('company')->whereNumber('record')->where('resource', 'clients|vehicles|employees|services');
+    Route::delete('/companies/{company}/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'destroy'])
+        ->whereNumber('company')->whereNumber('record')->where('resource', 'clients|vehicles|employees|services');
+});

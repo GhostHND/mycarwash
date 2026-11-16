@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'core/business_identity.dart';
 import 'ui/mycarwash_login.dart';
 import 'ui/company_settings_page.dart';
+import 'ui/company_operations_page.dart';
 
 import 'package:flutter/material.dart';
 
@@ -169,6 +170,7 @@ const _menu = [
   _NavItem('Clientes', Icons.people_outline_rounded),
   _NavItem('Vehículos', Icons.directions_car_outlined),
   _NavItem('Empleados', Icons.badge_outlined),
+  _NavItem('Servicios', Icons.design_services_outlined),
   _NavItem('Inventario', Icons.inventory_2_outlined),
   _NavItem('Caja y ventas', Icons.point_of_sale_outlined),
   _NavItem('Sitio web', Icons.language_outlined),
@@ -388,6 +390,16 @@ class _DashboardPreviewState extends State<DashboardPreview> {
   Widget _mainContent() {
     if (_menu[selected].title == 'Mi Empresa') {
       return const CompanySettingsPage();
+    }
+    final catalog = switch (_menu[selected].title) {
+      'Clientes' => OperationsCatalog.clients,
+      'Vehículos' => OperationsCatalog.vehicles,
+      'Empleados' => OperationsCatalog.employees,
+      'Servicios' => OperationsCatalog.services,
+      _ => null,
+    };
+    if (catalog != null) {
+      return CompanyOperationsPage(catalog: catalog);
     }
     final isHome = selected == 0;
     return Column(
