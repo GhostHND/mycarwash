@@ -189,3 +189,26 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::patch('/companies/{company}/schedule/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'update'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster')->whereNumber('record');
     Route::delete('/companies/{company}/schedule/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'destroy'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster')->whereNumber('record');
 });
+
+// BLOQUE 18 - Inventario por empresa/sucursal: categorias, proveedores, productos, movimientos.
+Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/inventory/options', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'options'])->whereNumber('company');
+    Route::get('/companies/{company}/inventory/stock', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'stock'])->whereNumber('company');
+    Route::get('/companies/{company}/inventory/movements/{movement}/history', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'history'])->whereNumber('company')->whereNumber('movement');
+    Route::get('/companies/{company}/inventory/{resource}', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'index'])->whereNumber('company')->where('resource', 'categories|suppliers|items|movements');
+    Route::post('/companies/{company}/inventory/{resource}', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'store'])->whereNumber('company')->where('resource', 'categories|suppliers|items|movements');
+    Route::get('/companies/{company}/inventory/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'show'])->whereNumber('company')->where('resource', 'categories|suppliers|items|movements')->whereNumber('record');
+    Route::patch('/companies/{company}/inventory/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'update'])->whereNumber('company')->where('resource', 'categories|suppliers|items|movements')->whereNumber('record');
+    Route::delete('/companies/{company}/inventory/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'destroy'])->whereNumber('company')->where('resource', 'categories|suppliers|items|movements')->whereNumber('record');
+});
+
+// BLOQUE 19 - Caja manual: cajas, sesiones, categorias de egresos y movimientos.
+Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/cash/options', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'options'])->whereNumber('company');
+    Route::get('/companies/{company}/cash/movements/{movement}/history', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'history'])->whereNumber('company')->whereNumber('movement');
+    Route::get('/companies/{company}/cash/{resource}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'index'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements');
+    Route::post('/companies/{company}/cash/{resource}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'store'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements');
+    Route::get('/companies/{company}/cash/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'show'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements')->whereNumber('record');
+    Route::patch('/companies/{company}/cash/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'update'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements')->whereNumber('record');
+    Route::delete('/companies/{company}/cash/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'destroy'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements')->whereNumber('record');
+});

@@ -8,6 +8,8 @@ import 'ui/company_settings_page.dart';
 import 'ui/company_operations_page.dart';
 import 'ui/company_wash_workflow_page.dart';
 import 'ui/company_booking_page.dart';
+import 'ui/company_inventory_page.dart';
+import 'ui/company_cash_page.dart';
 
 import 'package:flutter/material.dart';
 
@@ -181,7 +183,13 @@ const _menu = [
   _NavItem('Asignaciones de turnos', Icons.assignment_ind_outlined),
   _NavItem('Bloqueos de agenda', Icons.event_busy_outlined),
   _NavItem('Inventario', Icons.inventory_2_outlined),
+  _NavItem('Categorías de inventario', Icons.category_outlined),
+  _NavItem('Proveedores', Icons.local_shipping_outlined),
+  _NavItem('Movimientos de inventario', Icons.swap_horiz_outlined),
   _NavItem('Caja y ventas', Icons.point_of_sale_outlined),
+  _NavItem('Sesiones de caja', Icons.pending_actions_outlined),
+  _NavItem('Categorías de egresos', Icons.category_outlined),
+  _NavItem('Movimientos de caja', Icons.swap_horiz_outlined),
   _NavItem('Sitio web', Icons.language_outlined),
   _NavItem('Mi Empresa', Icons.business_outlined),
   _NavItem('Configuración', Icons.settings_outlined),
@@ -409,6 +417,26 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     };
     if (catalog != null) {
       return CompanyOperationsPage(catalog: catalog);
+    }
+    final cashModule = switch (_menu[selected].title) {
+      'Caja y ventas' => CashModule.registers,
+      'Sesiones de caja' => CashModule.sessions,
+      'Categorías de egresos' => CashModule.categories,
+      'Movimientos de caja' => CashModule.movements,
+      _ => null,
+    };
+    if (cashModule != null) {
+      return CompanyCashPage(module: cashModule);
+    }
+    final inventoryModule = switch (_menu[selected].title) {
+      'Inventario' => InventoryModule.items,
+      'Categorías de inventario' => InventoryModule.categories,
+      'Proveedores' => InventoryModule.suppliers,
+      'Movimientos de inventario' => InventoryModule.movements,
+      _ => null,
+    };
+    if (inventoryModule != null) {
+      return CompanyInventoryPage(module: inventoryModule);
     }
     final bookingModule = switch (_menu[selected].title) {
       'Reservas' => BookingModule.bookings,
