@@ -422,6 +422,9 @@ class CompanyCashController extends Controller
                     throw ValidationException::withMessages(['counted_cash'=>'El conteo se registra únicamente al cierre.']);
                 }
             }
+            if ($resource==='movements' && ($old->source_sale_payment_id ?? null) !== null) {
+                throw ValidationException::withMessages(['id' => 'Un cobro de venta confirmado no se puede alterar ni eliminar.']);
+            }
             if ($resource==='movements') {
                 $session=$this->openSession($company,(int)$old->session_id);
                 $old=$this->record('movements',$company,$record);
@@ -461,6 +464,9 @@ class CompanyCashController extends Controller
                     throw ValidationException::withMessages(['id'=>'Sesión con movimientos: ciérrala, no la elimines.']);
                 DB::table('cash_sessions')->where('company_id',$company)->where('id',$record)
                     ->update(['open_register_id'=>null]);
+            }
+            if ($resource==='movements' && ($old->source_sale_payment_id ?? null) !== null) {
+                throw ValidationException::withMessages(['id' => 'Un cobro de venta confirmado no se puede alterar ni eliminar.']);
             }
             if ($resource==='movements') {
                 $session=$this->openSession($company,(int)$old->session_id);

@@ -10,6 +10,7 @@ import 'ui/company_wash_workflow_page.dart';
 import 'ui/company_booking_page.dart';
 import 'ui/company_inventory_page.dart';
 import 'ui/company_cash_page.dart';
+import 'ui/company_sales_page.dart';
 
 import 'package:flutter/material.dart';
 
@@ -190,6 +191,10 @@ const _menu = [
   _NavItem('Sesiones de caja', Icons.pending_actions_outlined),
   _NavItem('Categorías de egresos', Icons.category_outlined),
   _NavItem('Movimientos de caja', Icons.swap_horiz_outlined),
+  _NavItem('Cuentas bancarias', Icons.account_balance_outlined),
+  _NavItem('Medios de pago', Icons.credit_card_outlined),
+  _NavItem('Descuentos de lavados', Icons.local_offer_outlined),
+  _NavItem('Cobros de lavados', Icons.payments_outlined),
   _NavItem('Sitio web', Icons.language_outlined),
   _NavItem('Mi Empresa', Icons.business_outlined),
   _NavItem('Configuración', Icons.settings_outlined),
@@ -417,6 +422,16 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     };
     if (catalog != null) {
       return CompanyOperationsPage(catalog: catalog);
+    }
+    final salesModule = switch (_menu[selected].title) {
+      'Cuentas bancarias' => SalesModule.banks,
+      'Medios de pago' => SalesModule.methods,
+      'Descuentos de lavados' => SalesModule.discounts,
+      'Cobros de lavados' => SalesModule.payments,
+      _ => null,
+    };
+    if (salesModule != null) {
+      return CompanySalesPage(module: salesModule);
     }
     final cashModule = switch (_menu[selected].title) {
       'Caja y ventas' => CashModule.registers,

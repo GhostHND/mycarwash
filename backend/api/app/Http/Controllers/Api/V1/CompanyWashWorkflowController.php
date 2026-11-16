@@ -369,6 +369,11 @@ class CompanyWashWorkflowController extends Controller
             $next = $input['to_status'];
             $allowed = ['ASIGNADO' => 'EN_PROCESO', 'EN_PROCESO' => 'TERMINADO', 'TERMINADO' => 'ENTREGADO'];
             if (($allowed[$current->status] ?? '') !== $next) return ['conflict' => 'Transición de estado no permitida.'];
+            if ($next === 'ENTREGADO') {
+                throw ValidationException::withMessages([
+                    'payment' => 'Utiliza Cobrar y entregar para registrar el cobro en caja o banco.',
+                ]);
+            }
             if ($next === 'EN_PROCESO' && !$this->scoped('assignments', $company)->where('order_id', $order)->where('is_active', true)->exists()) {
                 return ['conflict' => 'Asigna al menos un lavador activo.'];
             }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
+import 'company_sale_checkout_dialog.dart';
 
 enum WashModule { bays, orders, assignments, queue }
 
@@ -581,6 +582,19 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
     if (next == null) {
       return;
     }
+    if (next == 'ENTREGADO') {
+      final completed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialog) =>
+            CompanySaleCheckoutDialog(order: row, client: _client),
+      );
+      if (completed == true && mounted) {
+        _notice('Cobro registrado y vehículo entregado.');
+        _load();
+      }
+      return;
+    }
     try {
       await _api.request(
         'POST',
@@ -701,7 +715,9 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                                       'TERMINADO',
                                     ].contains('${row['status']}'))
                                   IconButton(
-                                    tooltip: 'Avanzar estado',
+                                    tooltip: row['status'] == 'TERMINADO'
+                                        ? 'Cobrar y entregar'
+                                        : 'Avanzar estado',
                                     onPressed: () => _advance(row),
                                     icon: const Icon(
                                       Icons.play_circle_outline,

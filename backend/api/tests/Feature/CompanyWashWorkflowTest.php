@@ -142,10 +142,10 @@ class CompanyWashWorkflowTest extends TestCase
         $this->deleteJson('/api/v1/companies/1/employees/1')->assertStatus(409);
         $this->postJson($this->url('orders',$id).'/transition',['to_status'=>'ENTREGADO','expected_version'=>3])->assertStatus(409);
         $this->postJson($this->url('orders',$id).'/transition',['to_status'=>'TERMINADO','expected_version'=>3])->assertOk();
-        $this->postJson($this->url('orders',$id).'/transition',['to_status'=>'ENTREGADO','expected_version'=>4])->assertOk();
+        $this->postJson($this->url('orders',$id).'/transition',['to_status'=>'ENTREGADO','expected_version'=>4])->assertUnprocessable();
         $this->deleteJson($this->url('assignments',$aid))->assertOk();
         $this->assertSame(1,DB::table('wash_orders')->where('id',$id)->count());
-        $this->getJson($this->url('orders',$id).'/history')->assertJsonCount(5,'data');
+        $this->getJson($this->url('orders',$id).'/history')->assertJsonCount(4,'data');
     }
 
     public function test_media_create_read_update_delete_and_private_storage(): void

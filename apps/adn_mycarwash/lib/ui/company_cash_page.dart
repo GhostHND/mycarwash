@@ -668,6 +668,121 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
     }
   }
 
+  Future<void> _closeSession(Map<String, dynamic> row) async {
+    if (row['status'] != 'OPEN') {
+      return;
+    }
+    final counted = TextEditingController();
+    final reason = TextEditingController();
+    bool saving = false;
+    String? failure;
+    try {
+      final answer = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialog) => StatefulBuilder(
+          builder: (dialog, update) => AlertDialog(
+            backgroundColor: _surface,
+            title: const Text('Cerrar caja'),
+            content: SizedBox(
+              width: 450,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Caja: ${row['register_name'] ?? row['register_id']}'),
+                  Text(
+                    'Efectivo esperado: L ${row['expected_current'] ?? row['opening_cash']}',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const ValueKey('cash_close_counted'),
+                    controller: counted,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: _decoration('Efectivo contado en L'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: reason,
+                    maxLines: 3,
+                    decoration: _decoration(
+                      'Observaciones y diferencias de caja',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'El cierre es definitivo y no se puede editar.',
+                    style: TextStyle(color: _muted),
+                  ),
+                  if (failure != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        failure!,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(dialog, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                key: const ValueKey('cash_close_confirm'),
+                onPressed: saving
+                    ? null
+                    : () async {
+                        update(() {
+                          saving = true;
+                          failure = null;
+                        });
+                        try {
+                          await _api.request(
+                            'PATCH',
+                            '/cash/sessions/${row['id']}',
+                            body: {
+                              'status': 'CLOSED',
+                              'counted_cash': counted.text.trim(),
+                              'notes': reason.text.trim().isEmpty
+                                  ? null
+                                  : reason.text.trim(),
+                            },
+                          );
+                          if (dialog.mounted) {
+                            Navigator.pop(dialog, true);
+                          }
+                        } catch (error) {
+                          if (dialog.mounted) {
+                            update(() {
+                              saving = false;
+                              failure = '$error';
+                            });
+                          }
+                        }
+                      },
+                child: Text(
+                  saving ? 'Cerrando...' : 'Confirmar cierre de caja',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (answer == true && mounted) {
+        _notice('Caja cerrada. Se conservará el cierre y su historial.');
+        await _load();
+      }
+    } finally {
+      counted.dispose();
+      reason.dispose();
+    }
+  }
+
   String _summary(Map<String, dynamic> row) => switch (widget.module) {
     CashModule.registers =>
       '${row['code']} · ${row['name']} · ${row['branch_name'] ?? ''}',
@@ -781,6 +896,17 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
                       ],
                     ),
                   ),
+                  if (widget.module == CashModule.sessions &&
+                      row['status'] == 'OPEN')
+                    FilledButton.icon(
+                      key: ValueKey('cash_close_${row['id']}'),
+                      onPressed: () => _closeSession(row),
+                      icon: const Icon(Icons.lock_outline),
+                      label: const Text('Cerrar caja'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _turquoise,
+                      ),
+                    ),
                   if (widget.module == CashModule.movements)
                     IconButton(
                       tooltip: 'Historial',

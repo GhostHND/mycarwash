@@ -212,3 +212,15 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::patch('/companies/{company}/cash/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'update'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements')->whereNumber('record');
     Route::delete('/companies/{company}/cash/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'destroy'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements')->whereNumber('record');
 });
+
+// BLOQUE 20 - Venta y cobro al entregar: cuentas, medios, descuentos y cobros.
+Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/sales/options', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'options'])->whereNumber('company');
+    Route::get('/companies/{company}/sales/quote/{order}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'quote'])->whereNumber('company')->whereNumber('order');
+    Route::post('/companies/{company}/sales/checkout/{order}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'checkout'])->whereNumber('company')->whereNumber('order');
+    Route::get('/companies/{company}/sales/{resource}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'index'])->whereNumber('company')->where('resource','banks|methods|discounts|payments');
+    Route::post('/companies/{company}/sales/{resource}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'store'])->whereNumber('company')->where('resource','banks|methods|discounts|payments');
+    Route::get('/companies/{company}/sales/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'show'])->whereNumber('company')->where('resource','banks|methods|discounts|payments')->whereNumber('record');
+    Route::patch('/companies/{company}/sales/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'update'])->whereNumber('company')->where('resource','banks|methods|discounts|payments')->whereNumber('record');
+    Route::delete('/companies/{company}/sales/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'destroy'])->whereNumber('company')->where('resource','banks|methods|discounts|payments')->whereNumber('record');
+});
