@@ -114,6 +114,73 @@ class CompanyPosController extends Controller
         return response()->json(['data' => $result]);
     }
 
+    /** Búsqueda POS en el catálogo de clientes existente; no duplica datos empresariales. */
+    public function customers(Request $request, int $company): JsonResponse
+    {
+        $this->authorizeCompany($request, $company, 'company.view');
+        $data = $request->validate(['q' => ['sometimes', 'nullable', 'string', 'max:100']]);
+        $q = trim((string) ($data['q'] ?? ''));
+        $query = DB::table('clients')->where('company_id', $company)
+            ->whereNull('deleted_at')->where('is_active', true);
+        if ($q !== '') {
+            $query->where(function ($builder) use ($q): void {
+                $builder->where('full_name', 'like', '%'.$q.'%')
+                    ->orWhere('identity_document', 'like', '%'.$q.'%')
+                    ->orWhere('phone', 'like', '%'.$q.'%');
+            });
+        }
+        return response()->json(['data' => $query->orderBy('full_name')->limit(50)
+            ->get(['id', 'full_name', 'identity_document', 'phone', 'email', 'address'])]);
+    }
+
+    /** Una venta conserva la fotografía histórica del cliente incluso si cambia su ficha. */
+    private function resolveCustomer(int $company, array $data, \DateTimeInterface $now): array
+    {
+        $mode = $data['customer_type'];
+        if ($mode === 'CONSUMER') {
+            return [
+                'customer_type' => 'CONSUMER', 'customer_id' => null,
+                'customer_name_snapshot' => 'Consumidor final',
+                'customer_identity_snapshot' => null, 'customer_phone_snapshot' => null,
+                'customer_email_snapshot' => null, 'customer_address_snapshot' => null,
+            ];
+        }
+        if ($mode === 'EXISTING') {
+            $client = DB::table('clients')->where('company_id', $company)
+                ->where('id', $data['customer_id'])->whereNull('deleted_at')
+                ->where('is_active', true)->first();
+            if (!$client) {
+                throw ValidationException::withMessages(['customer_id' => 'Selecciona un cliente activo de esta empresa.']);
+            }
+        } else {
+            $details = $data['customer'] ?? [];
+            $identity = trim((string) ($details['identity_document'] ?? ''));
+            if ($identity !== '' && DB::table('clients')->where('company_id', $company)
+                ->whereNull('deleted_at')->where('identity_document', $identity)->exists()) {
+                throw ValidationException::withMessages([
+                    'customer.identity_document' => 'Ese documento ya existe. Busca el cliente registrado.',
+                ]);
+            }
+            $id = DB::table('clients')->insertGetId([
+                'company_id' => $company, 'full_name' => trim($details['full_name']),
+                'identity_document' => $identity ?: null,
+                'phone' => trim((string) ($details['phone'] ?? '')) ?: null,
+                'email' => trim((string) ($details['email'] ?? '')) ?: null,
+                'address' => trim((string) ($details['address'] ?? '')) ?: null,
+                'is_active' => true, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+            $client = DB::table('clients')->where('company_id', $company)->where('id', $id)->first();
+        }
+        return [
+            'customer_type' => $mode, 'customer_id' => $client->id,
+            'customer_name_snapshot' => $client->full_name,
+            'customer_identity_snapshot' => $client->identity_document,
+            'customer_phone_snapshot' => $client->phone,
+            'customer_email_snapshot' => $client->email,
+            'customer_address_snapshot' => $client->address,
+        ];
+    }
+
     private function receipt(int $company, int $saleId): array
     {
         $sale = DB::table('pos_sales')->where('company_id', $company)->where('id', $saleId)->first();
@@ -140,6 +207,14 @@ class CompanyPosController extends Controller
             'discount_reason' => $sale->discount_reason,
             'total' => $this->money($this->cents($sale->total)),
             'posted_at' => $sale->posted_at, 'receipt_type' => 'NON_FISCAL',
+            'customer_type' => $sale->customer_type, 'customer_id' => $sale->customer_id,
+            'customer_name' => $sale->customer_name_snapshot,
+            'customer_identity' => $sale->customer_identity_snapshot,
+            'customer_phone' => $sale->customer_phone_snapshot,
+            'customer_email' => $sale->customer_email_snapshot,
+            'customer_address' => $sale->customer_address_snapshot,
+            'cash_received' => $sale->cash_received === null ? null : $this->money($this->cents($sale->cash_received)),
+            'change_given' => $this->money($this->cents($sale->change_given)),
             'lines' => $lines, 'payments' => $payments];
     }
     public function show(Request $request, int $company, int $sale): JsonResponse
@@ -165,6 +240,9 @@ class CompanyPosController extends Controller
     public function checkout(Request $request, int $company): JsonResponse
     {
         $this->authorizeCompany($request, $company, 'company.update');
+        // Compatibilidad con tickets anteriores al flujo de clientes 21A.5.
+        $legacyPayload = !$request->exists('customer_type');
+        $request->merge(['customer_type' => $request->input('customer_type', 'CONSUMER')]);
         $data = $request->validate([
             'branch_id' => ['required', 'integer', 'min:1'],
             'idempotency_key' => ['required', 'string', 'min:12', 'max:100', 'regex:/^[A-Za-z0-9._-]+$/'],
@@ -173,6 +251,15 @@ class CompanyPosController extends Controller
             'lines.*.quantity' => ['required', 'integer', 'between:1,999'],
             'discount_amount' => ['required', 'regex:/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?$/D'],
             'discount_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'customer_type' => ['required', 'in:CONSUMER,EXISTING,NEW'],
+            'customer_id' => ['required_if:customer_type,EXISTING', 'nullable', 'integer', 'min:1'],
+            'customer' => ['required_if:customer_type,NEW', 'nullable', 'array'],
+            'customer.full_name' => ['required_if:customer_type,NEW', 'string', 'max:180'],
+            'customer.identity_document' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'customer.phone' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'customer.email' => ['sometimes', 'nullable', 'email', 'max:190'],
+            'customer.address' => ['sometimes', 'nullable', 'string', 'max:4000'],
+            'cash_received' => ['sometimes', 'nullable', 'regex:/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?$/D'],
             'payments' => ['required', 'array', 'min:1', 'max:2'],
             'payments.*.payment_method_id' => ['required', 'integer', 'min:1'],
             'payments.*.cash_session_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
@@ -180,7 +267,9 @@ class CompanyPosController extends Controller
             'payments.*.amount' => ['required', 'regex:/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?$/D'],
             'payments.*.reference' => ['sometimes', 'nullable', 'string', 'max:120'],
         ]);
-        $hash = hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
+        $hashData = $data;
+        if ($legacyPayload) unset($hashData['customer_type']);
+        $hash = hash('sha256', json_encode($hashData, JSON_THROW_ON_ERROR));
         $result = DB::transaction(function () use ($request, $company, $data, $hash): array {
             // Serializa confirmaciones de la empresa, incluso reintentos simultáneos del mismo ticket.
             DB::table('companies')->where('id', $company)->lockForUpdate()->first();
@@ -263,13 +352,30 @@ class CompanyPosController extends Controller
             if ($sum !== $net) throw ValidationException::withMessages([
                 'payments' => 'La suma de pagos debe coincidir exactamente con el total después del descuento.',
             ]);
+            $cashDue = 0;
+            foreach ($paymentRows as $row) {
+                if ($row['channel'] === 'CASH') $cashDue += $row['amount'];
+            }
+            $tendered = isset($data['cash_received']) && $data['cash_received'] !== null
+                ? $this->cents($data['cash_received'], 'cash_received') : $cashDue;
+            if ($cashDue === 0 && $tendered !== 0) {
+                throw ValidationException::withMessages(['cash_received' => 'No se recibe efectivo en esta venta.']);
+            }
+            if ($tendered < $cashDue || $tendered - $cashDue > 99999999999) {
+                throw ValidationException::withMessages(['cash_received' => 'Efectivo recibido insuficiente o inválido.']);
+            }
+            // Primero se validan stock y pagos. Alta rápida de cliente ocurre en la MISMA transacción.
             $now = now();
+            $customer = $this->resolveCustomer($company, $data, $now);
             $saleId = DB::table('pos_sales')->insertGetId([
                 'company_id' => $company, 'branch_id' => $branch,
                 'idempotency_key' => $data['idempotency_key'], 'request_hash' => $hash,
                 'status' => 'POSTED', 'subtotal' => $this->money($subtotal),
                 'discount_amount' => $this->money($discount), 'discount_reason' => $discount ? $reason : null,
                 'total' => $this->money($net), 'actor_user_id' => $actor, 'posted_at' => $now,
+                ...$customer,
+                'cash_received' => $cashDue > 0 ? $this->money($tendered) : null,
+                'change_given' => $this->money($tendered - $cashDue),
                 'created_at' => $now, 'updated_at' => $now,
             ]);
             foreach ($lineRows as $line) {

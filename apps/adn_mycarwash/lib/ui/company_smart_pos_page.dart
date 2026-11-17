@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
+import 'company_pos_checkout_dialog.dart';
 
 /// Smart POS 21A: venta de artículos, carrito, pagos mixtos e historial.
 /// Los importes que se muestran en el carrito son indicativos; Laravel calcula
@@ -33,21 +33,14 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   final _search = TextEditingController();
   final _discount = TextEditingController(text: '0.00');
   final _reason = TextEditingController();
-  final _cash = TextEditingController();
-  final _bank = TextEditingController();
-  final _bankReference = TextEditingController();
   Timer? _debounce;
   bool _loading = true;
-  bool _saving = false;
   bool _history = false;
   String? _error;
   int _epoch = 0;
   int? _branchId;
-  int? _cashSessionId;
-  int? _bankAccountId;
   int? _cashMethodId;
   int? _bankMethodId;
-  String? _checkoutKey;
   List<Map<String, dynamic>> _branches = [];
   List<Map<String, dynamic>> _sessions = [];
   List<Map<String, dynamic>> _banks = [];
@@ -70,14 +63,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   void dispose() {
     _epoch++;
     _debounce?.cancel();
-    for (final field in [
-      _search,
-      _discount,
-      _reason,
-      _cash,
-      _bank,
-      _bankReference,
-    ]) {
+    for (final field in [_search, _discount, _reason]) {
       field.dispose();
     }
     if (_ownsClient) {
@@ -185,25 +171,12 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   }
 
   void _chooseBranch(int? branch) {
-    final sessions = _sessions
-        .where((x) => _asInt(x['branch_id']) == branch)
-        .toList();
-    final banks = _banks
-        .where((x) => _asInt(x['branch_id']) == branch)
-        .toList();
     setState(() {
       _branchId = branch;
-      _cashSessionId = sessions.isNotEmpty
-          ? _asInt(sessions.first['id'])
-          : null;
-      _bankAccountId = banks.isNotEmpty ? _asInt(banks.first['id']) : null;
       _cart.clear();
       _chosen.clear();
-      _cash.clear();
-      _bank.clear();
       _discount.text = '0.00';
       _reason.clear();
-      _checkoutKey = null;
     });
     _loadProducts();
     if (_history) {
@@ -249,7 +222,8 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       if (!mounted) {
         return;
       }
-      setState(() => _sales = _rows(response['data']));
+      final raw = response['data'];
+      setState(() => _sales = raw is Map ? _rows(raw['data']) : _rows(raw));
     } catch (e) {
       _message('No se pudo cargar el historial: $e', error: true);
     }
@@ -269,7 +243,6 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     setState(() {
       _chosen[id] = item;
       _cart[id] = next;
-      _checkoutKey = null;
     });
   }
 
@@ -287,7 +260,6 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       } else {
         _cart[id] = amount;
       }
-      _checkoutKey = null;
     });
   }
 
@@ -308,70 +280,144 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     isDense: true,
   );
 
+  Widget _productTile(Map<String, dynamic> item) {
+    final stock = double.tryParse('${item['stock']}') ?? 0;
+    final available = stock >= 1;
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFF142329),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: const Color(0xFF294047)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: _teal.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: _teal,
+                  size: 22,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Agregar al carrito',
+                icon: const Icon(Icons.add_circle, size: 28),
+                color: _teal,
+                onPressed: available ? () => _add(item) : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Text(
+            '${item['name']}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'SKU ${item['sku']}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: _muted, fontSize: 11),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'L ${item['sale_price']}',
+                  style: const TextStyle(
+                    color: _teal,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+              Text(
+                available ? '${item['stock']} ${item['unit']}' : 'Agotado',
+                style: TextStyle(
+                  color: available ? _muted : Colors.orangeAccent,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _catalog() => _card(
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Catálogo y existencias',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        const Row(
+          children: [
+            Icon(Icons.inventory_2_outlined, color: _teal, size: 21),
+            SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                'Productos en venta',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
+        const Text(
+          'Catálogo vivo conectado con las existencias de la sucursal',
+          style: TextStyle(color: _muted, fontSize: 12),
+        ),
+        const SizedBox(height: 14),
         TextField(
           key: const ValueKey('pos_search'),
           controller: _search,
-          decoration: _dec('Buscar por nombre o SKU'),
+          decoration: _dec('Buscar artículo por nombre o SKU')
+              .copyWith(prefixIcon: const Icon(Icons.search, color: _teal)),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
         if (_products.isEmpty)
           const Padding(
             padding: EdgeInsets.all(18),
             child: Text(
-              'No hay productos con precio de venta.',
+              'No hay productos con precio de venta. Revisa Inventario.',
               style: TextStyle(color: _muted),
             ),
           ),
-        for (final item in _products)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('${item['name']}'),
-              subtitle: Text(
-                '${item['sku']} · Stock: ${item['stock']} ${item['unit']}',
-                style: const TextStyle(color: _muted, fontSize: 12),
-              ),
-              trailing: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
+        if (_products.isNotEmpty)
+          LayoutBuilder(
+            builder: (context, bounds) {
+              final cols = bounds.maxWidth >= 410 ? 2 : 1;
+              final tileWidth = (bounds.maxWidth - (cols - 1) * 10) / cols;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
                 children: [
-                  Text(
-                    'L ${item['sale_price']}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    tooltip: 'Agregar al carrito',
-                    icon: const Icon(Icons.add_circle_outline),
-                    color: _teal,
-                    onPressed: (double.tryParse('${item['stock']}') ?? 0) >= 1
-                        ? () => _add(item)
-                        : null,
-                  ),
+                  for (final item in _products)
+                    SizedBox(
+                      width: tileWidth,
+                      height: 180,
+                      child: _productTile(item),
+                    ),
                 ],
-              ),
-            ),
+              );
+            },
           ),
       ],
     ),
   );
 
   Widget _cartPanel() {
-    final sessionOptions = _sessions
-        .where((x) => _asInt(x['branch_id']) == _branchId)
-        .toList();
-    final bankOptions = _banks
-        .where((x) => _asInt(x['branch_id']) == _branchId)
-        .toList();
     return _card(
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,13 +469,12 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             key: const ValueKey('pos_discount'),
             decoration: _dec('Descuento autorizado (L)'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => setState(() => _checkoutKey = null),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _reason,
             decoration: _dec('Motivo del descuento'),
-            onChanged: (_) => _checkoutKey = null,
           ),
           const SizedBox(height: 12),
           Text(
@@ -441,96 +486,39 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Cobrar mediante',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () => setState(() {
-              _cash.text = _money(_total);
-              _bank.clear();
-              _checkoutKey = null;
-            }),
-            icon: const Icon(Icons.payments_outlined),
-            label: const Text('Todo efectivo'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => setState(() {
-              _bank.text = _money(_total);
-              _cash.clear();
-              _checkoutKey = null;
-            }),
-            icon: const Icon(Icons.account_balance_outlined),
-            label: const Text('Todo banco'),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            key: const ValueKey('pos_cash_amount'),
-            controller: _cash,
-            decoration: _dec('Efectivo (L)'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => _checkoutKey = null,
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            key: ValueKey("pos_cash_session_$_branchId"),
-            initialValue: _cashSessionId,
-            decoration: _dec('Caja abierta'),
-            items: sessionOptions
-                .map(
-                  (x) => DropdownMenuItem<int>(
-                    value: _asInt(x['id']),
-                    child: Text('${x['name']}'),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: _teal.withValues(alpha: .10),
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: _teal.withValues(alpha: .3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: _teal),
+                SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    'Elige el cliente y la forma de pago en la siguiente pantalla. '
+                    'Nada se cobra hasta confirmar la operación.',
+                    style: TextStyle(fontSize: 12),
                   ),
-                )
-                .toList(),
-            onChanged: (x) => setState(() {
-              _cashSessionId = x;
-              _checkoutKey = null;
-            }),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('pos_bank_amount'),
-            controller: _bank,
-            decoration: _dec('Transferencia (L)'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => _checkoutKey = null,
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            key: ValueKey("pos_bank_account_$_branchId"),
-            initialValue: _bankAccountId,
-            decoration: _dec('Cuenta bancaria'),
-            items: bankOptions
-                .map(
-                  (x) => DropdownMenuItem<int>(
-                    value: _asInt(x['id']),
-                    child: Text('${x['alias']}'),
-                  ),
-                )
-                .toList(),
-            onChanged: (x) => setState(() {
-              _bankAccountId = x;
-              _checkoutKey = null;
-            }),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _bankReference,
-            decoration: _dec('Referencia de transferencia'),
-            onChanged: (_) => _checkoutKey = null,
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            key: const ValueKey('pos_checkout'),
-            style: FilledButton.styleFrom(backgroundColor: _teal),
-            onPressed: _saving || _cart.isEmpty ? null : _checkout,
-            icon: const Icon(Icons.check_circle_outline),
-            label: Text(
-              _saving ? 'Registrando...' : 'Confirmar venta y cobrar',
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('pos_checkout'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _teal,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: _cart.isEmpty ? null : _openPaymentDialog,
+              icon: const Icon(Icons.point_of_sale_outlined),
+              label: const Text('Continuar al cobro'),
             ),
           ),
           const SizedBox(height: 8),
@@ -543,96 +531,81 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     );
   }
 
-  Future<void> _checkout() async {
+  Future<void> _openPaymentDialog() async {
     final branch = _branchId;
-    if (branch == null || _cart.isEmpty || _total <= 0) {
-      _message(
-        'Selecciona sucursal y artículos con total positivo.',
-        error: true,
-      );
+    final discount = _cents(_discount.text);
+    if (branch == null || _cart.isEmpty) {
+      _message('Selecciona sucursal y artículos.', error: true);
       return;
     }
-    final discount = _cents(_discount.text);
-    final cash = _cash.text.trim().isEmpty ? 0 : _cents(_cash.text);
-    final bank = _bank.text.trim().isEmpty ? 0 : _cents(_bank.text);
-    if (discount < 0 || cash < 0 || bank < 0 || cash + bank != _total) {
-      _message('Los pagos deben sumar exactamente el total.', error: true);
+    if (discount < 0 || discount >= _subtotal) {
+      _message(
+        'El descuento debe ser válido y menor que el subtotal.',
+        error: true,
+      );
       return;
     }
     if (discount > 0 && _reason.text.trim().length < 3) {
-      _message('Indica el motivo del descuento.', error: true);
+      _message('Explica el motivo del descuento.', error: true);
       return;
     }
-    if ((cash > 0 && (_cashMethodId == null || _cashSessionId == null)) ||
-        (bank > 0 && (_bankMethodId == null || _bankAccountId == null))) {
-      _message(
-        'Configura un medio de pago y una cuenta o caja abierta.',
-        error: true,
-      );
-      return;
-    }
-    final paymentRows = <Map<String, dynamic>>[];
-    if (cash > 0) {
-      paymentRows.add({
-        'payment_method_id': _cashMethodId,
-        'cash_session_id': _cashSessionId,
-        'amount': _money(cash),
-      });
-    }
-    if (bank > 0) {
-      paymentRows.add({
-        'payment_method_id': _bankMethodId,
-        'bank_account_id': _bankAccountId,
-        'amount': _money(bank),
-        'reference': _bankReference.text.trim(),
-      });
-    }
-    _checkoutKey ??=
-        'pos-${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
-    setState(() => _saving = true);
-    try {
-      final response = await _api.request(
-        'POST',
-        '/pos/sales',
-        body: {
-          'branch_id': branch,
-          'idempotency_key': _checkoutKey,
-          'lines': _cart.entries
-              .map((x) => {'item_id': x.key, 'quantity': x.value})
-              .toList(),
-          'discount_amount': _money(discount),
-          'discount_reason': _reason.text.trim(),
-          'payments': paymentRows,
-        },
-      );
-      if (!mounted) {
-        return;
-      }
-      final receipt = Map<String, dynamic>.from(response['data'] as Map);
-      setState(() {
-        _cart.clear();
-        _chosen.clear();
-        _checkoutKey = null;
-        _discount.text = '0.00';
-        _reason.clear();
-        _cash.clear();
-        _bank.clear();
-        _bankReference.clear();
-      });
-      _loadProducts();
-      await _showReceipt(receipt);
-    } catch (e) {
-      _message('No se confirmó la venta: $e', error: true);
-    } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
-    }
+    final availableSessions = _sessions
+        .where((item) => _asInt(item['branch_id']) == branch)
+        .toList();
+    final availableBanks = _banks
+        .where((item) => _asInt(item['branch_id']) == branch)
+        .toList();
+    final receipt = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CompanyPosCheckoutDialog(
+        api: _api,
+        branchId: branch,
+        lines: _cart.entries
+            .map(
+              (entry) => <String, dynamic>{
+                'item_id': entry.key,
+                'quantity': entry.value,
+              },
+            )
+            .toList(),
+        subtotalCents: _subtotal,
+        discountCents: discount,
+        discountReason: _reason.text.trim(),
+        sessions: availableSessions,
+        banks: availableBanks,
+        cashMethodId: _cashMethodId,
+        bankMethodId: _bankMethodId,
+      ),
+    );
+    if (!mounted || receipt == null) return;
+    setState(() {
+      _cart.clear();
+      _chosen.clear();
+      _discount.text = '0.00';
+      _reason.clear();
+    });
+    await _loadProducts();
+    if (!mounted) return;
+    await _showReceipt(receipt);
   }
 
   String _receiptText(Map<String, dynamic> sale) {
     final b = StringBuffer('ADN MyCarWash — COMPROBANTE NO FISCAL\n');
     b.writeln('Venta #${sale['id']} — ${sale['posted_at']}');
+    b.writeln('Cliente: ${sale['customer_name'] ?? 'Consumidor final'}');
+    if ('${sale['customer_identity'] ?? ''}'.isNotEmpty) {
+      b.writeln('Identidad/RTN: ${sale['customer_identity']}');
+    }
+    if ('${sale['customer_phone'] ?? ''}'.isNotEmpty) {
+      b.writeln('Teléfono: ${sale['customer_phone']}');
+    }
+    if ('${sale['customer_email'] ?? ''}'.isNotEmpty) {
+      b.writeln('Correo: ${sale['customer_email']}');
+    }
+    if ('${sale['customer_address'] ?? ''}'.isNotEmpty) {
+      b.writeln('Dirección: ${sale['customer_address']}');
+    }
     b.writeln('--------------------------------------');
     for (final line in _rows(sale['lines'])) {
       b.writeln(
@@ -644,6 +617,13 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     b.writeln('TOTAL: L ${sale['total']}');
     for (final payment in _rows(sale['payments'])) {
       b.writeln('${payment['channel']}: L ${payment['amount']}');
+      if ('${payment['reference'] ?? ''}'.isNotEmpty) {
+        b.writeln('Referencia: ${payment['reference']}');
+      }
+    }
+    if (sale['cash_received'] != null) {
+      b.writeln('Efectivo recibido: L ${sale['cash_received']}');
+      b.writeln('Cambio entregado: L ${sale['change_given']}');
     }
     b.writeln('No constituye factura fiscal.');
     return b.toString();
@@ -714,6 +694,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           ListTile(
             title: Text('Venta #${sale['id']} · L ${sale['total']}'),
             subtitle: Text(
+              '${sale['customer_name_snapshot'] ?? 'Consumidor final'} · '
               '${sale['posted_at']} · ${sale['status']}',
               style: const TextStyle(color: _muted),
             ),

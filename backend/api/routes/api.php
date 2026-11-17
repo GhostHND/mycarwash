@@ -229,6 +229,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
 Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::get('/companies/{company}/pos/options', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/pos/products', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'products'])->whereNumber('company');
+    Route::get('/companies/{company}/pos/customers', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'customers'])->whereNumber('company');
     Route::get('/companies/{company}/pos/sales', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'index'])->whereNumber('company');
     Route::post('/companies/{company}/pos/sales', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'checkout'])->whereNumber('company');
     Route::get('/companies/{company}/pos/sales/{sale}', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'show'])->whereNumber('company')->whereNumber('sale');

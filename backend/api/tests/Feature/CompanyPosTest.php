@@ -51,6 +51,7 @@ class CompanyPosTest extends TestCase
         (require database_path('migrations/2026_11_16_000005_create_cash_management.php'))->up();
         (require database_path('migrations/2026_11_16_000006_create_wash_sales.php'))->up();
         (require database_path('migrations/2026_11_16_000007_create_pos_sales.php'))->up();
+        (require database_path('migrations/2026_11_16_000008_pos_customer_checkout.php'))->up();
         DB::table('users')->insert([['id'=>1,'name'=>'Administrador','email'=>'adm@test.invalid','password'=>'x'],
             ['id'=>2,'name'=>'Lector','email'=>'ver@test.invalid','password'=>'x']]);
         DB::table('companies')->insert([['id'=>1,'name'=>'Negocio A'], ['id'=>2,'name'=>'Negocio B']]);
@@ -91,6 +92,80 @@ class CompanyPosTest extends TestCase
             'payments' => [['payment_method_id'=>1,'cash_session_id'=>1,'amount'=>'150.00'],
                 ['payment_method_id'=>2,'bank_account_id'=>1,'amount'=>'100.00','reference'=>'TR-001']],
         ];
+    }
+
+    public function test_customer_search_respects_company_and_records(): void
+    {
+        DB::table('clients')->insert([
+            ['id'=>10,'company_id'=>1,'full_name'=>'Ana Compradora','identity_document'=>'0801199000011',
+                'phone'=>'99990000','is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>11,'company_id'=>2,'full_name'=>'Persona Ajena','identity_document'=>'0801199000012',
+                'phone'=>null,'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+        ]);
+        $this->login();
+        $this->getJson($this->url('/customers?q=Ana'))->assertOk()
+            ->assertJsonPath('data.0.full_name', 'Ana Compradora')
+            ->assertJsonMissing(['full_name'=>'Persona Ajena']);
+        $this->getJson($this->url('/customers?q=0801199000012'))->assertJsonCount(0,'data');
+    }
+
+    public function test_new_customer_is_created_atomically_and_stored_in_receipt(): void
+    {
+        $this->login();
+        $data = $this->sale('pos-new-customer-20261116');
+        $data['customer_type'] = 'NEW';
+        $data['customer'] = [
+            'full_name'=>'María del Carmen', 'identity_document'=>'ID-TEST-7799',
+            'phone'=>'99999999','email'=>'compradora@example.invalid',
+            'address'=>'Colonia de prueba, Danlí',
+        ];
+        $data['cash_received'] = '200.00';
+        $response = $this->postJson($this->url('/sales'), $data)->assertCreated()
+            ->assertJsonPath('data.customer_name', 'María del Carmen')
+            ->assertJsonPath('data.customer_identity','ID-TEST-7799')
+            ->assertJsonPath('data.cash_received','200.00')
+            ->assertJsonPath('data.change_given','50.00');
+        $saleId = (int) $response->json('data.id');
+        $customerId = (int) $response->json('data.customer_id');
+        $this->assertDatabaseHas('clients',['id'=>$customerId,'company_id'=>1,'full_name'=>'María del Carmen']);
+        $this->assertDatabaseHas('pos_sales',['id'=>$saleId,'company_id'=>1,'customer_id'=>$customerId]);
+        // El comprobante conserva el nombre original aunque el cliente cambie su ficha.
+        DB::table('clients')->where('id',$customerId)->update(['full_name'=>'Nombre editado']);
+        $this->getJson($this->url('/sales/'.$saleId))->assertOk()
+            ->assertJsonPath('data.customer_name','María del Carmen');
+        $this->postJson($this->url('/sales'),$data)->assertOk()->assertJsonPath('replayed',true);
+        $this->assertSame(1,DB::table('clients')->where('identity_document','ID-TEST-7799')->count());
+    }
+
+    public function test_invalid_payments_do_not_create_quick_customer(): void
+    {
+        $this->login();
+        $data = $this->sale('pos-invalid-customer-20261116');
+        $data['customer_type']='NEW';
+        $data['customer']=['full_name'=>'Prueba Rechazada','identity_document'=>'TEMP-FAIL-2'];
+        $data['payments'][0]['amount']='2.00';
+        $this->postJson($this->url('/sales'), $data)->assertUnprocessable();
+        $this->assertDatabaseMissing('clients',['identity_document'=>'TEMP-FAIL-2']);
+        $this->assertSame(0,DB::table('pos_sales')->count());
+    }
+
+    public function test_existing_customer_and_foreign_id_protection(): void
+    {
+        $this->login();
+        DB::table('clients')->insert([
+            ['id'=>12,'company_id'=>1,'full_name'=>'Cliente Registrado',
+                'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>13,'company_id'=>2,'full_name'=>'Cliente Otra Empresa',
+                'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+        ]);
+        $data=$this->sale('pos-existing-customer-20261116');
+        $data['customer_type']='EXISTING';
+        $data['customer_id']=13;
+        $this->postJson($this->url('/sales'),$data)->assertUnprocessable();
+        $this->assertSame(0,DB::table('pos_sales')->count());
+        $data['customer_id']=12;
+        $this->postJson($this->url('/sales'),$data)->assertCreated()
+            ->assertJsonPath('data.customer_name','Cliente Registrado');
     }
 
     public function test_auth_permissions_and_catalog(): void
