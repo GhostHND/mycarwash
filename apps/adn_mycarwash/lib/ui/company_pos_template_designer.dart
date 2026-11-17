@@ -15,10 +15,12 @@ class CompanyPosTemplateDesigner extends StatefulWidget {
     super.key,
     required this.api,
     required this.branchId,
+    this.embedded = false,
   });
 
   final CompanyBusinessApi api;
   final int branchId;
+  final bool embedded;
 
   @override
   State<CompanyPosTemplateDesigner> createState() =>
@@ -81,6 +83,11 @@ class _CompanyPosTemplateDesignerState
   void _update(String key, Object? value) {
     setState(() {
       _design[key] = value;
+      if (key == 'paper') {
+        _design['layout_style'] = '$value'.endsWith('MM')
+            ? 'ticket'
+            : 'administrative';
+      }
       _dirty = true;
     });
   }
@@ -133,7 +140,8 @@ class _CompanyPosTemplateDesignerState
       }
       if (length != null && length > 1048576) {
         setState(
-          () => _error = 'El logo supera 1 MB. Optimiza la imagen e inténtalo nuevamente.',
+          () => _error =
+              'El logo supera 1 MB. Optimiza la imagen e inténtalo nuevamente.',
         );
         return;
       }
@@ -143,7 +151,8 @@ class _CompanyPosTemplateDesignerState
       }
       if (bytes.length > 1048576) {
         setState(
-          () => _error = 'El logo supera 1 MB. Optimiza la imagen e inténtalo nuevamente.',
+          () => _error =
+              'El logo supera 1 MB. Optimiza la imagen e inténtalo nuevamente.',
         );
         return;
       }
@@ -448,9 +457,18 @@ class _CompanyPosTemplateDesignerState
         style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
       ),
       const SizedBox(height: 10),
-      _swatch('primary_color', 'Color principal'),
-      _swatch('text_color', 'Color de texto'),
-      _swatch('background_color', 'Fondo del comprobante'),
+      if (!'${_design['paper']}'.endsWith('MM')) ...[
+        _swatch('primary_color', 'Color principal'),
+        _swatch('text_color', 'Color de texto'),
+        _swatch('background_color', 'Fondo del comprobante'),
+      ] else
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Impresión térmica: blanco y negro, sin colores editables.',
+            style: TextStyle(color: Color(0xFF9CB1BB)),
+          ),
+        ),
       _choice('font_family', 'Tipografía', {
         'helvetica': 'Helvetica',
         'times': 'Times',
@@ -462,6 +480,31 @@ class _CompanyPosTemplateDesignerState
         'A4': 'Factura A4',
         'LETTER': 'Carta',
       }),
+      _choice('layout_style', 'Estilo de documento', {
+        'administrative': 'Administrativo (A4 / Carta)',
+        'minimal': 'Minimalista',
+        'ticket': 'Ticket térmico',
+      }),
+      _choice('table_style', 'Estilo de tabla', {
+        'grid': 'Cuadrícula empresarial',
+        'lines': 'Líneas divisorias',
+        'plain': 'Sin bordes',
+      }),
+      _choice('logo_alignment', 'Ubicación del logotipo', {
+        'left': 'Izquierda',
+        'center': 'Centro',
+        'right': 'Derecha',
+      }),
+      if (!'${_design['paper']}'.endsWith('MM')) ...[
+        Text('Márgenes: ${_design['page_margin_mm']} mm'),
+        Slider(
+          min: 5,
+          max: 30,
+          divisions: 25,
+          value: (_design['page_margin_mm'] as num).toDouble(),
+          onChanged: (v) => _update('page_margin_mm', v.round()),
+        ),
+      ],
       _choice('alignment', 'Alineación principal', {
         'left': 'Izquierda',
         'center': 'Centro',
@@ -493,9 +536,21 @@ class _CompanyPosTemplateDesignerState
       ),
       const SizedBox(height: 12),
       const Text(
+        'Encabezados de las secciones',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      _text('item_section_title', 'Título de detalle de productos'),
+      _text('customer_section_title', 'Título de datos del cliente'),
+      _text('payment_section_title', 'Título de medios de pago'),
+      if (_type == 'FISCAL_INVOICE')
+        _text('fiscal_section_title', 'Título de información fiscal'),
+      const SizedBox(height: 12),
+      const Text(
         'Detalle del contenido',
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
+      _toggle('show_quantity', 'Mostrar cantidades en la tabla'),
+      _toggle('show_unit_price', 'Mostrar precio unitario'),
       _toggle('show_sku', 'Mostrar SKU de productos'),
       _toggle('show_phone', 'Mostrar teléfono del comprador'),
       _toggle('show_email', 'Mostrar correo del comprador'),
@@ -517,9 +572,10 @@ class _CompanyPosTemplateDesignerState
   );
 
   Widget _preview() {
-    final color = _hex(_design['primary_color']);
-    final ink = _hex(_design['text_color']);
-    final surface = _hex(_design['background_color']);
+    final thermal = '${_design['paper']}'.endsWith('MM');
+    final color = thermal ? Colors.black : _hex(_design['primary_color']);
+    final ink = thermal ? Colors.black : _hex(_design['text_color']);
+    final surface = thermal ? Colors.white : _hex(_design['background_color']);
     final align = '${_design['alignment']}' == 'left'
         ? TextAlign.left
         : '${_design['alignment']}' == 'right'
@@ -621,9 +677,31 @@ class _CompanyPosTemplateDesignerState
           if (_design['show_separators'] == true) {
             widgets.add(const Divider());
           }
+          if (!thermal) {
+            widgets.add(
+              Container(
+                color: color,
+                padding: const EdgeInsets.all(7),
+                child: const Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'DESCRIPCIÓN',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    Text(
+                      'CANT.  PRECIO  TOTAL',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           widgets.add(
             label(
-              '2 x Aromatizante       L 200.00\n1 x Microfibra       L 50.00',
+              'Aromatizante    2 x L 100.00    L 200.00\nMicrofibra       1 x L 50.00      L 50.00',
             ),
           );
           if (_design['show_sku'] == true) {
@@ -715,6 +793,112 @@ class _CompanyPosTemplateDesignerState
   @override
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < 840;
+    final content = Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(17),
+          color: _panel,
+          child: Row(
+            children: [
+              const Icon(Icons.design_services_outlined, color: _teal),
+              const SizedBox(width: 11),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Diseñador de comprobantes',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                    Text(
+                      'Identidad por sucursal, versiones históricas y datos fiscales protegidos',
+                      style: TextStyle(color: Color(0xFF9CB1BB), fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              if (!widget.embedded)
+                IconButton(
+                  onPressed: _saving ? null : () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'RECEIPT', label: Text('Recibo')),
+                    ButtonSegment(
+                      value: 'FISCAL_INVOICE',
+                      label: Text('Factura'),
+                    ),
+                  ],
+                  selected: {_type},
+                  onSelectionChanged: (v) => _switch(v.first),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text('Versión $_revision', style: const TextStyle(fontSize: 11)),
+            ],
+          ),
+        ),
+        if (_error != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(9),
+            color: const Color(0xFF6D2933),
+            child: SelectableText(_error!),
+          ),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : narrow
+              ? _editorPanel()
+              : Row(
+                  children: [
+                    Expanded(flex: 4, child: _editorPanel()),
+                    Expanded(flex: 5, child: _preview()),
+                  ],
+                ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(color: _panel),
+          child: Row(
+            children: [
+              if (narrow)
+                OutlinedButton(
+                  onPressed: _loading ? null : _previewPdf,
+                  child: const Text('Vista previa PDF'),
+                ),
+              const Spacer(),
+              if (!widget.embedded)
+                TextButton(
+                  onPressed: _saving ? null : () => Navigator.pop(context),
+                  child: const Text('Cerrar'),
+                ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _loading || _saving || !_dirty ? null : _save,
+                icon: const Icon(Icons.save_outlined),
+                label: Text(_saving ? 'Guardando...' : 'Publicar diseño'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (widget.embedded) {
+      return ColoredBox(color: _panel, child: content);
+    }
     return Dialog(
       insetPadding: const EdgeInsets.all(18),
       child: ConstrainedBox(
@@ -722,113 +906,7 @@ class _CompanyPosTemplateDesignerState
           maxWidth: 1250,
           maxHeight: MediaQuery.sizeOf(context).height * .90,
         ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(17),
-              color: _panel,
-              child: Row(
-                children: [
-                  const Icon(Icons.design_services_outlined, color: _teal),
-                  const SizedBox(width: 11),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Diseñador de comprobantes',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                          ),
-                        ),
-                        Text(
-                          'Identidad por sucursal, versiones históricas y datos fiscales protegidos',
-                          style: TextStyle(
-                            color: Color(0xFF9CB1BB),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _saving ? null : () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'RECEIPT', label: Text('Recibo')),
-                        ButtonSegment(
-                          value: 'FISCAL_INVOICE',
-                          label: Text('Factura'),
-                        ),
-                      ],
-                      selected: {_type},
-                      onSelectionChanged: (v) => _switch(v.first),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Versión $_revision',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-            if (_error != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(9),
-                color: const Color(0xFF6D2933),
-                child: SelectableText(_error!),
-              ),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : narrow
-                  ? _editorPanel()
-                  : Row(
-                      children: [
-                        Expanded(flex: 4, child: _editorPanel()),
-                        Expanded(flex: 5, child: _preview()),
-                      ],
-                    ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(color: _panel),
-              child: Row(
-                children: [
-                  if (narrow)
-                    OutlinedButton(
-                      onPressed: _loading ? null : _previewPdf,
-                      child: const Text('Vista previa PDF'),
-                    ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: _saving ? null : () => Navigator.pop(context),
-                    child: const Text('Cerrar'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: _loading || _saving || !_dirty ? null : _save,
-                    icon: const Icon(Icons.save_outlined),
-                    label: Text(_saving ? 'Guardando...' : 'Publicar diseño'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        child: content,
       ),
     );
   }

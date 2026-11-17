@@ -11,6 +11,7 @@ import 'ui/company_booking_page.dart';
 import 'ui/company_inventory_page.dart';
 import 'ui/company_cash_page.dart';
 import 'ui/company_smart_pos_page.dart';
+import 'ui/company_pos_designer_page.dart';
 import 'ui/company_sales_page.dart';
 
 import 'package:flutter/material.dart';
@@ -201,6 +202,7 @@ const _menu = [
   _NavItem('Configuración', Icons.settings_outlined),
   _NavItem('Smart POS', Icons.point_of_sale_outlined),
   _NavItem('Historial de ventas', Icons.receipt_long_outlined),
+  _NavItem('Diseñar comprobantes', Icons.design_services_outlined),
 ];
 
 // ADN MyCarWash - Navegacion compacta 20.1.
@@ -256,6 +258,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
   _CompactNavGroup('Mi empresa', Icons.business_outlined, [
     'Mi Empresa',
     'Sitio web',
+    'Diseñar comprobantes',
     'Configuración',
   ]),
 ];
@@ -598,6 +601,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
 
   Widget _mainContent() {
     final destination = _menu[selected].title;
+    if (destination == 'Diseñar comprobantes') {
+      return const CompanyPosDesignerPage();
+    }
     if (destination == 'Smart POS' || destination == 'Historial de ventas') {
       return CompanySmartPosPage(
         key: ValueKey<String>('pos_$destination'),

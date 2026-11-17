@@ -8,7 +8,6 @@ import '../core/company_business_api.dart';
 import 'company_pos_checkout_dialog.dart';
 import 'company_pos_fiscal_settings_dialog.dart';
 import 'company_pos_printing.dart';
-import 'company_pos_template_designer.dart';
 
 /// Smart POS 21A: venta de artículos, carrito, pagos mixtos e historial.
 /// Los importes que se muestran en el carrito son indicativos; Laravel calcula
@@ -173,22 +172,6 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     if (done == true && mounted) {
       await _loadFiscalSettings();
     }
-  }
-
-  Future<void> _openDesigner() async {
-    final branch = _branchId;
-    if (branch == null) {
-      _message(
-        'Selecciona una sucursal antes de editar los comprobantes.',
-        error: true,
-      );
-      return;
-    }
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => CompanyPosTemplateDesigner(api: _api, branchId: branch),
-    );
   }
 
   void _message(String message, {bool error = false}) {
@@ -963,30 +946,12 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             if (head.maxWidth < 650) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  branchSelector,
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    key: const ValueKey('pos_design_document'),
-                    onPressed: _openDesigner,
-                    icon: const Icon(Icons.design_services_outlined),
-                    label: const Text('Diseñar recibo y factura'),
-                  ),
-                  const SizedBox(height: 12),
-                  tabs,
-                ],
+                children: [branchSelector, const SizedBox(height: 12), tabs],
               );
             }
             return Row(
               children: [
                 Expanded(child: branchSelector),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  key: const ValueKey('pos_design_document'),
-                  onPressed: _openDesigner,
-                  icon: const Icon(Icons.design_services_outlined),
-                  label: const Text('Diseñar comprobantes'),
-                ),
                 const SizedBox(width: 12),
                 tabs,
               ],

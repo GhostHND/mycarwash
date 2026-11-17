@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:adn_mycarwash/core/mycarwash_session.dart';
 import 'package:adn_mycarwash/ui/company_smart_pos_page.dart';
 import 'package:adn_mycarwash/ui/company_pos_document_design.dart';
+import 'package:adn_mycarwash/ui/company_pos_template_designer.dart';
+import 'package:adn_mycarwash/core/company_business_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -161,7 +163,7 @@ void main() {
     });
   }
 
-  testWidgets('Diseñador muestra plantillas y publica cambios por sucursal', (
+  testWidgets('Editor de comprobantes publica configuraciones por sucursal', (
     tester,
   ) async {
     Map<String, dynamic>? saved;
@@ -173,17 +175,14 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SingleChildScrollView(
-            child: CompanySmartPosPage(client: client),
+          body: CompanyPosTemplateDesigner(
+            api: CompanyBusinessApi(client),
+            branchId: 1,
+            embedded: true,
           ),
         ),
       ),
     );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('pos_design_document')),
-    );
-    await tester.tap(find.byKey(const ValueKey('pos_design_document')));
     await tester.pumpAndSettle();
     expect(find.text('Diseñador de comprobantes'), findsOneWidget);
     expect(find.text('Identidad de marca'), findsOneWidget);
@@ -202,6 +201,33 @@ void main() {
       (saved?['design'] as Map)['sections'],
       CompanyPosDocumentDesign.sections,
     );
+    expect((saved?['design'] as Map)['layout_style'], 'ticket');
+  });
+
+  testWidgets('Smart POS no muestra diseñador en escritorio ni móvil', (
+    tester,
+  ) async {
+    final client = clientFor(onSale: (_) {});
+    addTearDown(client.close);
+    final page = MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(child: CompanySmartPosPage(client: client)),
+      ),
+    );
+    await tester.pumpWidget(page);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('pos_design_document')), findsNothing);
+    expect(find.text('Diseñar comprobantes'), findsNothing);
+
+    // Repite la validación en el diseño estrecho, que antes conservaba
+    // una llamada a _openDesigner eliminada al mover el módulo al menú.
+    tester.view.physicalSize = const Size(550, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('pos_design_document')), findsNothing);
+    expect(find.text('Diseñar recibo y factura'), findsNothing);
   });
 
   testWidgets('Selector muestra factura e impide cobrar si falta CAI', (

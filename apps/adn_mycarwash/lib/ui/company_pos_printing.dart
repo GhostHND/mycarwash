@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'company_pos_document_design.dart';
+import 'company_pos_advanced_printing.dart';
 
 /// Renderer de PDFs basado en versiones de diseño publicadas por sucursal.
 /// Nunca modifica el subtotal, el ISV, el CAI, los correlativos ni una venta.
@@ -67,6 +68,10 @@ class CompanyPosPrinting {
     Map<String, dynamic> sale, {
     bool demo = false,
   }) async {
+    final savedDesign = sale['document_design'];
+    if (savedDesign is Map && savedDesign.containsKey('layout_style')) {
+      return CompanyPosAdvancedPrinting.buildPdf(sale, demo: demo);
+    }
     final invoice = sale['document_type'] == 'FISCAL_INVOICE';
     // Un CAI de ejemplo nunca se presenta como una factura autorizada.
     final clearlyFictitious =
@@ -430,12 +435,14 @@ class CompanyPosPrinting {
           'name_snapshot': 'Aromatizante',
           'sku_snapshot': 'ART-001',
           'quantity': '2',
+          'unit_price': '100.00',
           'line_total': '200.00',
         },
         {
           'name_snapshot': 'Microfibra',
           'sku_snapshot': 'ART-002',
           'quantity': '1',
+          'unit_price': '50.00',
           'line_total': '50.00',
         },
       ],
