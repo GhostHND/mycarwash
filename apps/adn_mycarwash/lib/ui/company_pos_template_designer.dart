@@ -9,6 +9,37 @@ import '../core/company_business_api.dart';
 import 'company_pos_document_design.dart';
 import 'company_pos_printing.dart';
 
+/// Ajusta cada pagina PDF completa al panel disponible, sin alterar el PDF.
+/// El ticket de demostracion usa dos articulos y una forma de pago.
+/// Los formatos impresos conservan sus dimensiones originales.
+double posPreviewFittedWidth({
+  required String paper,
+  required bool qrEnabled,
+  required double viewportWidth,
+  required double viewportHeight,
+}) {
+  final thermal = paper == '58MM' || paper == '80MM';
+  final pageWidthMm = thermal
+      ? (paper == '58MM' ? 58.0 : 80.0)
+      : (paper == 'LETTER' ? 215.9 : 210.0);
+  final pageHeightMm = thermal
+      ? 175.0 + 2.0 * 12.0 + 1.0 * 7.0 + (qrEnabled ? 75.0 : 0.0)
+      : (paper == 'LETTER' ? 279.4 : 297.0);
+  final usableWidth = (viewportWidth - 32.0)
+      .clamp(1.0, double.infinity)
+      .toDouble();
+  final usableHeight = (viewportHeight - 48.0)
+      .clamp(1.0, double.infinity)
+      .toDouble();
+  final heightFit = usableHeight * pageWidthMm / pageHeightMm;
+  final maxVisualWidth = thermal ? 195.0 : 390.0;
+  return [
+    usableWidth,
+    heightFit,
+    maxVisualWidth,
+  ].reduce((a, b) => a < b ? a : b).clamp(1.0, maxVisualWidth).toDouble();
+}
+
 /// Diseñador por sucursal: recibo/factura con revisiones inmutables.
 /// Los bloques fiscales, importes y números de venta no pueden omitirse.
 class CompanyPosTemplateDesigner extends StatefulWidget {
@@ -660,8 +691,8 @@ class _CompanyPosTemplateDesignerState
     ],
   );
 
-  /// Vista WYSIWYG real. El PDF renderizado aquí es el MISMO archivo que se
-  /// imprime; no se dibuja una versión aproximada con Flutter.
+  /// Previsualizacion del PDF real, escalada automaticamente para mostrar
+  /// cada pagina completa. Abrir PDF conserva el tamaño original.
   Widget _preview() {
     final snapshot = Map<String, dynamic>.from(_design);
     final example = CompanyPosPrinting.demoSale(_type, snapshot);
@@ -689,27 +720,38 @@ class _CompanyPosTemplateDesignerState
           ),
           const SizedBox(height: 7),
           const Text(
-            'Previsualización del PDF original · Datos ficticios · '
+            'Vista ajustada a la pagina · Datos ficticios · '
             'No genera ventas ni consume CAI.',
             style: TextStyle(color: Color(0xFF9CB1BB), fontSize: 11),
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: PdfPreview(
-              key: key,
-              build: (_) => CompanyPosPrinting.buildPdf(example, demo: true),
-              allowPrinting: false,
-              allowSharing: false,
-              canChangePageFormat: false,
-              canChangeOrientation: false,
-              canDebug: false,
-              maxPageWidth: 700,
-              onError: (context, error) => Center(
-                child: SelectableText(
-                  'No se pudo renderizar el PDF: $error',
-                  style: const TextStyle(color: Color(0xFFFFBA80)),
-                ),
-              ),
+            child: LayoutBuilder(
+              builder: (context, viewport) {
+                final fittedWidth = posPreviewFittedWidth(
+                  paper: '${snapshot['paper'] ?? '80MM'}',
+                  qrEnabled: snapshot['qr_enabled'] == true,
+                  viewportWidth: viewport.maxWidth,
+                  viewportHeight: viewport.maxHeight,
+                );
+                return PdfPreview(
+                  key: key,
+                  build: (_) =>
+                      CompanyPosPrinting.buildPdf(example, demo: true),
+                  allowPrinting: false,
+                  allowSharing: false,
+                  canChangePageFormat: false,
+                  canChangeOrientation: false,
+                  canDebug: false,
+                  maxPageWidth: fittedWidth,
+                  onError: (context, error) => Center(
+                    child: SelectableText(
+                      'No se pudo renderizar el PDF: $error',
+                      style: const TextStyle(color: Color(0xFFFFBA80)),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
