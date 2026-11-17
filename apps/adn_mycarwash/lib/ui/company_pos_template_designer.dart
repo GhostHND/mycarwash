@@ -40,6 +40,25 @@ double posPreviewFittedWidth({
   ].reduce((a, b) => a < b ? a : b).clamp(1.0, maxVisualWidth).toDouble();
 }
 
+/// Zoom de la vista, relativo al ajuste automatico (1.0 = ajustar pagina).
+/// El PDF y sus dimensiones de impresion no se modifican.
+const double posPreviewZoomMin = 0.50;
+const double posPreviewZoomMax = 5.00;
+const double posPreviewZoomStep = 0.25;
+
+double posPreviewNextZoom(double current, {required bool increase}) {
+  final bounded = current
+      .clamp(posPreviewZoomMin, posPreviewZoomMax)
+      .toDouble();
+  final next = bounded + (increase ? posPreviewZoomStep : -posPreviewZoomStep);
+  return next.clamp(posPreviewZoomMin, posPreviewZoomMax).toDouble();
+}
+
+double posPreviewZoomedWidth({
+  required double fittedWidth,
+  required double zoom,
+}) => fittedWidth * zoom.clamp(posPreviewZoomMin, posPreviewZoomMax).toDouble();
+
 /// Diseñador por sucursal: recibo/factura con revisiones inmutables.
 /// Los bloques fiscales, importes y números de venta no pueden omitirse.
 class CompanyPosTemplateDesigner extends StatefulWidget {
@@ -74,6 +93,7 @@ class _CompanyPosTemplateDesignerState
   String? _error;
   Timer? _previewDebounce;
   int _previewVersion = 0;
+  double _previewZoom = 1.0; // 100% = ajustar pagina.
 
   @override
   void dispose() {
@@ -691,36 +711,121 @@ class _CompanyPosTemplateDesignerState
     ],
   );
 
-  /// Previsualizacion del PDF real, escalada automaticamente para mostrar
-  /// cada pagina completa. Abrir PDF conserva el tamaño original.
+  /// Vista del PDF real. Los controles de zoom modifican solo la escala
+  /// de la previsualizacion; nunca el contenido o papel del comprobante.
   Widget _preview() {
     final snapshot = Map<String, dynamic>.from(_design);
     final example = CompanyPosPrinting.demoSale(_type, snapshot);
-    final key = ValueKey('pdf_live_${_type}_${_revision}_$_previewVersion');
+    final key = ValueKey(
+      'pdf_live_${_type}_${_revision}_${_previewVersion}_${_previewZoom.toStringAsFixed(2)}',
+    );
+
+    final zoomControls = Wrap(
+      spacing: 3,
+      runSpacing: 4,
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        IconButton(
+          key: const ValueKey('pos_preview_zoom_out'),
+          tooltip: 'Alejar vista (−25 %)',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.zoom_out),
+          onPressed: _previewZoom <= posPreviewZoomMin
+              ? null
+              : () => setState(() {
+                  _previewZoom = posPreviewNextZoom(
+                    _previewZoom,
+                    increase: false,
+                  );
+                }),
+        ),
+        SizedBox(
+          width: 52,
+          child: Center(
+            child: Text(
+              '${(_previewZoom * 100).round()} %',
+              key: const ValueKey('pos_preview_zoom_percent'),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        IconButton(
+          key: const ValueKey('pos_preview_zoom_in'),
+          tooltip: 'Acercar vista (+25 %)',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.zoom_in),
+          onPressed: _previewZoom >= posPreviewZoomMax
+              ? null
+              : () => setState(() {
+                  _previewZoom = posPreviewNextZoom(
+                    _previewZoom,
+                    increase: true,
+                  );
+                }),
+        ),
+        TextButton.icon(
+          key: const ValueKey('pos_preview_zoom_fit'),
+          onPressed: _previewZoom == 1.0
+              ? null
+              : () => setState(() => _previewZoom = 1.0),
+          icon: const Icon(Icons.fit_screen, size: 17),
+          label: const Text('Ajustar'),
+        ),
+        OutlinedButton.icon(
+          onPressed: _previewPdf,
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          label: const Text('Abrir PDF'),
+        ),
+      ],
+    );
+
     return Container(
       color: _panel,
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Vista previa real del PDF',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _previewPdf,
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('Abrir PDF'),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, header) {
+              if (header.maxWidth < 660) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Vista previa real del PDF',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: zoomControls,
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Vista previa real del PDF',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  zoomControls,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 7),
           const Text(
-            'Vista ajustada a la pagina · Datos ficticios · '
+            '100 % = ajustar página · Vista del PDF real · Datos ficticios · '
             'No genera ventas ni consume CAI.',
             style: TextStyle(color: Color(0xFF9CB1BB), fontSize: 11),
           ),
@@ -743,7 +848,10 @@ class _CompanyPosTemplateDesignerState
                   canChangePageFormat: false,
                   canChangeOrientation: false,
                   canDebug: false,
-                  maxPageWidth: fittedWidth,
+                  maxPageWidth: posPreviewZoomedWidth(
+                    fittedWidth: fittedWidth,
+                    zoom: _previewZoom,
+                  ),
                   onError: (context, error) => Center(
                     child: SelectableText(
                       'No se pudo renderizar el PDF: $error',
