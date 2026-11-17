@@ -792,122 +792,135 @@ class _CompanyPosTemplateDesignerState
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < 840;
-    final content = Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(17),
-          color: _panel,
-          child: Row(
-            children: [
-              const Icon(Icons.design_services_outlined, color: _teal),
-              const SizedBox(width: 11),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Diseñador de comprobantes',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // La barra lateral puede restar espacio aunque la ventana sea ancha.
+        final narrow = constraints.maxWidth < 840;
+        final content = Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(17),
+              color: _panel,
+              child: Row(
+                children: [
+                  const Icon(Icons.design_services_outlined, color: _teal),
+                  const SizedBox(width: 11),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Diseñador de comprobantes',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        Text(
+                          'Identidad por sucursal, versiones históricas y datos fiscales protegidos',
+                          style: TextStyle(
+                            color: Color(0xFF9CB1BB),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!widget.embedded)
+                    IconButton(
+                      onPressed: _saving ? null : () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'RECEIPT', label: Text('Recibo')),
+                      ButtonSegment(
+                        value: 'FISCAL_INVOICE',
+                        label: Text('Factura'),
                       ),
-                    ),
-                    Text(
-                      'Identidad por sucursal, versiones históricas y datos fiscales protegidos',
-                      style: TextStyle(color: Color(0xFF9CB1BB), fontSize: 11),
-                    ),
-                  ],
-                ),
+                    ],
+                    selected: {_type},
+                    onSelectionChanged: (v) => _switch(v.first),
+                  ),
+                  Text(
+                    'Versión $_revision',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ],
               ),
-              if (!widget.embedded)
-                IconButton(
-                  onPressed: _saving ? null : () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Expanded(
-                child: SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'RECEIPT', label: Text('Recibo')),
-                    ButtonSegment(
-                      value: 'FISCAL_INVOICE',
-                      label: Text('Factura'),
+            ),
+            if (_error != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(9),
+                color: const Color(0xFF6D2933),
+                child: SelectableText(_error!),
+              ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : narrow
+                  ? _editorPanel()
+                  : Row(
+                      children: [
+                        Expanded(flex: 4, child: _editorPanel()),
+                        Expanded(flex: 5, child: _preview()),
+                      ],
                     ),
-                  ],
-                  selected: {_type},
-                  onSelectionChanged: (v) => _switch(v.first),
-                ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(color: _panel),
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  if (narrow)
+                    OutlinedButton(
+                      onPressed: _loading ? null : _previewPdf,
+                      child: const Text('Vista previa PDF'),
+                    ),
+                  if (!widget.embedded)
+                    TextButton(
+                      onPressed: _saving ? null : () => Navigator.pop(context),
+                      child: const Text('Cerrar'),
+                    ),
+                  FilledButton.icon(
+                    onPressed: _loading || _saving || !_dirty ? null : _save,
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(_saving ? 'Guardando...' : 'Publicar diseño'),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Text('Versión $_revision', style: const TextStyle(fontSize: 11)),
-            ],
+            ),
+          ],
+        );
+        if (widget.embedded) {
+          return ColoredBox(color: _panel, child: content);
+        }
+        return Dialog(
+          insetPadding: const EdgeInsets.all(18),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 1250,
+              maxHeight: MediaQuery.sizeOf(context).height * .90,
+            ),
+            child: content,
           ),
-        ),
-        if (_error != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(9),
-            color: const Color(0xFF6D2933),
-            child: SelectableText(_error!),
-          ),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : narrow
-              ? _editorPanel()
-              : Row(
-                  children: [
-                    Expanded(flex: 4, child: _editorPanel()),
-                    Expanded(flex: 5, child: _preview()),
-                  ],
-                ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(color: _panel),
-          child: Row(
-            children: [
-              if (narrow)
-                OutlinedButton(
-                  onPressed: _loading ? null : _previewPdf,
-                  child: const Text('Vista previa PDF'),
-                ),
-              const Spacer(),
-              if (!widget.embedded)
-                TextButton(
-                  onPressed: _saving ? null : () => Navigator.pop(context),
-                  child: const Text('Cerrar'),
-                ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _loading || _saving || !_dirty ? null : _save,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(_saving ? 'Guardando...' : 'Publicar diseño'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-    if (widget.embedded) {
-      return ColoredBox(color: _panel, child: content);
-    }
-    return Dialog(
-      insetPadding: const EdgeInsets.all(18),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 1250,
-          maxHeight: MediaQuery.sizeOf(context).height * .90,
-        ),
-        child: content,
-      ),
+        );
+      },
     );
   }
 }

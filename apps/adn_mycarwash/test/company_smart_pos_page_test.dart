@@ -5,6 +5,7 @@ import 'package:adn_mycarwash/core/mycarwash_session.dart';
 import 'package:adn_mycarwash/ui/company_smart_pos_page.dart';
 import 'package:adn_mycarwash/ui/company_pos_document_design.dart';
 import 'package:adn_mycarwash/ui/company_pos_template_designer.dart';
+import 'package:adn_mycarwash/ui/company_pos_designer_page.dart';
 import 'package:adn_mycarwash/core/company_business_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -162,6 +163,41 @@ void main() {
       );
     });
   }
+
+  testWidgets('Mi empresa: diseñador sin overflow en contenedor reducido', (
+    tester,
+  ) async {
+    final client = clientFor(onSale: (_) {});
+    addTearDown(client.close);
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 680,
+              child: SingleChildScrollView(
+                child: CompanyPosDesignerPage(client: client),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(CompanyPosDesignerPage), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('designer_branch_selector')),
+      findsOneWidget,
+    );
+    tester.view.physicalSize = const Size(560, 740);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Editor de comprobantes publica configuraciones por sucursal', (
     tester,

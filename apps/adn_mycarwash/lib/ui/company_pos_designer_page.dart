@@ -110,7 +110,10 @@ class _CompanyPosDesignerPageState extends State<CompanyPosDesignerPage> {
               onChanged: (id) => setState(() => _branchId = id),
             ),
           const SizedBox(height: 12),
-          Expanded(
+          SizedBox(
+            height: (MediaQuery.sizeOf(context).height - 240.0)
+                .clamp(520.0, 1100.0)
+                .toDouble(),
             child: _branchId == null
                 ? const Center(child: Text('Selecciona una sucursal activa.'))
                 : CompanyPosTemplateDesigner(
