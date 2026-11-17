@@ -115,7 +115,9 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
   }
 
   void _edited() {
-    _attemptKey = null;
+    // Mantener la clave de idempotencia durante toda esta venta: si una solicitud
+    // llegó al servidor pero se perdió la respuesta, un reintento no podrá
+    // registrar la misma operación dos veces, incluso tras editar el formulario.
     if (_error != null) setState(() => _error = null);
   }
 
@@ -577,20 +579,38 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
       _error = null;
     });
     try {
-      final response = await widget.api.request(
-        'POST',
-        '/pos/sales',
-        body: body,
-      );
+      final response = await widget.api
+          .request('POST', '/pos/sales', body: body)
+          .timeout(const Duration(seconds: 30));
       if (!mounted) return;
-      final receipt = Map<String, dynamic>.from(response['data'] as Map);
+      final raw = response['data'];
+      if (raw is! Map) {
+        throw const FormatException(
+          'El servidor no devolvió el comprobante de la venta.',
+        );
+      }
+      final receipt = Map<String, dynamic>.from(raw);
+      final saleId = _integer(receipt['id']);
+      if (saleId == null || saleId <= 0 || receipt['status'] != 'POSTED') {
+        throw const FormatException(
+          'El servidor no confirmó una venta publicada.',
+        );
+      }
       Navigator.of(context).pop(receipt);
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(
+        () => _error =
+            'El servidor no respondió en 30 segundos. El cobro podría haberse registrado. '
+            'Cierra esta ventana y consulta Historial de ventas antes de repetirlo. '
+            'Este formulario conserva la misma clave para proteger los reintentos.',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(
         () => _error =
             'No se confirmó la venta: $e\n'
-            'Si hubo interrupción de conexión, revisa Historial antes de intentar otra vez.',
+            'Comprueba la causa indicada y revisa Historial si hubo una interrupción.',
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -656,34 +676,6 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
                       child: Divider(),
                     ),
                     _paymentSection(),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        key: const ValueKey('pos_payment_error'),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF502A32),
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(color: Colors.redAccent),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              color: Colors.redAccent,
-                            ),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -693,6 +685,52 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
               child: Column(
                 children: [
+                  if (_saving) ...[
+                    const LinearProgressIndicator(minHeight: 3),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Registrando la venta en el servidor...',
+                      style: TextStyle(color: muted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_error != null) ...[
+                    Container(
+                      key: const ValueKey('pos_payment_error'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF502A32),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: Colors.redAccent),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.redAccent,
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 110),
+                              child: SingleChildScrollView(
+                                child: SelectableText(
+                                  _error!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

@@ -585,9 +585,12 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       _discount.text = '0.00';
       _reason.clear();
     });
-    await _loadProducts();
-    if (!mounted) return;
+    // Mostrar primero la confirmación; nunca bloquear el comprobante esperando
+    // una actualización del catálogo que puede tardar o fallar por la red.
     await _showReceipt(receipt);
+    if (!mounted) return;
+    await _loadProducts();
+    if (_history && mounted) await _loadSales();
   }
 
   String _receiptText(Map<String, dynamic> sale) {
