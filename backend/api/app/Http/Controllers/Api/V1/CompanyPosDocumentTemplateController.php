@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 /** Versioned, company/branch-scoped POS document design; fiscal values never enter this payload. */
 class CompanyPosDocumentTemplateController extends Controller
 {
-    public const BLOCKS = ['logo', 'brand', 'document', 'fiscal', 'sale', 'customer', 'items', 'totals', 'payments', 'notes', 'footer'];
+    public const BLOCKS = ['logo', 'brand', 'document', 'fiscal', 'sale', 'customer', 'items', 'totals', 'payments', 'notes', 'footer', 'qr'];
     private const REQUIRED = ['document', 'sale', 'customer', 'items', 'totals'];
 
     private function access(Request $request, int $company, string $permission): void
@@ -48,6 +48,12 @@ class CompanyPosDocumentTemplateController extends Controller
             'footer_text' => 'Gracias por preferirnos',
             'custom_note' => '',
             'primary_color' => '#0FA7B4',
+            'secondary_color' => '#142D3B',
+            'border_color' => '#DAE2E8',
+            'header_layout' => 'logo_left',
+            'summary_position' => 'right',
+            'table_density' => 'comfortable',
+            'renderer_version' => 4,
             'text_color' => '#202B30',
             'background_color' => '#FFFFFF',
             'font_family' => 'helvetica',
@@ -66,6 +72,12 @@ class CompanyPosDocumentTemplateController extends Controller
             'payment_section_title' => 'FORMAS DE PAGO',
             'fiscal_section_title' => 'INFORMACIÓN FISCAL',
             'logo_base64' => '',
+            'qr_enabled' => false,
+            'qr_url' => '',
+            'qr_title' => 'ESCANEA Y VISÍTANOS',
+            'qr_caption' => '',
+            'qr_size_mm' => 28,
+            'qr_alignment' => 'center',
             'logo_width_mm' => 32,
             'show_sku' => false,
             'show_phone' => true,
@@ -114,6 +126,12 @@ class CompanyPosDocumentTemplateController extends Controller
             'design.footer_text' => ['present', 'nullable', 'string', 'max:350'],
             'design.custom_note' => ['present', 'nullable', 'string', 'max:350'],
             'design.primary_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/D'],
+            'design.secondary_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/D'],
+            'design.border_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/D'],
+            'design.header_layout' => ['required', 'in:logo_left,logo_center,logo_right'],
+            'design.summary_position' => ['required', 'in:right,bottom'],
+            'design.table_density' => ['required', 'in:compact,comfortable'],
+            'design.renderer_version' => ['required', 'integer', 'in:4'],
             'design.text_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/D'],
             'design.background_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/D'],
             'design.font_family' => ['required', 'in:helvetica,times,courier'],
@@ -132,6 +150,12 @@ class CompanyPosDocumentTemplateController extends Controller
             'design.payment_section_title' => ['required', 'string', 'max:60'],
             'design.fiscal_section_title' => ['required', 'string', 'max:60'],
             'design.logo_base64' => ['present', 'nullable', 'string', 'max:1398104'],
+            'design.qr_enabled' => ['required', 'boolean'],
+            'design.qr_url' => ['present', 'nullable', 'string', 'max:800'],
+            'design.qr_title' => ['present', 'nullable', 'string', 'max:80'],
+            'design.qr_caption' => ['present', 'nullable', 'string', 'max:140'],
+            'design.qr_size_mm' => ['required', 'integer', 'between:18,48'],
+            'design.qr_alignment' => ['required', 'in:left,center,right'],
             'design.logo_width_mm' => ['required', 'integer', 'between:10,80'],
             'design.show_sku' => ['required', 'boolean'],
             'design.show_phone' => ['required', 'boolean'],
@@ -139,10 +163,10 @@ class CompanyPosDocumentTemplateController extends Controller
             'design.show_address' => ['required', 'boolean'],
             'design.show_payment_details' => ['required', 'boolean'],
             'design.show_separators' => ['required', 'boolean'],
-            'design.sections' => ['required', 'array', 'size:11'],
-            'design.sections.*' => ['required', 'string', 'in:logo,brand,document,fiscal,sale,customer,items,totals,payments,notes,footer', 'distinct'],
-            'design.hidden_sections' => ['present', 'array', 'max:6'],
-            'design.hidden_sections.*' => ['required', 'string', 'in:logo,brand,notes,footer', 'distinct'],
+            'design.sections' => ['required', 'array', 'size:12'],
+            'design.sections.*' => ['required', 'string', 'in:logo,brand,document,fiscal,sale,customer,items,totals,payments,notes,footer,qr', 'distinct'],
+            'design.hidden_sections' => ['present', 'array', 'max:7'],
+            'design.hidden_sections.*' => ['required', 'string', 'in:logo,brand,notes,footer,qr', 'distinct'],
         ]);
         $branch = (int) $data['branch_id'];
         $this->validateBranch($company, $branch);
@@ -153,9 +177,23 @@ class CompanyPosDocumentTemplateController extends Controller
         }
         // ConvertEmptyStringsToNull de Laravel normaliza cadenas vacías a null;
         // el modelo visual utiliza '' para campos opcionales.
-        foreach (['subtitle','brand_name','footer_text','custom_note','logo_base64'] as $field) {
+        foreach (['subtitle','brand_name','footer_text','custom_note','logo_base64','qr_url','qr_title','qr_caption'] as $field) {
             $design[$field] = (string) ($design[$field] ?? '');
         }
+        // QR: enlace público; no se aceptan esquemas javascript:, data: ni credenciales.
+        $qrLink = trim($design['qr_url']);
+        if ($design['qr_enabled'] && in_array($design['paper'], ['58MM', '80MM'], true)) {
+            $host = parse_url($qrLink, PHP_URL_HOST);
+            $scheme = strtolower((string) parse_url($qrLink, PHP_URL_SCHEME));
+            if (!filter_var($qrLink, FILTER_VALIDATE_URL) || !$host ||
+                !in_array($scheme, ['http', 'https'], true) ||
+                parse_url($qrLink, PHP_URL_USER) !== null ||
+                parse_url($qrLink, PHP_URL_PASS) !== null) {
+                throw ValidationException::withMessages(['design.qr_url' =>
+                    'Ingresa un enlace http:// o https:// válido para el QR.']);
+            }
+        }
+        $design['qr_url'] = $qrLink;
         $logo = $design['logo_base64'];
         if ($logo !== '') {
             $bytes = base64_decode($logo, true);

@@ -407,12 +407,12 @@ class CompanyPosPrinting {
     );
   }
 
-  /// Impresión de demostración: JAMÁS genera venta ni utiliza CAI real.
-  static Future<void> previewDesign(
+  /// Datos sintéticos de vista previa. No escribe ventas ni CAI.
+  static Map<String, dynamic> demoSale(
     String type,
     Map<String, dynamic> design,
-  ) async {
-    final example = <String, dynamic>{
+  ) {
+    return <String, dynamic>{
       'id': 'DEMO',
       'company_name': 'MI NEGOCIO',
       'document_type': type,
@@ -460,6 +460,14 @@ class CompanyPosPrinting {
       'cash_received': type == 'FISCAL_INVOICE' ? '287.50' : '250.00',
       'change_given': '0.00',
     };
+  }
+
+  /// Impresión de demostración: JAMÁS genera venta ni consume un CAI.
+  static Future<void> previewDesign(
+    String type,
+    Map<String, dynamic> design,
+  ) async {
+    final example = demoSale(type, design);
     await Printing.layoutPdf(
       name: 'VISTA_PREVIA_SIN_VALIDEZ_FISCAL',
       onLayout: (_) => buildPdf(example, demo: true),

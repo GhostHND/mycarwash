@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'company_pos_document_design.dart';
+import 'company_pos_modern_printing.dart';
 
 /// Layout modular 21C.3. Reads only the immutable sale/document snapshot.
 /// Fiscal numbering, tax and totals always come from Laravel, never the editor.
@@ -63,6 +64,10 @@ class CompanyPosAdvancedPrinting {
       type,
       sale['document_design'],
     );
+    // Las revisiones publicadas antes de 21C.4 mantienen el PDF anterior.
+    if ((design['renderer_version'] as num?)?.toInt() == 4) {
+      return CompanyPosModernPrinting.buildPdf(sale, demo: demo);
+    }
     final paper = '${design['paper']}';
     final thermal = paper == '58MM' || paper == '80MM';
     final mm = PdfPageFormat.mm;

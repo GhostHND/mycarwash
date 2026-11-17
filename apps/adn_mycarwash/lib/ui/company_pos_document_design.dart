@@ -13,6 +13,7 @@ class CompanyPosDocumentDesign {
     'payments',
     'notes',
     'footer',
+    'qr',
   ];
 
   static const labels = <String, String>{
@@ -27,9 +28,16 @@ class CompanyPosDocumentDesign {
     'payments': 'Medios de pago y cambio',
     'notes': 'Mensaje personalizado',
     'footer': 'Pie de página',
+    'qr': 'Código QR y enlace',
   };
 
-  static const optionalSections = <String>{'logo', 'brand', 'notes', 'footer'};
+  static const optionalSections = <String>{
+    'logo',
+    'brand',
+    'notes',
+    'footer',
+    'qr',
+  };
 
   static Map<String, dynamic> defaults(String type) => <String, dynamic>{
     'title': type == 'FISCAL_INVOICE' ? 'FACTURA' : 'RECIBO DE COMPRA',
@@ -38,6 +46,12 @@ class CompanyPosDocumentDesign {
     'footer_text': 'Gracias por preferirnos',
     'custom_note': '',
     'primary_color': '#0FA7B4',
+    'secondary_color': '#142D3B',
+    'border_color': '#DAE2E8',
+    'header_layout': 'logo_left',
+    'summary_position': 'right',
+    'table_density': 'comfortable',
+    'renderer_version': 4,
     'text_color': '#202B30',
     'background_color': '#FFFFFF',
     'font_family': 'helvetica',
@@ -56,6 +70,12 @@ class CompanyPosDocumentDesign {
     'payment_section_title': 'FORMAS DE PAGO',
     'fiscal_section_title': 'INFORMACIÓN FISCAL',
     'logo_base64': '',
+    'qr_enabled': false,
+    'qr_url': '',
+    'qr_title': 'ESCANEA Y VISÍTANOS',
+    'qr_caption': '',
+    'qr_size_mm': 28,
+    'qr_alignment': 'center',
     'logo_width_mm': 32,
     'show_sku': false,
     'show_phone': true,
@@ -76,6 +96,21 @@ class CompanyPosDocumentDesign {
         }
       }
     }
+    // Las ventas anteriores no tienen renderer_version. Su PDF se conserva
+    // exactamente con el motor anterior, aunque se cambie el diseño vigente.
+    if (saved is Map && !saved.containsKey('renderer_version')) {
+      result['renderer_version'] = 3;
+    }
     return result;
+  }
+
+  /// Impide codificar esquemas arbitrarios o acciones en los QR de comprobantes.
+  static bool isValidQrLink(String value) {
+    final url = Uri.tryParse(value.trim());
+    return value.trim().length <= 800 &&
+        url != null &&
+        (url.scheme == 'https' || url.scheme == 'http') &&
+        url.host.isNotEmpty &&
+        url.userInfo.isEmpty;
   }
 }

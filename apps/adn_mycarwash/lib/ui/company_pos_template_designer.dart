@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 
 import '../core/company_business_api.dart';
 import 'company_pos_document_design.dart';
@@ -40,6 +41,21 @@ class _CompanyPosTemplateDesignerState
   bool _saving = false;
   bool _dirty = false;
   String? _error;
+  Timer? _previewDebounce;
+  int _previewVersion = 0;
+
+  @override
+  void dispose() {
+    _previewDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _queuePreview() {
+    _previewDebounce?.cancel();
+    _previewDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _previewVersion++);
+    });
+  }
 
   @override
   void initState() {
@@ -66,6 +82,13 @@ class _CompanyPosTemplateDesignerState
       setState(() {
         _revision = (data['revision'] as num?)?.toInt() ?? 0;
         _design = CompanyPosDocumentDesign.resolve(type, data['design']);
+        // Un nuevo borrador usa el motor PDF 21C.4; la revisión anterior
+        // queda inalterada para reimpresiones históricas.
+        _design['renderer_version'] = 4;
+        final sections = List<String>.from(_design['sections'] as List);
+        if (!sections.contains('qr')) sections.add('qr');
+        _design['sections'] = sections;
+        _previewVersion++;
         _dirty = false;
         _loading = false;
       });
@@ -90,6 +113,7 @@ class _CompanyPosTemplateDesignerState
       }
       _dirty = true;
     });
+    _queuePreview();
   }
 
   Future<void> _switch(String type) async {
@@ -179,8 +203,19 @@ class _CompanyPosTemplateDesignerState
     if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch('${_design['primary_color']}') ||
         !RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch('${_design['text_color']}') ||
         !RegExp(r'^#[0-9A-Fa-f]{6}$')
+            .hasMatch('${_design['secondary_color']}') ||
+        !RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch('${_design['border_color']}') ||
+        !RegExp(r'^#[0-9A-Fa-f]{6}$')
             .hasMatch('${_design['background_color']}')) {
       setState(() => _error = 'Los colores deben tener formato #RRGGBB.');
+      return;
+    }
+    if (_design['qr_enabled'] == true &&
+        '${_design['paper']}'.endsWith('MM') &&
+        !CompanyPosDocumentDesign.isValidQrLink('${_design['qr_url'] ?? ''}')) {
+      setState(
+        () => _error = 'El QR necesita un enlace http:// o https:// válido.',
+      );
       return;
     }
     setState(() {
@@ -459,8 +494,23 @@ class _CompanyPosTemplateDesignerState
       const SizedBox(height: 10),
       if (!'${_design['paper']}'.endsWith('MM')) ...[
         _swatch('primary_color', 'Color principal'),
+        _swatch('secondary_color', 'Color de encabezados y paneles'),
+        _swatch('border_color', 'Color de bordes y separadores'),
         _swatch('text_color', 'Color de texto'),
-        _swatch('background_color', 'Fondo del comprobante'),
+        _swatch('background_color', 'Fondo de paneles y total'),
+        _choice('header_layout', 'Composición del encabezado', {
+          'logo_left': 'Logo a la izquierda',
+          'logo_center': 'Logo y título centrados',
+          'logo_right': 'Logo a la derecha',
+        }),
+        _choice('summary_position', 'Ubicación del resumen y pagos', {
+          'right': 'En paralelo, al final',
+          'bottom': 'En bloques verticales',
+        }),
+        _choice('table_density', 'Espaciado de tabla', {
+          'comfortable': 'Cómodo y elegante',
+          'compact': 'Compacto',
+        }),
       ] else
         const Padding(
           padding: EdgeInsets.only(bottom: 12),
@@ -544,6 +594,44 @@ class _CompanyPosTemplateDesignerState
       _text('payment_section_title', 'Título de medios de pago'),
       if (_type == 'FISCAL_INVOICE')
         _text('fiscal_section_title', 'Título de información fiscal'),
+      if ('${_design['paper']}'.endsWith('MM')) ...[
+        const SizedBox(height: 12),
+        const Text(
+          'Código QR para el ticket',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        const Text(
+          'Enlace a WhatsApp, sitio web o cualquier URL http(s). '
+          'El mismo QR aparecerá en el PDF impreso.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF9CB1BB)),
+        ),
+        _toggle('qr_enabled', 'Incluir QR en el comprobante térmico'),
+        if (_design['qr_enabled'] == true) ...[
+          _text('qr_url', 'Enlace del QR (https://...)'),
+          _text('qr_title', 'Título encima del QR'),
+          _text('qr_caption', 'Texto debajo del QR'),
+          _choice('qr_alignment', 'Alineación del QR', {
+            'left': 'Izquierda',
+            'center': 'Centro',
+            'right': 'Derecha',
+          }),
+          Text('Tamaño QR: ${_design['qr_size_mm']} mm'),
+          Slider(
+            min: 18,
+            max: 48,
+            divisions: 30,
+            value: (_design['qr_size_mm'] as num).toDouble(),
+            onChanged: (v) => _update('qr_size_mm', v.round()),
+          ),
+          if (!CompanyPosDocumentDesign.isValidQrLink(
+            '${_design['qr_url'] ?? ''}',
+          ))
+            const Text(
+              'Introduce un enlace válido para activar el QR.',
+              style: TextStyle(color: Color(0xFFFFBA80)),
+            ),
+        ],
+      ],
       const SizedBox(height: 12),
       const Text(
         'Detalle del contenido',
@@ -564,6 +652,7 @@ class _CompanyPosTemplateDesignerState
         onPressed: () => setState(() {
           _design = CompanyPosDocumentDesign.defaults(_type);
           _dirty = true;
+          _previewVersion++;
         }),
         icon: const Icon(Icons.restart_alt),
         label: const Text('Restaurar diseño predeterminado'),
@@ -571,216 +660,54 @@ class _CompanyPosTemplateDesignerState
     ],
   );
 
+  /// Vista WYSIWYG real. El PDF renderizado aquí es el MISMO archivo que se
+  /// imprime; no se dibuja una versión aproximada con Flutter.
   Widget _preview() {
-    final thermal = '${_design['paper']}'.endsWith('MM');
-    final color = thermal ? Colors.black : _hex(_design['primary_color']);
-    final ink = thermal ? Colors.black : _hex(_design['text_color']);
-    final surface = thermal ? Colors.white : _hex(_design['background_color']);
-    final align = '${_design['alignment']}' == 'left'
-        ? TextAlign.left
-        : '${_design['alignment']}' == 'right'
-        ? TextAlign.right
-        : TextAlign.center;
-    final hidden = List<String>.from(_design['hidden_sections'] as List);
-    final order = List<String>.from(_design['sections'] as List);
-    final bodySize = (_design['font_size'] as num).toDouble();
-    final headingSize = (_design['heading_size'] as num).toDouble();
-    final logo = '${_design['logo_base64'] ?? ''}';
-    final widgets = <Widget>[];
-    final fontFamily = switch ('${_design['font_family']}') {
-      'times' => 'serif',
-      'courier' => 'monospace',
-      _ => 'sans-serif',
-    };
-    Widget label(String text, {bool title = false}) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        text,
-        textAlign: align,
-        style: TextStyle(
-          fontFamily: fontFamily,
-          color: title ? color : ink,
-          fontSize: title ? headingSize : bodySize,
-          fontWeight: title ? FontWeight.w700 : FontWeight.normal,
-        ),
-      ),
-    );
-    for (final name in order) {
-      if (hidden.contains(name)) {
-        continue;
-      }
-      switch (name) {
-        case 'logo':
-          if (logo.isNotEmpty) {
-            try {
-              final bytes = base64Decode(logo);
-              widgets.add(
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  child: Image.memory(
-                    Uint8List.fromList(bytes),
-                    height: (_design['logo_width_mm'] as num).toDouble() * 2.2,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              );
-            } catch (_) {
-              widgets.add(label('Logo inválido'));
-            }
-          }
-          break;
-        case 'brand':
-          widgets.add(
-            label(
-              '${_design['brand_name']}'.trim().isEmpty
-                  ? 'MI NEGOCIO'
-                  : '${_design['brand_name']}',
-              title: true,
-            ),
-          );
-          widgets.add(label('${_design['subtitle']}'));
-          break;
-        case 'document':
-          widgets.add(
-            label(
-              _type == 'FISCAL_INVOICE' ? 'FACTURA' : 'RECIBO NO FISCAL',
-              title: true,
-            ),
-          );
-          widgets.add(label('${_design['title']}'));
-          break;
-        case 'fiscal':
-          if (_type == 'FISCAL_INVOICE') {
-            widgets.add(
-              label(
-                'RTN · CAI · Número · Rango · Fecha límite\n(Datos fiscales protegidos)',
-              ),
-            );
-          }
-          break;
-        case 'sale':
-          widgets.add(label('Venta #EJEMPLO · Fecha 2026-11-17'));
-          break;
-        case 'customer':
-          widgets.add(label('Cliente: CLIENTE DE PRUEBA'));
-          if (_design['show_phone'] == true) {
-            widgets.add(label('Tel: 0000-0000'));
-          }
-          if (_design['show_email'] == true) {
-            widgets.add(label('Email: demo@ejemplo.test'));
-          }
-          if (_design['show_address'] == true) {
-            widgets.add(label('Dirección de ejemplo'));
-          }
-          break;
-        case 'items':
-          if (_design['show_separators'] == true) {
-            widgets.add(const Divider());
-          }
-          if (!thermal) {
-            widgets.add(
-              Container(
-                color: color,
-                padding: const EdgeInsets.all(7),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'DESCRIPCIÓN',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    Text(
-                      'CANT.  PRECIO  TOTAL',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          widgets.add(
-            label(
-              'Aromatizante    2 x L 100.00    L 200.00\nMicrofibra       1 x L 50.00      L 50.00',
-            ),
-          );
-          if (_design['show_sku'] == true) {
-            widgets.add(label('SKU ARO-001 / MCF-002'));
-          }
-          break;
-        case 'totals':
-          if (_design['show_separators'] == true) {
-            widgets.add(const Divider());
-          }
-          if (_type == 'FISCAL_INVOICE') {
-            widgets.add(label('ISV 15%       L 37.50'));
-          }
-          widgets.add(
-            label(
-              _type == 'FISCAL_INVOICE'
-                  ? 'TOTAL       L 287.50'
-                  : 'TOTAL       L 250.00',
-              title: true,
-            ),
-          );
-          break;
-        case 'payments':
-          widgets.add(
-            label(
-              _design['show_payment_details'] == true
-                  ? 'Efectivo L 250.00 · Cambio L 0.00'
-                  : 'Total pagado',
-            ),
-          );
-          break;
-        case 'notes':
-          widgets.add(label('${_design['custom_note']}'));
-          break;
-        case 'footer':
-          widgets.add(label('${_design['footer_text']}'));
-          break;
-      }
-    }
-    widgets.add(const Divider());
-    widgets.add(label('VISTA PREVIA — SIN VALIDEZ FISCAL'));
+    final snapshot = Map<String, dynamic>.from(_design);
+    final example = CompanyPosPrinting.demoSale(_type, snapshot);
+    final key = ValueKey('pdf_live_${_type}_${_revision}_$_previewVersion');
     return Container(
       color: _panel,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               const Expanded(
                 child: Text(
-                  'Previsualización',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                  'Vista previa real del PDF',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                 ),
               ),
               OutlinedButton.icon(
                 onPressed: _previewPdf,
                 icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('Ver PDF'),
+                label: const Text('Abrir PDF'),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           const Text(
-            'La prueba en PDF usa valores ficticios; no crea ventas ni consume CAI.',
+            'Previsualización del PDF original · Datos ficticios · '
+            'No genera ventas ni consume CAI.',
             style: TextStyle(color: Color(0xFF9CB1BB), fontSize: 11),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           Expanded(
-            child: SingleChildScrollView(
-              child: Center(
-                child: Container(
-                  width: '${_design['paper']}'.endsWith('MM') ? 300 : 460,
-                  constraints: const BoxConstraints(minHeight: 320),
-                  padding: const EdgeInsets.all(16),
-                  color: surface,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: widgets,
-                  ),
+            child: PdfPreview(
+              key: key,
+              build: (_) => CompanyPosPrinting.buildPdf(example, demo: true),
+              allowPrinting: false,
+              allowSharing: false,
+              canChangePageFormat: false,
+              canChangeOrientation: false,
+              canDebug: false,
+              maxPageWidth: 700,
+              onError: (context, error) => Center(
+                child: SelectableText(
+                  'No se pudo renderizar el PDF: $error',
+                  style: const TextStyle(color: Color(0xFFFFBA80)),
                 ),
               ),
             ),
@@ -794,7 +721,7 @@ class _CompanyPosTemplateDesignerState
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // La barra lateral puede restar espacio aunque la ventana sea ancha.
+        // El ancho efectivo del editor puede ser menor que el del navegador.
         final narrow = constraints.maxWidth < 840;
         final content = Column(
           children: [
