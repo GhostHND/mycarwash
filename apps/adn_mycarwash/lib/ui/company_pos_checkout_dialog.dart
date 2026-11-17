@@ -59,6 +59,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
   int? _sessionId;
   int? _bankId;
   String? _error;
+  String? _status;
   String? _attemptKey;
   bool _saving = false;
   bool _searching = false;
@@ -491,8 +492,32 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
     );
   }
 
+  // Este envoltorio cubre tambien la construccion del comprobante y de la
+  // clave idempotente. Antes de 21A.6.3 los errores previos al POST quedaban
+  // fuera del catch y el cajero no veia ninguna respuesta al pulsar el boton.
   Future<void> _confirm() async {
     if (_saving) return;
+    setState(() {
+      _error = null;
+      _status = 'Validando datos y preparando el cobro...';
+    });
+    try {
+      await _confirmInternal();
+    } catch (error, stack) {
+      debugPrint('ADN Smart POS: fallo antes o durante confirmacion: $error');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _status = null;
+        _error =
+            'No se pudo iniciar o finalizar el cobro: $error. '
+            'No vuelvas a confirmar sin revisar el historial de ventas.';
+      });
+    }
+  }
+
+  Future<void> _confirmInternal() async {
     String? error;
     if (_customerMode == 'EXISTING' && _customerId == null) {
       error = 'Selecciona un cliente registrado.';
@@ -533,7 +558,10 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
       error = 'El efectivo recibido no cubre el importe correspondiente.';
     }
     if (error != null) {
-      setState(() => _error = error);
+      setState(() {
+        _error = error;
+        _status = null;
+      });
       return;
     }
     final payments = <Map<String, dynamic>>[];
@@ -552,8 +580,11 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
         'reference': _bankReference.text.trim(),
       });
     }
+    // La clave es un identificador de reintentos, no un token de acceso.
+    // Evitar Random.secure() aqui: en ciertos entornos Web su fuente criptografica
+    // puede no estar disponible y antes lanzaba una excepcion silenciosa.
     _attemptKey ??=
-        'pos-${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}';
+        'pos-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(0x7fffffff)}';
     final body = <String, dynamic>{
       'branch_id': widget.branchId,
       'idempotency_key': _attemptKey,
@@ -577,6 +608,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
     setState(() {
       _saving = true;
       _error = null;
+      _status = 'Enviando venta al servidor. No cierres la ventana...';
     });
     try {
       final response = await widget.api
@@ -613,7 +645,12 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
             'Comprueba la causa indicada y revisa Historial si hubo una interrupción.',
       );
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _status = null;
+        });
+      }
     }
   }
 
@@ -685,14 +722,38 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
               child: Column(
                 children: [
-                  if (_saving) ...[
-                    const LinearProgressIndicator(minHeight: 3),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Registrando la venta en el servidor...',
-                      style: TextStyle(color: muted, fontSize: 12),
+                  if (_status != null) ...[
+                    Container(
+                      key: const ValueKey('pos_confirm_status'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: teal.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Row(
+                        children: [
+                          if (_saving) ...[
+                            const SizedBox(
+                              width: 17,
+                              height: 17,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Expanded(
+                            child: Text(
+                              _status!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
                   if (_error != null) ...[
                     Container(
