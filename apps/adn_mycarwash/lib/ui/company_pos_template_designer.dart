@@ -131,9 +131,9 @@ class _CompanyPosTemplateDesignerState
       if (!mounted) {
         return;
       }
-      if (length != null && length > 100000) {
+      if (length != null && length > 1048576) {
         setState(
-          () => _error = 'El logo supera 100 KB. Optimiza la imagen e inténtalo nuevamente.',
+          () => _error = 'El logo supera 1 MB. Optimiza la imagen e inténtalo nuevamente.',
         );
         return;
       }
@@ -141,9 +141,9 @@ class _CompanyPosTemplateDesignerState
       if (!mounted) {
         return;
       }
-      if (bytes.length > 100000) {
+      if (bytes.length > 1048576) {
         setState(
-          () => _error = 'El logo supera 100 KB. Optimiza la imagen e inténtalo nuevamente.',
+          () => _error = 'El logo supera 1 MB. Optimiza la imagen e inténtalo nuevamente.',
         );
         return;
       }
@@ -439,7 +439,7 @@ class _CompanyPosTemplateDesignerState
         ],
       ),
       const Text(
-        'Máximo 100 KB. Se guarda en la plantilla, no en cada venta.',
+        'Máximo 1 MB. Se guarda en la plantilla, no en cada venta.',
         style: TextStyle(fontSize: 11, color: Color(0xFF9CB1BB)),
       ),
       const SizedBox(height: 20),

@@ -111,7 +111,7 @@ class CompanyPosDocumentTemplateController extends Controller
             'design.heading_size' => ['required', 'integer', 'between:12,32'],
             'design.alignment' => ['required', 'in:left,center,right'],
             'design.paper' => ['required', 'in:58MM,80MM,A4,LETTER'],
-            'design.logo_base64' => ['present', 'nullable', 'string', 'max:150000'],
+            'design.logo_base64' => ['present', 'nullable', 'string', 'max:1398104'],
             'design.logo_width_mm' => ['required', 'integer', 'between:10,80'],
             'design.show_sku' => ['required', 'boolean'],
             'design.show_phone' => ['required', 'boolean'],
@@ -139,8 +139,8 @@ class CompanyPosDocumentTemplateController extends Controller
         $logo = $design['logo_base64'];
         if ($logo !== '') {
             $bytes = base64_decode($logo, true);
-            if ($bytes === false || strlen($bytes) > 100000 || strlen($bytes) < 8) {
-                throw ValidationException::withMessages(['design.logo_base64' => 'Logo PNG/JPEG de máximo 100 KB.']);
+            if ($bytes === false || strlen($bytes) > 1048576 || strlen($bytes) < 8) {
+                throw ValidationException::withMessages(['design.logo_base64' => 'Logo PNG/JPEG de máximo 1 MB.']);
             }
             $info = @getimagesizefromstring($bytes);
             if ($info === false || !in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG], true)

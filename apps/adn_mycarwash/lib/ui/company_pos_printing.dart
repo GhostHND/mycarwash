@@ -157,7 +157,7 @@ class CompanyPosPrinting {
           if (raw.isNotEmpty) {
             try {
               final bytes = base64Decode(raw);
-              if (bytes.length <= 100000) {
+              if (bytes.length <= 1048576) {
                 blocks.add(
                   pw.Center(
                     child: pw.Padding(
