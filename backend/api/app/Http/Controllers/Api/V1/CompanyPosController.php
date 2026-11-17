@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Bloque 21A: ventas físicas POS, inventario y pago atómicos, sin facturación fiscal. */
+/** Smart POS 21B: documentos, cobro atómico e integración fiscal con CAI configurado. */
 class CompanyPosController extends Controller
 {
     private function authorizeCompany(Request $request, int $company, string $permission): void
@@ -201,12 +201,30 @@ class CompanyPosController extends Controller
                 $v['amount'] = $this->money($this->cents($r->amount));
                 return $v;
             });
-        return ['id' => $sale->id, 'branch_id' => $sale->branch_id, 'status' => $sale->status,
+        $template = null;
+        if ($sale->document_template_revision_id !== null) {
+            $revision = DB::table('pos_document_template_revisions')
+                ->where('id', $sale->document_template_revision_id)
+                ->where('company_id', $company)->first();
+            if ($revision) {
+                $template = json_decode($revision->design_json, true, 512, JSON_THROW_ON_ERROR);
+            }
+        }
+        return ['company_name' => DB::table('companies')->where('id', $company)->value('name'),
+            'id' => $sale->id, 'branch_id' => $sale->branch_id, 'status' => $sale->status,
             'subtotal' => $this->money($this->cents($sale->subtotal)),
             'discount_amount' => $this->money($this->cents($sale->discount_amount)),
             'discount_reason' => $sale->discount_reason,
             'total' => $this->money($this->cents($sale->total)),
-            'posted_at' => $sale->posted_at, 'receipt_type' => 'NON_FISCAL',
+            'posted_at' => $sale->posted_at,
+            'receipt_type'=>$sale->document_type === 'FISCAL_INVOICE' ? 'FISCAL_INVOICE' : 'NON_FISCAL',
+            'document_type'=>$sale->document_type,
+            'tax_amount'=>$this->money($this->cents($sale->tax_amount)),
+            'tax_rate_bps'=>(int)$sale->tax_rate_bps,
+            'fiscal_number'=>$sale->fiscal_number,'fiscal_cai'=>$sale->fiscal_cai,
+            'fiscal_rtn'=>$sale->fiscal_rtn,'fiscal_legal_name'=>$sale->fiscal_legal_name,
+            'fiscal_range_start'=>$sale->fiscal_range_start,'fiscal_range_end'=>$sale->fiscal_range_end,
+            'fiscal_expires_on'=>$sale->fiscal_expires_on,
             'customer_type' => $sale->customer_type, 'customer_id' => $sale->customer_id,
             'customer_name' => $sale->customer_name_snapshot,
             'customer_identity' => $sale->customer_identity_snapshot,
@@ -215,6 +233,8 @@ class CompanyPosController extends Controller
             'customer_address' => $sale->customer_address_snapshot,
             'cash_received' => $sale->cash_received === null ? null : $this->money($this->cents($sale->cash_received)),
             'change_given' => $this->money($this->cents($sale->change_given)),
+            'document_design' => $template,
+            'document_template_revision_id' => $sale->document_template_revision_id,
             'lines' => $lines, 'payments' => $payments];
     }
     public function show(Request $request, int $company, int $sale): JsonResponse
@@ -237,12 +257,78 @@ class CompanyPosController extends Controller
         return response()->json($query->orderByDesc('id')->paginate(15));
     }
 
+    /** Autorizaciones suministradas por la empresa: NO verificadas en línea con SAR. */
+    public function fiscalSettings(Request $request, int $company): JsonResponse
+    {
+        $this->authorizeCompany($request, $company, 'company.view');
+        $branchId = (int) $request->validate(['branch_id'=>['required','integer','min:1']])['branch_id'];
+        $this->branch($company, $branchId);
+        $record = DB::table('pos_fiscal_authorizations')
+            ->where('company_id', $company)->where('branch_id', $branchId)
+            ->where('is_active', true)->orderByDesc('id')->first();
+        if (!$record) return response()->json(['data'=>null, 'available'=>false]);
+        $data = (array) $record;
+        $data['available'] = $record->next_sequence <= $record->end_sequence
+            && (string) $record->expires_on >= now()->toDateString();
+        $data['verification_notice'] = 'CAI ingresado por el negocio. Verificar vigencia con SAR antes de emitir.';
+        return response()->json(['data'=>$data, 'available'=>$data['available']]);
+    }
+
+    public function saveFiscalSettings(Request $request, int $company): JsonResponse
+    {
+        $this->authorizeCompany($request, $company, 'company.update');
+        $data = $request->validate([
+            'branch_id' => ['required', 'integer', 'min:1'],
+            'legal_name' => ['required', 'string', 'max:180'],
+            'rtn' => ['required', 'regex:/^[0-9]{14}$/D'],
+            'cai' => ['required', 'string', 'min:12', 'max:50', 'regex:/^[A-Za-z0-9-]+$/D'],
+            'establishment_code' => ['required', 'regex:/^[0-9]{3}$/D'],
+            'point_code' => ['required', 'regex:/^[0-9]{3}$/D'],
+            'start_sequence' => ['required', 'integer', 'between:1,99999999'],
+            'end_sequence' => ['required', 'integer', 'between:1,99999999', 'gte:start_sequence'],
+            'next_sequence' => ['required', 'integer', 'between:1,99999999', 'gte:start_sequence','lte:end_sequence'],
+            'expires_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'authorization_confirmed' => ['accepted'],
+        ]);
+        $this->branch($company, (int) $data['branch_id']);
+        DB::transaction(function () use ($request, $company, $data): void {
+            DB::table('companies')->where('id',$company)->lockForUpdate()->first();
+            // Un mismo CAI/rango no puede reiniciarse en la misma sucursal.
+            $same = DB::table('pos_fiscal_authorizations')->where('company_id',$company)
+                ->where('branch_id',$data['branch_id'])->where('cai',strtoupper($data['cai']))->get();
+            foreach ($same as $record) {
+                if ($record->start_sequence <= $data['end_sequence']
+                    && $record->end_sequence >= $data['start_sequence']) {
+                    throw ValidationException::withMessages(['cai'=>'Rango CAI ya configurado. No se puede reiniciar la numeración.']);
+                }
+            }
+            DB::table('pos_fiscal_authorizations')->where('company_id',$company)
+                ->where('branch_id',$data['branch_id'])->where('is_active',true)
+                ->update(['is_active'=>false,'updated_at'=>now()]);
+            DB::table('pos_fiscal_authorizations')->insert([
+                'company_id'=>$company, 'branch_id'=>$data['branch_id'],
+                'legal_name'=>trim($data['legal_name']), 'rtn'=>$data['rtn'],
+                'cai'=>strtoupper($data['cai']),
+                'establishment_code'=>$data['establishment_code'],
+                'point_code'=>$data['point_code'],'document_code'=>'01',
+                'start_sequence'=>$data['start_sequence'],
+                'end_sequence'=>$data['end_sequence'],
+                'next_sequence'=>$data['next_sequence'], 'expires_on'=>$data['expires_on'],
+                'is_active'=>true,'confirmed_by_user_id'=>$request->user()->id,
+                'created_at'=>now(),'updated_at'=>now(),
+            ]);
+        });
+        return $this->fiscalSettings($request, $company);
+    }
+
     public function checkout(Request $request, int $company): JsonResponse
     {
         $this->authorizeCompany($request, $company, 'company.update');
         // Compatibilidad con tickets anteriores al flujo de clientes 21A.5.
         $legacyPayload = !$request->exists('customer_type');
-        $request->merge(['customer_type' => $request->input('customer_type', 'CONSUMER')]);
+        $legacyDocument = !$request->exists('document_type');
+        $request->merge(['customer_type' => $request->input('customer_type', 'CONSUMER'),
+            'document_type'=>$request->input('document_type','RECEIPT')]);
         $data = $request->validate([
             'branch_id' => ['required', 'integer', 'min:1'],
             'idempotency_key' => ['required', 'string', 'min:12', 'max:100', 'regex:/^[A-Za-z0-9._-]+$/'],
@@ -250,6 +336,7 @@ class CompanyPosController extends Controller
             'lines.*.item_id' => ['required', 'integer', 'min:1', 'distinct'],
             'lines.*.quantity' => ['required', 'integer', 'between:1,999'],
             'discount_amount' => ['required', 'regex:/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?$/D'],
+            'document_type' => ['required', 'in:RECEIPT,FISCAL_INVOICE'],
             'discount_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
             'customer_type' => ['required', 'in:CONSUMER,EXISTING,NEW'],
             'customer_id' => ['required_if:customer_type,EXISTING', 'nullable', 'integer', 'min:1'],
@@ -269,6 +356,7 @@ class CompanyPosController extends Controller
         ]);
         $hashData = $data;
         if ($legacyPayload) unset($hashData['customer_type']);
+        if ($legacyDocument) unset($hashData['document_type']);
         $hash = hash('sha256', json_encode($hashData, JSON_THROW_ON_ERROR));
         $result = DB::transaction(function () use ($request, $company, $data, $hash): array {
             // Serializa confirmaciones de la empresa, incluso reintentos simultáneos del mismo ticket.
@@ -312,6 +400,27 @@ class CompanyPosController extends Controller
                 throw ValidationException::withMessages(['discount_reason' => 'Explica el descuento aplicado.']);
             }
             $net = $subtotal - $discount;
+            $invoice = $data['document_type'] === 'FISCAL_INVOICE';
+            $tax = $invoice ? intdiv($net * 15 + 50, 100) : 0;
+            $amountToPay = $net + $tax;
+            // CAI, rango, fecha y numeración se verifican bajo el mismo bloqueo
+            // transaccional de la empresa. Sin autorización activa: no hay factura.
+            $auth = null; $fiscalNumber = null;
+            if ($invoice) {
+                $auth = DB::table('pos_fiscal_authorizations')
+                    ->where('company_id',$company)->where('branch_id',$branch)
+                    ->where('is_active',true)->orderByDesc('id')->lockForUpdate()->first();
+                if (!$auth) throw ValidationException::withMessages([
+                    'document_type'=>'No hay CAI configurado para esta sucursal.']);
+                if ($auth->next_sequence > $auth->end_sequence) {
+                    throw ValidationException::withMessages(['document_type'=>'Rango fiscal agotado.']);
+                }
+                if ((string) $auth->expires_on < now()->toDateString()) {
+                    throw ValidationException::withMessages(['document_type'=>'CAI vencido. Actualiza la autorización.']);
+                }
+                $fiscalNumber = $auth->establishment_code.'-'.$auth->point_code.'-'
+                    .$auth->document_code.'-'.str_pad((string)$auth->next_sequence,8,'0',STR_PAD_LEFT);
+            }
             $sum = 0; $paymentRows = []; $used = [];
             foreach ($data['payments'] as $payment) {
                 $method = DB::table('sale_payment_methods')->where('company_id', $company)
@@ -349,7 +458,7 @@ class CompanyPosController extends Controller
                     'cash' => $cash, 'bank' => $bank, 'amount' => $amount,
                     'reference' => trim((string) ($payment['reference'] ?? '')) ?: null];
             }
-            if ($sum !== $net) throw ValidationException::withMessages([
+            if ($sum !== $amountToPay) throw ValidationException::withMessages([
                 'payments' => 'La suma de pagos debe coincidir exactamente con el total después del descuento.',
             ]);
             $cashDue = 0;
@@ -367,17 +476,37 @@ class CompanyPosController extends Controller
             // Primero se validan stock y pagos. Alta rápida de cliente ocurre en la MISMA transacción.
             $now = now();
             $customer = $this->resolveCustomer($company, $data, $now);
+            // Pin the published print design at the moment of sale.
+            // Later edits must NOT change reprints of this historical document.
+            $designRevision = DB::table('pos_document_template_revisions')
+                ->where('company_id', $company)->where('branch_id', $branch)
+                ->where('document_type', $data['document_type'])
+                ->orderByDesc('revision')->value('id');
             $saleId = DB::table('pos_sales')->insertGetId([
                 'company_id' => $company, 'branch_id' => $branch,
                 'idempotency_key' => $data['idempotency_key'], 'request_hash' => $hash,
                 'status' => 'POSTED', 'subtotal' => $this->money($subtotal),
                 'discount_amount' => $this->money($discount), 'discount_reason' => $discount ? $reason : null,
-                'total' => $this->money($net), 'actor_user_id' => $actor, 'posted_at' => $now,
+                'total' => $this->money($amountToPay), 'actor_user_id' => $actor, 'posted_at' => $now,
+                'document_type'=>$data['document_type'], 'tax_amount'=>$this->money($tax),
+                'tax_rate_bps'=>$invoice ? 1500 : 0,
+                'fiscal_authorization_id'=>$auth?->id, 'fiscal_number'=>$fiscalNumber,
+                'fiscal_cai'=>$auth?->cai, 'fiscal_rtn'=>$auth?->rtn,
+                'fiscal_legal_name'=>$auth?->legal_name,
+                'fiscal_range_start'=>$auth ? ($auth->establishment_code.'-'.$auth->point_code.'-'.$auth->document_code.'-'.str_pad((string)$auth->start_sequence,8,'0',STR_PAD_LEFT)) : null,
+                'fiscal_range_end'=>$auth ? ($auth->establishment_code.'-'.$auth->point_code.'-'.$auth->document_code.'-'.str_pad((string)$auth->end_sequence,8,'0',STR_PAD_LEFT)) : null,
+                'fiscal_expires_on'=>$auth?->expires_on,
+                'document_template_revision_id'=>$designRevision,
                 ...$customer,
                 'cash_received' => $cashDue > 0 ? $this->money($tendered) : null,
                 'change_given' => $this->money($tendered - $cashDue),
                 'created_at' => $now, 'updated_at' => $now,
             ]);
+            if ($auth) {
+                DB::table('pos_fiscal_authorizations')->where('id',$auth->id)
+                    ->where('company_id',$company)->update([
+                        'next_sequence'=>$auth->next_sequence+1,'updated_at'=>$now]);
+            }
             foreach ($lineRows as $line) {
                 $item = $line['item'];
                 $lineId = DB::table('pos_sale_items')->insertGetId([

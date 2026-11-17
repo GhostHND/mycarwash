@@ -16,6 +16,7 @@ class CompanyPosCheckoutDialog extends StatefulWidget {
     required this.subtotalCents,
     required this.discountCents,
     required this.discountReason,
+    required this.documentType,
     required this.sessions,
     required this.banks,
     required this.cashMethodId,
@@ -28,6 +29,7 @@ class CompanyPosCheckoutDialog extends StatefulWidget {
   final int subtotalCents;
   final int discountCents;
   final String discountReason;
+  final String documentType;
   final List<Map<String, dynamic>> sessions;
   final List<Map<String, dynamic>> banks;
   final int? cashMethodId;
@@ -65,7 +67,10 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
   bool _searching = false;
   int _searchVersion = 0;
 
-  int get _total => widget.subtotalCents - widget.discountCents;
+  int get _net => widget.subtotalCents - widget.discountCents;
+  int get _tax =>
+      widget.documentType == 'FISCAL_INVOICE' ? (_net * 15 + 50) ~/ 100 : 0;
+  int get _total => _net + _tax;
   int? _integer(dynamic value) => int.tryParse('$value');
   String _amount(int cents) =>
       '${cents ~/ 100}.${(cents % 100).toString().padLeft(2, '0')}';
@@ -496,7 +501,9 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
   // clave idempotente. Antes de 21A.6.3 los errores previos al POST quedaban
   // fuera del catch y el cajero no veia ninguna respuesta al pulsar el boton.
   Future<void> _confirm() async {
-    if (_saving) return;
+    if (_saving) {
+      return;
+    }
     setState(() {
       _error = null;
       _status = 'Validando datos y preparando el cobro...';
@@ -590,6 +597,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
       'idempotency_key': _attemptKey,
       'lines': widget.lines,
       'discount_amount': _amount(widget.discountCents),
+      'document_type': widget.documentType,
       'discount_reason': widget.discountReason,
       'customer_type': _customerMode,
       'cash_received': cashPart > 0 ? _amount(tendered) : null,
@@ -795,9 +803,11 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'TOTAL A COBRAR',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                      Text(
+                        widget.documentType == 'FISCAL_INVOICE'
+                            ? 'TOTAL CON ISV 15%'
+                            : 'TOTAL RECIBO',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       Text(
                         'L ${_amount(_total)}',

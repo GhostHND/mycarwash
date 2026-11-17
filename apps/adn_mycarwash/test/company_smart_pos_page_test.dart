@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:adn_mycarwash/core/mycarwash_session.dart';
 import 'package:adn_mycarwash/ui/company_smart_pos_page.dart';
+import 'package:adn_mycarwash/ui/company_pos_document_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -23,6 +24,7 @@ void main() {
     bool openCash = true,
     http.Response? Function(Map<String, dynamic>)? overrideSaleResponse,
     Future<http.Response>? productsAfterSale,
+    void Function(Map<String, dynamic>)? onDocumentDesign,
   }) {
     var saleAttempted = false;
     return MockClient((request) async {
@@ -87,6 +89,32 @@ void main() {
           headers: {'content-type': 'application/json'},
         );
       }
+      if (request.url.path.endsWith('/pos/document-designs')) {
+        if (request.method == 'POST') {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          onDocumentDesign?.call(body);
+          return http.Response(
+            jsonEncode({
+              'data': {'revision': 1, 'saved': true},
+            }),
+            201,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        final type = request.url.queryParameters['document_type'] ?? 'RECEIPT';
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'document_type': type,
+              'revision': 0,
+              'saved': false,
+              'design': CompanyPosDocumentDesign.defaults(type),
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
       if (request.method == 'POST' && request.url.path.endsWith('/pos/sales')) {
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         onSale(body);
@@ -133,6 +161,82 @@ void main() {
     });
   }
 
+  testWidgets('Diseñador muestra plantillas y publica cambios por sucursal', (
+    tester,
+  ) async {
+    Map<String, dynamic>? saved;
+    final client = clientFor(
+      onSale: (_) {},
+      onDocumentDesign: (body) => saved = body,
+    );
+    addTearDown(client.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CompanySmartPosPage(client: client),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('pos_design_document')),
+    );
+    await tester.tap(find.byKey(const ValueKey('pos_design_document')));
+    await tester.pumpAndSettle();
+    expect(find.text('Diseñador de comprobantes'), findsOneWidget);
+    expect(find.text('Identidad de marca'), findsOneWidget);
+    final field = find.byKey(const ValueKey('design_RECEIPT_0_brand_name'));
+    await tester.ensureVisible(field);
+    await tester.enterText(field, 'GUZA Autolavado');
+    await tester.pumpAndSettle();
+    final publish = find.widgetWithText(FilledButton, 'Publicar diseño');
+    await tester.ensureVisible(publish);
+    await tester.tap(publish);
+    await tester.pumpAndSettle();
+    expect(saved?['branch_id'], 1);
+    expect(saved?['document_type'], 'RECEIPT');
+    expect((saved?['design'] as Map)['brand_name'], 'GUZA Autolavado');
+    expect(
+      (saved?['design'] as Map)['sections'],
+      CompanyPosDocumentDesign.sections,
+    );
+  });
+
+  testWidgets('Selector muestra factura e impide cobrar si falta CAI', (
+    tester,
+  ) async {
+    final client = clientFor(onSale: (_) {});
+    addTearDown(client.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CompanySmartPosPage(client: client),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Agregar al carrito'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Factura'));
+    await tester.tap(find.text('Factura'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('ISV (15%): L 22.50'), findsOneWidget);
+    expect(find.textContaining('Total: L 172.50'), findsOneWidget);
+    expect(find.textContaining('Factura bloqueada:'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Continuar al cobro'),
+          )
+          .onPressed,
+      isNull,
+    );
+  });
+
   testWidgets(
     'Continuar al cobro abre la ventana y confirma consumidor final',
     (tester) async {
@@ -160,8 +264,13 @@ void main() {
       expect(find.text('Consumidor final'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('pos_confirm_payment')));
       await tester.pumpAndSettle();
-      expect(find.text('Venta #9 confirmada'), findsOneWidget);
+      expect(find.textContaining('Venta #9 confirmada'), findsOneWidget);
+      expect(find.byKey(const ValueKey('pos_print_receipt')), findsOneWidget);
+      await tester.tap(find.text('No, finalizar'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('pos_print_receipt')), findsNothing);
       expect(posted?['customer_type'], 'CONSUMER');
+      expect(posted?['document_type'], 'RECEIPT');
       expect((posted?['payments'] as List).first['amount'], '150.00');
     },
   );
@@ -201,7 +310,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(posted?['customer_type'], 'NEW');
     expect((posted?['customer'] as Map)['full_name'], 'Cliente Nuevo');
-    expect(find.text('Venta #9 confirmada'), findsOneWidget);
+    expect(find.textContaining('Venta #9 confirmada'), findsOneWidget);
   });
 
   testWidgets(
@@ -284,7 +393,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('pos_confirm_payment')));
     await tester.pumpAndSettle();
-    expect(find.text('Venta #9 confirmada'), findsOneWidget);
+    expect(find.textContaining('Venta #9 confirmada'), findsOneWidget);
     expect(gate.isCompleted, isFalse);
   });
 

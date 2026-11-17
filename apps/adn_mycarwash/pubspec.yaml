@@ -28,6 +28,8 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  pdf: ^3.13.1
+  printing: ^5.15.1
   flutter:
     sdk: flutter
 
@@ -54,7 +56,8 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
-flutter:
+flutter:
+
   assets:
     - assets/branding/logo_adn.png
 

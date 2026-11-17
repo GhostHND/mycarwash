@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
 import 'company_pos_checkout_dialog.dart';
+import 'company_pos_fiscal_settings_dialog.dart';
+import 'company_pos_printing.dart';
+import 'company_pos_template_designer.dart';
 
 /// Smart POS 21A: venta de artículos, carrito, pagos mixtos e historial.
 /// Los importes que se muestran en el carrito son indicativos; Laravel calcula
@@ -36,6 +39,9 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   Timer? _debounce;
   bool _loading = true;
   bool _history = false;
+  String _documentType = 'RECEIPT';
+  Map<String, dynamic>? _fiscalAuthorization;
+  bool _fiscalLoading = false;
   String? _error;
   int _epoch = 0;
   int? _branchId;
@@ -114,7 +120,76 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     return result;
   }
 
-  int get _total => _subtotal - _cents(_discount.text);
+  int get _net => _subtotal - _cents(_discount.text);
+  int get _tax => _documentType == 'FISCAL_INVOICE' && _net > 0
+      ? (_net * 15 + 50) ~/ 100
+      : 0;
+  int get _total => _net + _tax;
+  bool get _fiscalReady => _fiscalAuthorization?['available'] == true;
+
+  Future<void> _loadFiscalSettings() async {
+    final branch = _branchId;
+    if (branch == null) {
+      return;
+    }
+    setState(() => _fiscalLoading = true);
+    try {
+      final response = await _api.request(
+        'GET',
+        '/pos/fiscal-settings',
+        query: {'branch_id': '$branch'},
+      );
+      if (!mounted || _branchId != branch) {
+        return;
+      }
+      final data = response['data'];
+      setState(
+        () => _fiscalAuthorization = data is Map
+            ? Map<String, dynamic>.from(data)
+            : null,
+      );
+    } catch (_) {
+      if (mounted && _branchId == branch) {
+        setState(() => _fiscalAuthorization = null);
+      }
+    } finally {
+      if (mounted && _branchId == branch) {
+        setState(() => _fiscalLoading = false);
+      }
+    }
+  }
+
+  Future<void> _configureFiscal() async {
+    final branch = _branchId;
+    if (branch == null) {
+      return;
+    }
+    final done = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          CompanyPosFiscalSettingsDialog(api: _api, branchId: branch),
+    );
+    if (done == true && mounted) {
+      await _loadFiscalSettings();
+    }
+  }
+
+  Future<void> _openDesigner() async {
+    final branch = _branchId;
+    if (branch == null) {
+      _message(
+        'Selecciona una sucursal antes de editar los comprobantes.',
+        error: true,
+      );
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CompanyPosTemplateDesigner(api: _api, branchId: branch),
+    );
+  }
 
   void _message(String message, {bool error = false}) {
     if (!mounted) {
@@ -177,8 +252,11 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       _chosen.clear();
       _discount.text = '0.00';
       _reason.clear();
+      _documentType = 'RECEIPT';
+      _fiscalAuthorization = null;
     });
     _loadProducts();
+    _loadFiscalSettings();
     if (_history) {
       _loadSales();
     }
@@ -476,6 +554,61 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             controller: _reason,
             decoration: _dec('Motivo del descuento'),
           ),
+          const SizedBox(height: 15),
+          const Text(
+            'Tipo de comprobante',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            key: const ValueKey('pos_document_type'),
+            segments: const [
+              ButtonSegment(
+                value: 'RECEIPT',
+                label: Text('Recibo'),
+                icon: Icon(Icons.receipt_outlined),
+              ),
+              ButtonSegment(
+                value: 'FISCAL_INVOICE',
+                label: Text('Factura'),
+                icon: Icon(Icons.description_outlined),
+              ),
+            ],
+            selected: {_documentType},
+            onSelectionChanged: (v) => setState(() => _documentType = v.first),
+          ),
+          if (_documentType == 'FISCAL_INVOICE') ...[
+            const SizedBox(height: 10),
+            Text(
+              'ISV (15%): L ${_money(_tax)}',
+              style: const TextStyle(color: _muted),
+            ),
+            if (_fiscalLoading) const LinearProgressIndicator(),
+            if (!_fiscalReady) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Factura bloqueada: configure CAI, RTN y rango autorizado de la sucursal.',
+                style: TextStyle(color: Colors.orangeAccent, fontSize: 12),
+              ),
+              TextButton.icon(
+                onPressed: _configureFiscal,
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Configurar CAI fiscal'),
+              ),
+            ] else ...[
+              const SizedBox(height: 5),
+              Text(
+                'CAI ${_fiscalAuthorization?['cai']} · siguiente #${_fiscalAuthorization?['next_sequence']}',
+                style: const TextStyle(color: _muted, fontSize: 11),
+              ),
+            ],
+          ] else ...[
+            const SizedBox(height: 5),
+            const Text(
+              'Recibo interno sin valor fiscal; no agrega ISV al importe mostrado.',
+              style: TextStyle(color: _muted, fontSize: 11),
+            ),
+          ],
           const SizedBox(height: 12),
           Text(
             'Total: L ${_money(_total)}',
@@ -516,14 +649,18 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
                 backgroundColor: _teal,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              onPressed: _cart.isEmpty ? null : _openPaymentDialog,
+              onPressed:
+                  _cart.isEmpty ||
+                      (_documentType == 'FISCAL_INVOICE' && !_fiscalReady)
+                  ? null
+                  : _openPaymentDialog,
               icon: const Icon(Icons.point_of_sale_outlined),
               label: const Text('Continuar al cobro'),
             ),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Comprobante interno no fiscal. No sustituye una factura autorizada.',
+            'La seleccion del documento no cambia las obligaciones tributarias del negocio.',
             style: TextStyle(color: _muted, fontSize: 11),
           ),
         ],
@@ -572,6 +709,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
         subtotalCents: _subtotal,
         discountCents: discount,
         discountReason: _reason.text.trim(),
+        documentType: _documentType,
         sessions: availableSessions,
         banks: availableBanks,
         cashMethodId: _cashMethodId,
@@ -584,17 +722,29 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       _chosen.clear();
       _discount.text = '0.00';
       _reason.clear();
+      _documentType = 'RECEIPT';
     });
     // Mostrar primero la confirmación; nunca bloquear el comprobante esperando
     // una actualización del catálogo que puede tardar o fallar por la red.
-    await _showReceipt(receipt);
+    await _showReceipt(receipt, afterSale: true);
     if (!mounted) return;
     await _loadProducts();
     if (_history && mounted) await _loadSales();
   }
 
   String _receiptText(Map<String, dynamic> sale) {
-    final b = StringBuffer('ADN MyCarWash — COMPROBANTE NO FISCAL\n');
+    final invoice = sale['document_type'] == 'FISCAL_INVOICE';
+    final b = StringBuffer(invoice ? 'FACTURA FISCAL\n' : 'RECIBO NO FISCAL\n');
+    if (invoice) {
+      b.writeln('Empresa: ${sale['fiscal_legal_name'] ?? ''}');
+      b.writeln('RTN: ${sale['fiscal_rtn'] ?? ''}');
+      b.writeln('Número: ${sale['fiscal_number'] ?? ''}');
+      b.writeln('CAI: ${sale['fiscal_cai'] ?? ''}');
+      b.writeln(
+        'Rango: ${sale['fiscal_range_start'] ?? ''} a ${sale['fiscal_range_end'] ?? ''}',
+      );
+      b.writeln('Fecha límite: ${sale['fiscal_expires_on'] ?? ''}');
+    }
     b.writeln('Venta #${sale['id']} — ${sale['posted_at']}');
     b.writeln('Cliente: ${sale['customer_name'] ?? 'Consumidor final'}');
     if ('${sale['customer_identity'] ?? ''}'.isNotEmpty) {
@@ -617,6 +767,9 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     }
     b.writeln('Subtotal: L ${sale['subtotal']}');
     b.writeln('Descuento: L ${sale['discount_amount']}');
+    if (invoice) {
+      b.writeln('ISV 15%: L ${sale['tax_amount']}');
+    }
     b.writeln('TOTAL: L ${sale['total']}');
     for (final payment in _rows(sale['payments'])) {
       b.writeln('${payment['channel']}: L ${payment['amount']}');
@@ -628,32 +781,60 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       b.writeln('Efectivo recibido: L ${sale['cash_received']}');
       b.writeln('Cambio entregado: L ${sale['change_given']}');
     }
-    b.writeln('No constituye factura fiscal.');
+    if (!invoice) {
+      b.writeln('Documento interno sin valor fiscal.');
+    }
     return b.toString();
   }
 
-  Future<void> _showReceipt(Map<String, dynamic> receipt) async {
+  Future<void> _showReceipt(
+    Map<String, dynamic> receipt, {
+    bool afterSale = false,
+  }) async {
     final text = _receiptText(receipt);
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Venta #${receipt['id']} confirmada'),
-        content: SingleChildScrollView(child: SelectableText(text)),
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          afterSale
+              ? 'Venta #${receipt['id']} confirmada. ¿Desea imprimir el comprobante?'
+              : 'Comprobante de venta #${receipt['id']}',
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 550),
+          child: SingleChildScrollView(child: SelectableText(text)),
+        ),
         actions: [
           TextButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: text));
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-              _message('Comprobante copiado.');
+              if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+              _message('Comprobante copiado');
             },
             icon: const Icon(Icons.copy),
             label: const Text('Copiar'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cerrar'),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(afterSale ? 'No, finalizar' : 'Cerrar'),
+          ),
+          FilledButton.icon(
+            key: const ValueKey('pos_print_receipt'),
+            onPressed: () async {
+              try {
+                await CompanyPosPrinting.printSale(receipt);
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(content: Text('No se pudo imprimir: $e')),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.print_outlined),
+            label: const Text('Sí, imprimir'),
           ),
         ],
       ),
@@ -697,7 +878,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           ListTile(
             title: Text('Venta #${sale['id']} · L ${sale['total']}'),
             subtitle: Text(
-              '${sale['customer_name_snapshot'] ?? 'Consumidor final'} · '
+              '${sale['document_type'] == 'FISCAL_INVOICE' ? 'Factura' : 'Recibo'} · ${sale['customer_name_snapshot'] ?? 'Consumidor final'} · '
               '${sale['posted_at']} · ${sale['status']}',
               style: const TextStyle(color: _muted),
             ),
@@ -782,12 +963,30 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             if (head.maxWidth < 650) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [branchSelector, const SizedBox(height: 12), tabs],
+                children: [
+                  branchSelector,
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const ValueKey('pos_design_document'),
+                    onPressed: _openDesigner,
+                    icon: const Icon(Icons.design_services_outlined),
+                    label: const Text('Diseñar recibo y factura'),
+                  ),
+                  const SizedBox(height: 12),
+                  tabs,
+                ],
               );
             }
             return Row(
               children: [
                 Expanded(child: branchSelector),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  key: const ValueKey('pos_design_document'),
+                  onPressed: _openDesigner,
+                  icon: const Icon(Icons.design_services_outlined),
+                  label: const Text('Diseñar comprobantes'),
+                ),
                 const SizedBox(width: 12),
                 tabs,
               ],

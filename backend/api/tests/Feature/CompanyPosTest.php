@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\V1\CompanyPosDocumentTemplateController;
+
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -22,7 +24,7 @@ class CompanyPosTest extends TestCase
             throw new \RuntimeException('POS tests: únicamente SQLite :memory:.');
         }
         foreach ([
-            'pos_sale_payments', 'pos_sale_items', 'pos_sales', 'cash_movement_events',
+            'pos_document_template_revisions', 'pos_fiscal_authorizations', 'pos_sale_payments', 'pos_sale_items', 'pos_sales', 'cash_movement_events',
             'sale_bank_movements', 'cash_movements', 'wash_order_payments', 'wash_order_discounts',
             'sale_payment_methods', 'sale_bank_accounts', 'inventory_movement_events',
             'inventory_movements', 'inventory_items', 'inventory_categories', 'inventory_suppliers',
@@ -52,6 +54,8 @@ class CompanyPosTest extends TestCase
         (require database_path('migrations/2026_11_16_000006_create_wash_sales.php'))->up();
         (require database_path('migrations/2026_11_16_000007_create_pos_sales.php'))->up();
         (require database_path('migrations/2026_11_16_000008_pos_customer_checkout.php'))->up();
+        (require database_path('migrations/2026_11_17_000009_pos_document_types_and_fiscal_authorizations.php'))->up();
+        (require database_path('migrations/2026_11_17_000010_pos_document_templates.php'))->up();
         DB::table('users')->insert([['id'=>1,'name'=>'Administrador','email'=>'adm@test.invalid','password'=>'x'],
             ['id'=>2,'name'=>'Lector','email'=>'ver@test.invalid','password'=>'x']]);
         DB::table('companies')->insert([['id'=>1,'name'=>'Negocio A'], ['id'=>2,'name'=>'Negocio B']]);
@@ -92,6 +96,126 @@ class CompanyPosTest extends TestCase
             'payments' => [['payment_method_id'=>1,'cash_session_id'=>1,'amount'=>'150.00'],
                 ['payment_method_id'=>2,'bank_account_id'=>1,'amount'=>'100.00','reference'=>'TR-001']],
         ];
+    }
+
+    public function test_print_design_is_scoped_versioned_and_pinned_to_sale(): void
+    {
+        $this->login();
+        $base = CompanyPosDocumentTemplateController::defaults('RECEIPT');
+        $this->getJson($this->url('/document-designs?branch_id=1&document_type=RECEIPT'))
+            ->assertOk()->assertJsonPath('data.revision', 0);
+        $base['brand_name'] = 'Carwash Diseño Turquesa';
+        $this->postJson($this->url('/document-designs'), [
+            'branch_id'=>2, 'document_type'=>'RECEIPT', 'expected_revision'=>0, 'design'=>$base,
+        ])->assertUnprocessable();
+        $this->postJson($this->url('/document-designs'), [
+            'branch_id'=>1, 'document_type'=>'RECEIPT', 'expected_revision'=>0, 'design'=>$base,
+        ])->assertCreated()->assertJsonPath('data.revision',1);
+        $this->getJson($this->url('/document-designs?branch_id=1&document_type=RECEIPT'))
+            ->assertJsonPath('data.design.brand_name','Carwash Diseño Turquesa')
+            ->assertJsonPath('data.revision',1);
+        $this->postJson($this->url('/document-designs'), [
+            'branch_id'=>1, 'document_type'=>'RECEIPT', 'expected_revision'=>0, 'design'=>$base,
+        ])->assertStatus(409);
+        $this->login(2);
+        $this->getJson($this->url('/document-designs?branch_id=1&document_type=RECEIPT'))->assertOk();
+        $this->postJson($this->url('/document-designs'), [
+            'branch_id'=>1, 'document_type'=>'RECEIPT', 'expected_revision'=>1, 'design'=>$base,
+        ])->assertForbidden();
+        $this->login();
+        $receipt=$this->postJson($this->url('/sales'),$this->sale('pos-doc-design-test-20261117'))
+            ->assertCreated()->assertJsonPath('data.document_design.brand_name','Carwash Diseño Turquesa');
+        $saleId=(int)$receipt->json('data.id');
+        $initialRevision=(int)$receipt->json('data.document_template_revision_id');
+        $this->assertGreaterThan(0,$initialRevision);
+        $base['brand_name']='Otro diseño nuevo';
+        $this->postJson($this->url('/document-designs'), [
+            'branch_id'=>1, 'document_type'=>'RECEIPT', 'expected_revision'=>1, 'design'=>$base,
+        ])->assertCreated()->assertJsonPath('data.revision',2);
+        // El documento registrado nunca se rediseña al reimprimir después.
+        $this->getJson($this->url('/sales/'.$saleId))->assertOk()
+            ->assertJsonPath('data.document_design.brand_name','Carwash Diseño Turquesa')
+            ->assertJsonPath('data.document_template_revision_id',$initialRevision);
+        $this->assertSame(2,DB::table('pos_document_template_revisions')->where('company_id',1)->count());
+    }
+
+    public function test_invoice_design_cannot_hide_mandatory_fields(): void
+    {
+        $this->login();
+        $design=CompanyPosDocumentTemplateController::defaults('FISCAL_INVOICE');
+        $design['sections']=array_values(array_diff($design['sections'], ['fiscal']));
+        $this->postJson($this->url('/document-designs'), [
+            'branch_id'=>1,'document_type'=>'FISCAL_INVOICE',
+            'expected_revision'=>0,'design'=>$design,
+        ])->assertUnprocessable();
+        $design=CompanyPosDocumentTemplateController::defaults('FISCAL_INVOICE');
+        $design['hidden_sections']=['fiscal'];
+        $this->postJson($this->url('/document-designs'), [
+            'branch_id'=>1,'document_type'=>'FISCAL_INVOICE',
+            'expected_revision'=>0,'design'=>$design,
+        ])->assertUnprocessable();
+        $this->getJson('/api/v1/companies/2/pos/document-designs?branch_id=2&document_type=RECEIPT')
+            ->assertNotFound();
+    }
+
+    public function test_receipt_has_no_added_tax_and_invoice_requires_cai(): void
+    {
+        $this->login();
+        $receipt = $this->sale('pos-document-receipt-20261117');
+        $receipt['document_type']='RECEIPT';
+        $response = $this->postJson($this->url('/sales'), $receipt)->assertCreated()
+            ->assertJsonPath('data.document_type','RECEIPT')
+            ->assertJsonPath('data.tax_amount','0.00')->assertJsonPath('data.total','250.00');
+        $invoice = $this->sale('pos-document-invoice-20261117',1);
+        $invoice['discount_amount']='0.00';
+        $invoice['payments']=[['payment_method_id'=>1,'cash_session_id'=>1,'amount'=>'172.50']];
+        $invoice['document_type']='FISCAL_INVOICE';
+        $this->postJson($this->url('/sales'),$invoice)->assertUnprocessable();
+        $this->assertDatabaseHas('pos_sales',['id'=>$response->json('data.id'),'document_type'=>'RECEIPT']);
+        $this->assertSame(1,DB::table('pos_sales')->count());
+    }
+
+    public function test_invoice_tax_15_cai_sequence_and_idempotency(): void
+    {
+        $this->login();
+        $config=[
+            'branch_id'=>1,'legal_name'=>'Mi Carwash de Prueba S.A.', 'rtn'=>'08011999000011',
+            'cai'=>'CAI-AUTORIZADO-SOLO-PRUEBAS', 'establishment_code'=>'000',
+            'point_code'=>'001','start_sequence'=>10,'end_sequence'=>11,
+            'next_sequence'=>10,'expires_on'=>now()->addDays(30)->format('Y-m-d'),
+            'authorization_confirmed'=>true,
+        ];
+        $this->postJson($this->url('/fiscal-settings'),$config)->assertOk()
+            ->assertJsonPath('available',true);
+        $sale=$this->sale('pos-document-invoice-a-20261117',1);
+        $sale['discount_amount']='0.00';
+        $sale['discount_reason']='';
+        $sale['document_type']='FISCAL_INVOICE';
+        $sale['payments']=[['payment_method_id'=>1,'cash_session_id'=>1,'amount'=>'172.50']];
+        $response=$this->postJson($this->url('/sales'),$sale)->assertCreated()
+            ->assertJsonPath('data.document_type','FISCAL_INVOICE')
+            ->assertJsonPath('data.subtotal','150.00')
+            ->assertJsonPath('data.tax_amount','22.50')
+            ->assertJsonPath('data.total','172.50')
+            ->assertJsonPath('data.fiscal_number','000-001-01-00000010')
+            ->assertJsonPath('data.fiscal_cai','CAI-AUTORIZADO-SOLO-PRUEBAS');
+        $id=(int) $response->json('data.id');
+        $this->postJson($this->url('/sales'),$sale)->assertOk()->assertJsonPath('replayed',true);
+        $this->getJson($this->url('/sales/'.$id))->assertOk()
+            ->assertJsonPath('data.fiscal_number','000-001-01-00000010');
+        $this->assertDatabaseHas('pos_fiscal_authorizations',['company_id'=>1,'next_sequence'=>11]);
+        $this->assertSame(1, DB::table('pos_sales')->where('document_type','FISCAL_INVOICE')->count());
+        $this->postJson($this->url('/fiscal-settings'),$config)->assertUnprocessable();
+    }
+
+    public function test_cai_and_fiscal_settings_are_tenant_restricted(): void
+    {
+        $this->login(2);
+        $this->postJson($this->url('/fiscal-settings'),['branch_id'=>1])->assertForbidden();
+        $this->login();
+        $this->getJson($this->url('/fiscal-settings?branch_id=2'))->assertUnprocessable();
+        $this->getJson($this->url('/fiscal-settings?branch_id=1'))->assertOk()
+            ->assertJsonPath('available',false);
     }
 
     public function test_customer_search_respects_company_and_records(): void
