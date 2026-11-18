@@ -492,9 +492,9 @@ class CompanyBookingController extends Controller
             $service=$this->service($company,$serviceId);
             // Mantener precio/duracion aceptados si solo se edita una reserva;
             // cambiar el servicio crea una nueva cotizacion basada en el catalogo actual.
-            $reuseSnapshot = !$creating && $serviceId === (int)$old->service_id;
+            $reuseSnapshot = !$creating && $serviceId === (int)$old->service_id && $vehicleId === (int)$old->vehicle_id;
             $duration = $reuseSnapshot ? (int)$old->estimated_minutes : (int)$service->duration_minutes;
-            $price = $reuseSnapshot ? $old->quoted_price : $service->price;
+            $price = $reuseSnapshot ? $old->quoted_price : \App\Support\ServiceTariff24F::resolve($company,$serviceId,$vehicleId,$service->price);
             [$start,$end,$utcStart,$utcEnd]=$this->timeRange($branch,$v['local_date'],$v['start_time'],null,$duration);
             $this->ensureBookingWindow($company,$branch,$start,$end);
             $this->checkCapacity($company,$branch,$bayId,$vehicleId,$start,$end,$utcStart,$utcEnd,$record);

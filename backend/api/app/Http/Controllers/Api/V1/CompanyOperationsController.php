@@ -185,6 +185,11 @@ class CompanyOperationsController extends Controller
             $result['client_name'] = $this->scoped('clients', $company)
                 ->where('id', $record->client_id)->value('full_name');
         }
+        if ($resource === 'services' && \Illuminate\Support\Facades\Schema::hasTable('service_vehicle_prices')) {
+            $result['vehicle_prices'] = DB::table('service_vehicle_prices')->where('company_id', $company)
+                ->where('service_id', $record->id)->orderBy('vehicle_type')
+                ->get(['vehicle_type','price'])->toArray();
+        }
         return $result;
     }
 

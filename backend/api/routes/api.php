@@ -154,6 +154,8 @@ Route::prefix('v1')->group(function (): void {
 
 // BLOQUE 15 - CATALOGOS OPERATIVOS (4 CRUD)
 Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
+    Route::get('/companies/{company}/services/{service}/vehicle-prices', [\App\Http\Controllers\Api\V1\CompanyServiceVehiclePrices24FController::class, 'index'])->whereNumber('company')->whereNumber('service');
+    Route::patch('/companies/{company}/services/{service}/vehicle-prices', [\App\Http\Controllers\Api\V1\CompanyServiceVehiclePrices24FController::class, 'replace'])->whereNumber('company')->whereNumber('service');
     Route::get('/companies/{company}/{resource}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'index'])
         ->whereNumber('company')->where('resource', 'clients|vehicles|employees|services');
     Route::get('/companies/{company}/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyOperationsController::class, 'show'])

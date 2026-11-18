@@ -79,7 +79,7 @@ class CompanyWashWorkflowController extends Controller
         $s = DB::table('wash_services')->where('company_id', $company)->where('id', $service)
             ->whereNull('deleted_at')->where('is_active', true)->first();
         if (!$s) throw ValidationException::withMessages(['service_id' => 'Selecciona un servicio activo de esta empresa.']);
-        return ['price' => $s->price, 'duration' => $s->duration_minutes];
+        return ['price' => \App\Support\ServiceTariff24F::resolve($company, $service, $vehicle, $s->price), 'duration' => $s->duration_minutes];
     }
 
     private function event(int $company, int $orderId, ?string $from, string $to, ?string $reason, int $actor): void

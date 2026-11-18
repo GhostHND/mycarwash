@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
 import 'company_media_photo_dialog.dart';
+import 'company_services_cards_24f.dart';
+import 'company_service_tariff_fields_24f2.dart';
 import 'company_clients_cards_24c.dart';
 import 'company_vehicle_cards_24c2.dart';
 import 'company_vehicle_photo_form_24c2.dart';
@@ -384,6 +386,12 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
     bool saving = false;
     String? dialogError;
     bool didChange = false;
+    final serviceTariffDraft24F2 = ServiceVehicleTariffDraft24F2(
+      existing?['vehicle_prices'] is List
+          ? existing!['vehicle_prices'] as List<dynamic>
+          : <dynamic>[],
+    );
+    int? persistedServiceId24F2 = int.tryParse('${existing?['id'] ?? ''}');
     final photoDraft24C2 = CompanyVehiclePhotoDraft24C2();
     final photoDraft24C3 = CompanyEmployeePhotoDraft24C3();
     int? persistedEmployeeId24C3 = int.tryParse('${existing?['id'] ?? ''}');
@@ -544,6 +552,12 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                         ),
                         const SizedBox(height: 12),
                       ],
+                      if (widget.catalog == OperationsCatalog.services) ...[
+                        CompanyServiceTariffFields24F2(
+                          draft: serviceTariffDraft24F2,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       Material(
                         color: Colors.transparent,
                         child: SwitchListTile(
@@ -623,10 +637,16 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                           // Si se creó el registro pero falló la foto, el reintento
                           // no debe duplicar el vehículo.
                           final saved24C2 =
-                              existing == null &&
-                                  widget.catalog ==
-                                      OperationsCatalog.employees &&
-                                  persistedEmployeeId24C3 != null
+                              widget.catalog == OperationsCatalog.services &&
+                                  existing == null &&
+                                  persistedServiceId24F2 != null
+                              ? <String, dynamic>{
+                                  'data': {'id': persistedServiceId24F2},
+                                }
+                              : existing == null &&
+                                    widget.catalog ==
+                                        OperationsCatalog.employees &&
+                                    persistedEmployeeId24C3 != null
                               ? <String, dynamic>{
                                   'data': {'id': persistedEmployeeId24C3},
                                 }
@@ -643,6 +663,25 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                       : '$_path/${existing['id']}',
                                   body: payload,
                                 );
+                          if (widget.catalog == OperationsCatalog.services) {
+                            final resultData = saved24C2['data'];
+                            final serviceId = int.tryParse(
+                              '${resultData is Map ? resultData['id'] : existing?['id']}',
+                            );
+                            if (serviceId == null) {
+                              throw Exception(
+                                'No se obtuvo el ID del servicio.',
+                              );
+                            }
+                            persistedServiceId24F2 = serviceId;
+                            final prices = serviceTariffDraft24F2
+                                .validatedPrices();
+                            await _api.request(
+                              'PATCH',
+                              '/services/$serviceId/vehicle-prices',
+                              body: {'prices': prices},
+                            );
+                          }
                           if (widget.catalog == OperationsCatalog.vehicles) {
                             final data24C2 = saved24C2['data'];
                             final savedId24C2 = int.tryParse(
@@ -696,6 +735,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
       for (final controller in controllers.values) {
         controller.dispose();
       }
+      serviceTariffDraft24F2.dispose();
     }
     if (didChange && mounted) {
       _notify('Registro guardado correctamente.');
@@ -928,6 +968,12 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                   client: _client,
                   onEdit: _edit,
                   onArchive: _delete,
+                )
+              else if (widget.catalog == OperationsCatalog.services)
+                CompanyServicesCards24F(
+                  records: _rows,
+                  onEdit: (record) => _edit(record),
+                  onArchive: (record) => _delete(record),
                 )
               else
                 for (final record in _rows)

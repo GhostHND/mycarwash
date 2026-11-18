@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
 import 'company_sale_checkout_dialog.dart';
+import 'company_workflow_cards_24f.dart';
 import 'company_wash_orders_cards_24e.dart';
 
 enum WashModule { bays, orders, assignments, queue }
@@ -813,6 +814,15 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                   ? const Padding(
                       padding: EdgeInsets.all(28),
                       child: Center(child: Text('Sin registros para mostrar.')),
+                    )
+                  : widget.module == WashModule.bays ||
+                        widget.module == WashModule.assignments ||
+                        widget.module == WashModule.queue
+                  ? CompanyWorkflowCards24F(
+                      module: _resource,
+                      records: _rows,
+                      onEdit: (record) => _edit(record),
+                      onArchive: (record) => _delete(record),
                     )
                   : Column(
                       children: [
