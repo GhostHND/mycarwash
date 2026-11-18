@@ -337,7 +337,45 @@ final class CompanyUnifiedReportsController extends Controller
             $q = $this->filtered('inventory_suppliers', $company, null, $from, $until);
             if ($q) $metrics[] = $this->metric('Proveedores registrados', (clone $q)->count());
             else $this->unavailable($warnings, 'proveedores');
-            $warnings[] = 'No se informa costo de compras ni órdenes recibidas sin registros de compras verificados. Entradas de inventario no equivalen necesariamente a compras.';
+            // Bloque 23A: compras documentadas, distintas de entradas manuales de inventario.
+            if ($this->has('purchase_orders', 'created_at')) {
+                $orders = $this->filtered('purchase_orders', $company, $branch, $from, $until);
+                if ($orders) {
+                    $metrics[] = $this->metric('Órdenes de compra creadas', (clone $orders)->count());
+                    $metrics[] = $this->metric('Valor de órdenes emitidas', (clone $orders)->where('status','!=','CANCELLED')->sum('total'), 'HNL');
+                    $supplierNames=DB::table('inventory_suppliers')->where('company_id',$company)->pluck('name','id');
+                    $rows=(clone $orders)->select('number','supplier_id','status','total','created_at')
+                        ->orderByDesc('id')->limit(200)->get()->map(static fn($r):array => [
+                            'number'=>$r->number,'supplier'=>$supplierNames[$r->supplier_id] ?? 'Proveedor',
+                            'status'=>$r->status,'total'=>$r->total,'created_at'=>$r->created_at,
+                        ]);
+                    $sections[]=$this->section('Órdenes de compra',
+                        ['number'=>'Orden','supplier'=>'Proveedor','status'=>'Estado','total'=>'Total HNL','created_at'=>'Creada'],
+                        $rows,'Se filtran por creación de orden, no por fecha de entrada a almacén. Máximo 200 filas.');
+                }
+            } else $this->unavailable($warnings, 'órdenes de compra');
+            if ($this->has('purchase_receipts','received_at') && $this->has('purchase_receipt_lines','quantity')) {
+                $receipts=$this->filtered('purchase_receipts',$company,$branch,$from,$until,'received_at');
+                if($receipts) {
+                    $metrics[]=$this->metric('Recepciones confirmadas', (clone $receipts)->count());
+                    $detailQuery=DB::table('purchase_receipts as rec')
+                        ->join('purchase_receipt_lines as line',function($join):void {
+                            $join->on('line.receipt_id','=','rec.id')
+                                ->on('line.company_id','=','rec.company_id');
+                        })->where('rec.company_id',$company)
+                        ->where('rec.received_at','>=',$from.' 00:00:00')
+                        ->where('rec.received_at','<',$until);
+                    if ($branch !== null) $detailQuery->where('rec.branch_id',$branch);
+                    $details=$detailQuery->selectRaw('DATE(rec.received_at) AS day')
+                        ->selectRaw('COUNT(DISTINCT rec.id) AS receipts')
+                        ->selectRaw('COALESCE(SUM(line.quantity * line.unit_cost),0) AS received_value')
+                        ->groupByRaw('DATE(rec.received_at)')->orderBy('day')->get();
+                    $sections[]=$this->section('Recepciones reales por fecha',
+                        ['day'=>'Fecha','receipts'=>'Recepciones','received_value'=>'Valor recibido HNL'],
+                        $details,'Valor estimado según cantidad efectivamente recibida × costo de la orden; no equivale a monto pagado.');
+                }
+            } else $this->unavailable($warnings, 'recepciones de compra');
+            $warnings[]='Los pedidos y recepciones no implican pago al proveedor. Entradas manuales de inventario son operaciones diferentes.';
         }
         if ($kind === 'overview') $warnings[] = 'Los totales POS, de lavados y caja son conceptos distintos; no deben sumarse entre sí. Resumen operativo, no balance contable.';
         if (count($sections) === 0 && count($metrics) === 0) $warnings[] = 'Sin datos verificables para este reporte y período.';

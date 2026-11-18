@@ -14,6 +14,7 @@ import 'ui/company_smart_pos_page.dart';
 import 'ui/company_pos_designer_page.dart';
 import 'ui/company_pos_reports_page.dart';
 import 'ui/company_unified_reports_page.dart';
+import 'ui/company_purchasing_page.dart';
 import 'ui/company_sales_page.dart';
 
 import 'package:flutter/material.dart';
@@ -190,6 +191,7 @@ const _menu = [
   _NavItem('Inventario', Icons.inventory_2_outlined),
   _NavItem('Categorías de inventario', Icons.category_outlined),
   _NavItem('Proveedores', Icons.local_shipping_outlined),
+  _NavItem('Compras y recepciones', Icons.shopping_cart_checkout_outlined),
   _NavItem('Movimientos de inventario', Icons.swap_horiz_outlined),
   _NavItem('Caja y ventas', Icons.point_of_sale_outlined),
   _NavItem('Sesiones de caja', Icons.pending_actions_outlined),
@@ -251,6 +253,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
     'Inventario',
     'Categorías de inventario',
     'Proveedores',
+    'Compras y recepciones',
     'Movimientos de inventario',
   ]),
   _CompactNavGroup('Caja y bancos', Icons.account_balance_outlined, [
@@ -651,6 +654,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     }
     if (destination == 'Reporte fiscal') {
       return const CompanyUnifiedReportsPage(kind: 'fiscal');
+    }
+    if (destination == 'Compras y recepciones') {
+      return const CompanyPurchasingPage();
     }
     if (destination == 'Reporte de compras') {
       return const CompanyUnifiedReportsPage(kind: 'purchases');

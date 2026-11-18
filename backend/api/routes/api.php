@@ -240,3 +240,13 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::post('/companies/{company}/pos/sales', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'checkout'])->whereNumber('company');
     Route::get('/companies/{company}/pos/sales/{sale}', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'show'])->whereNumber('company')->whereNumber('sale');
 });
+
+// BLOQUE 23A - Compras reales y recepciones parciales auditadas.
+Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/purchasing/options', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'options'])->whereNumber('company');
+    Route::get('/companies/{company}/purchasing/orders', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'index'])->whereNumber('company');
+    Route::post('/companies/{company}/purchasing/orders', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'store'])->whereNumber('company');
+    Route::get('/companies/{company}/purchasing/orders/{order}', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'show'])->whereNumber('company')->whereNumber('order');
+    Route::post('/companies/{company}/purchasing/orders/{order}/receive', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'receive'])->whereNumber('company')->whereNumber('order');
+    Route::post('/companies/{company}/purchasing/orders/{order}/cancel', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'cancel'])->whereNumber('company')->whereNumber('order');
+});
