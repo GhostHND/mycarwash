@@ -35,6 +35,7 @@ class CompanyMediaController extends Controller
         $table = match ($kind) {
             'vehicles' => 'vehicles',
             'employees' => 'employees',
+            'items' => 'inventory_items',
             default => abort(404),
         };
         if (!DB::table($table)->where('id', $record)->where('company_id', $company)
@@ -113,7 +114,7 @@ class CompanyMediaController extends Controller
             DB::transaction(function () use ($company, $kind, $record, $path, $mime, $bytes, $input, $previous, $file): void {
                 $show = $input['show_on_kiosk'] ?? ($previous?->show_on_kiosk ?? false);
                 $metadata = [
-                    'category' => $kind === 'vehicles' ? 'vehicle_photo' : 'employee_photo',
+                    'category' => match ($kind) { 'vehicles' => 'vehicle_photo', 'employees' => 'employee_photo', 'items' => 'product_photo' },
                     'disk' => 'local', 'path' => $path,
                     'original_filename' => mb_substr(basename($file->getClientOriginalName()), 0, 255),
                     'mime_type' => $mime, 'file_size' => $bytes,

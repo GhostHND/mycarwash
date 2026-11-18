@@ -127,7 +127,7 @@ final class CompanyDashboardVisual24A3Controller extends Controller
             $r=$q->select('i.item_id','i.name_snapshot',DB::raw('SUM(i.quantity) as units'),
                 DB::raw('SUM(i.line_total) as revenue'))->groupBy('i.item_id','i.name_snapshot')
                 ->orderByDesc('units')->orderBy('i.item_id')->first();
-            if ($r) $topItem=['name'=>(string)$r->name_snapshot,'units'=>(float)$r->units,'revenue'=>(float)$r->revenue];
+            if ($r) $topItem=['id'=>(int)$r->item_id,'name'=>(string)$r->name_snapshot,'units'=>(float)$r->units,'revenue'=>(float)$r->revenue];
         } else $warnings[]='Ranking POS no disponible';
 
         $bookings = null;

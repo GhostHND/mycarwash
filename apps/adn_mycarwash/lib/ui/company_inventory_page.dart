@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
+import 'company_product_photo_24j.dart';
 
 enum InventoryModule { categories, suppliers, items, movements }
 
@@ -318,6 +319,10 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
         existing['is_active'] == 1;
     var saving = false;
     String? dialogError;
+    final photoDraft24J = CompanyProductPhotoDraft24J();
+    int? savedProductId24J = existing == null
+        ? null
+        : int.tryParse('${existing['id']}');
     // Evita liberar controladores mientras sigue montado el Overlay.
     final route = DialogRoute<bool>(
       context: context,
@@ -420,6 +425,12 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
                       ),
                       const SizedBox(height: 13),
                     ],
+                    if (widget.module == InventoryModule.items)
+                      CompanyProductPhotoField24J(
+                        client: _client,
+                        draft: photoDraft24J,
+                        productId: savedProductId24J,
+                      ),
                     if (widget.module != InventoryModule.movements)
                       SwitchListTile(
                         title: const Text('Activo'),
@@ -481,11 +492,30 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
                         data.remove('item_id');
                       }
                       try {
-                        await _api.request(
-                          existing == null ? 'POST' : 'PATCH',
-                          existing == null ? _path : '$_path/${existing['id']}',
+                        final response24J = await _api.request(
+                          savedProductId24J == null ? 'POST' : 'PATCH',
+                          savedProductId24J == null
+                              ? _path
+                              : '$_path/$savedProductId24J',
                           body: data,
                         );
+                        if (widget.module == InventoryModule.items) {
+                          final result24J = response24J['data'];
+                          savedProductId24J ??= result24J is Map
+                              ? int.tryParse('${result24J['id']}')
+                              : null;
+                          if (photoDraft24J.hasChanges) {
+                            if (savedProductId24J == null) {
+                              throw Exception(
+                                'El servidor no devolvió el identificador del producto.',
+                              );
+                            }
+                            await photoDraft24J.save(
+                              _client,
+                              savedProductId24J!,
+                            );
+                          }
+                        }
                         if (dialogContext.mounted) {
                           Navigator.pop(dialogContext, true);
                         }
@@ -654,17 +684,214 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
     }
   }
 
-  String _summary(Map<String, dynamic> row) => switch (widget.module) {
-    InventoryModule.categories => '${row['name'] ?? 'Categoría'}',
-    InventoryModule.suppliers =>
-      '${row['name'] ?? 'Proveedor'} · ${row['phone'] ?? ''}',
-    InventoryModule.items =>
-      '${row['sku']} · ${row['name']} · Existencia: ${row['stock_total'] ?? '0'} ${row['unit'] ?? ''}',
-    InventoryModule.movements =>
-      '${row['movement_type'] == 'IN' ? 'Entrada' : 'Salida'} '
-          '${row['quantity']} · ${row['item_name'] ?? row['item_id']} · '
-          '${row['branch_name'] ?? row['branch_id']}',
-  };
+  // 24I: tarjetas de altura natural y ancho proporcional al contenido.
+  String _cardValue(Map<String, dynamic> row, String key) {
+    final value = row[key];
+    if (value == null || '$value'.trim().isEmpty) return '';
+    return '$value'.trim();
+  }
+
+  Widget _cardDetail(String label, String value, {Color? valueColor}) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 7),
+      child: Wrap(
+        spacing: 5,
+        runSpacing: 2,
+        children: [
+          Text('$label:', style: const TextStyle(fontSize: 12, color: _muted)),
+          Text(
+            value,
+            style: TextStyle(fontSize: 13, color: valueColor ?? Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _inventoryCard(Map<String, dynamic> row) {
+    final isMovement = widget.module == InventoryModule.movements;
+    final active = row['is_active'] != false && '${row['is_active']}' != '0';
+    final title = switch (widget.module) {
+      InventoryModule.categories => _cardValue(row, 'name'),
+      InventoryModule.suppliers => _cardValue(row, 'name'),
+      InventoryModule.items => _cardValue(row, 'name'),
+      InventoryModule.movements =>
+        _cardValue(row, 'movement_type') == 'IN'
+            ? 'Entrada de inventario'
+            : 'Salida de inventario',
+    };
+    final icon = switch (widget.module) {
+      InventoryModule.categories => Icons.category_outlined,
+      InventoryModule.suppliers => Icons.local_shipping_outlined,
+      InventoryModule.items => Icons.inventory_2_outlined,
+      InventoryModule.movements => Icons.swap_horiz_outlined,
+    };
+    final details = <Widget>[
+      if (widget.module == InventoryModule.items)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: CompanyProductPhotoView24J(
+            client: _client,
+            itemId: int.tryParse('${row['id']}'),
+            size: 104,
+          ),
+        ),
+      if (widget.module == InventoryModule.categories)
+        _cardDetail('Descripción', _cardValue(row, 'description')),
+      if (widget.module == InventoryModule.suppliers) ...[
+        _cardDetail('RTN', _cardValue(row, 'tax_id')),
+        _cardDetail('Teléfono', _cardValue(row, 'phone')),
+        _cardDetail('Correo', _cardValue(row, 'email')),
+        _cardDetail('Dirección', _cardValue(row, 'address')),
+        _cardDetail('Notas', _cardValue(row, 'notes')),
+      ],
+      if (widget.module == InventoryModule.items) ...[
+        _cardDetail('SKU', _cardValue(row, 'sku')),
+        _cardDetail('Categoría', _cardValue(row, 'category_name')),
+        _cardDetail('Proveedor', _cardValue(row, 'supplier_name')),
+        _cardDetail(
+          'Existencia',
+          '${row['stock_total'] ?? '0'} ${row['unit'] ?? ''}',
+        ),
+        _cardDetail('Mínimo', _cardValue(row, 'min_stock')),
+        _cardDetail(
+          'Costo',
+          _cardValue(row, 'cost_price').isEmpty ? '' : 'L ${row['cost_price']}',
+        ),
+        _cardDetail(
+          'Precio de venta',
+          _cardValue(row, 'sale_price').isEmpty ? '' : 'L ${row['sale_price']}',
+          valueColor: _turquoise,
+        ),
+        _cardDetail('Descripción', _cardValue(row, 'description')),
+      ],
+      if (isMovement) ...[
+        _cardDetail(
+          'Producto',
+          _cardValue(row, 'item_name').isEmpty
+              ? _cardValue(row, 'item_id')
+              : _cardValue(row, 'item_name'),
+        ),
+        _cardDetail('Cantidad', _cardValue(row, 'quantity')),
+        _cardDetail(
+          'Sucursal',
+          _cardValue(row, 'branch_name').isEmpty
+              ? _cardValue(row, 'branch_id')
+              : _cardValue(row, 'branch_name'),
+        ),
+        _cardDetail('Referencia', _cardValue(row, 'reference')),
+        _cardDetail('Observaciones', _cardValue(row, 'notes')),
+      ],
+    ];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF112229),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _turquoise.withValues(alpha: 0.65)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: _turquoise, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title.isEmpty ? 'Registro ${row['id']}' : title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              if (!isMovement)
+                Text(
+                  active ? 'Activo' : 'Inactivo',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: active ? const Color(0xFF52D5A0) : _muted,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'ID ${row['id']}',
+            style: const TextStyle(fontSize: 11, color: _muted),
+          ),
+          ...details,
+          const SizedBox(height: 10),
+          const Divider(color: _border, height: 1),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 2,
+            runSpacing: 0,
+            children: [
+              if (isMovement)
+                IconButton(
+                  tooltip: 'Historial',
+                  onPressed: () => _history(row),
+                  icon: const Icon(Icons.history, color: _muted),
+                ),
+              IconButton(
+                tooltip: 'Consultar',
+                onPressed: () => _details(row),
+                icon: const Icon(Icons.visibility_outlined, color: _muted),
+              ),
+              IconButton(
+                tooltip: 'Editar',
+                onPressed: () => _edit(row),
+                icon: const Icon(Icons.edit_outlined, color: _turquoise),
+              ),
+              IconButton(
+                tooltip: 'Eliminar',
+                onPressed: () => _delete(row),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFE84657),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _inventoryCards() => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      // Categorías son más compactas que proveedores y productos.
+      final minWidth = switch (widget.module) {
+        InventoryModule.categories => 240.0,
+        InventoryModule.suppliers => 335.0,
+        InventoryModule.items => 330.0,
+        InventoryModule.movements => 300.0,
+      };
+      const spacing = 12.0;
+      final columns = ((width + spacing) / (minWidth + spacing)).floor().clamp(
+        1,
+        4,
+      );
+      final cardWidth = (width - spacing * (columns - 1)) / columns;
+      return Wrap(
+        spacing: spacing,
+        runSpacing: spacing,
+        crossAxisAlignment: WrapCrossAlignment.start,
+        children: [
+          for (final row in _rows)
+            SizedBox(width: cardWidth, child: _inventoryCard(row)),
+        ],
+      );
+    },
+  );
 
   @override
   Widget build(BuildContext context) => Container(
@@ -736,64 +963,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
             ),
           )
         else
-          for (final row in _rows)
-            Container(
-              margin: const EdgeInsets.only(bottom: 9),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _border),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.inventory_2_outlined, color: _turquoise),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _summary(row),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'ID ${row['id']}',
-                          style: const TextStyle(color: _muted, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (widget.module == InventoryModule.movements)
-                    IconButton(
-                      tooltip: 'Historial',
-                      onPressed: () => _history(row),
-                      icon: const Icon(Icons.history, color: _muted),
-                    ),
-                  IconButton(
-                    tooltip: 'Consultar',
-                    onPressed: () => _details(row),
-                    icon: const Icon(Icons.visibility_outlined, color: _muted),
-                  ),
-                  IconButton(
-                    tooltip: 'Editar',
-                    onPressed: () => _edit(row),
-                    icon: const Icon(Icons.edit_outlined, color: _turquoise),
-                  ),
-                  IconButton(
-                    tooltip: 'Eliminar',
-                    onPressed: () => _delete(row),
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Color(0xFFE84657),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _inventoryCards(),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,

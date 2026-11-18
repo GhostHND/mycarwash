@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import '../core/mycarwash_session.dart';
 import '../core/business_identity.dart';
 import '../core/company_business_api.dart';
+import 'company_product_photo_24j.dart';
 import 'company_dashboard_art_24a3.dart';
 
 /// Dashboard 24A.3. Datos únicamente de las APIs del negocio autenticado.
@@ -1033,6 +1034,13 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               child: Icon(Icons.inventory_2_outlined, color: _cyan, size: 52),
             ),
             const SizedBox(height: 8),
+            Center(
+              child: CompanyProductPhotoView24J(
+                client: _client,
+                itemId: int.tryParse('${item['id']}'),
+                size: 78,
+              ),
+            ),
             Text(
               '${item['name']}',
               maxLines: 2,

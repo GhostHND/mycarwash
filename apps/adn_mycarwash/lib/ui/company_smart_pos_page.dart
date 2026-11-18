@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
+import 'company_product_photo_24j.dart';
 import 'company_pos_checkout_dialog.dart';
 import 'company_pos_fiscal_settings_dialog.dart';
 import 'company_pos_printing.dart';
@@ -390,10 +391,11 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
                   color: _teal.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.shopping_bag_outlined,
-                  color: _teal,
-                  size: 22,
+                child: CompanyProductPhotoView24J(
+                  client: _client,
+                  itemId: int.tryParse('${item['id']}'),
+                  size: 46,
+                  icon: Icons.shopping_bag_outlined,
                 ),
               ),
               const Spacer(),
@@ -419,7 +421,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: _muted, fontSize: 11),
           ),
-          const Spacer(),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -493,11 +495,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
                 runSpacing: 10,
                 children: [
                   for (final item in _products)
-                    SizedBox(
-                      width: tileWidth,
-                      height: 180,
-                      child: _productTile(item),
-                    ),
+                    SizedBox(width: tileWidth, child: _productTile(item)),
                 ],
               );
             },

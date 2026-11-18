@@ -181,11 +181,11 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
     Route::get('/companies/{company}/workflow/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'show'])->whereNumber('company')->where('resource', 'bays|orders|assignments')->whereNumber('record');
     Route::patch('/companies/{company}/workflow/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'update'])->whereNumber('company')->where('resource', 'bays|orders|assignments')->whereNumber('record');
     Route::delete('/companies/{company}/workflow/{resource}/{record}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'destroy'])->whereNumber('company')->where('resource', 'bays|orders|assignments')->whereNumber('record');
-    Route::get('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'show'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
-    Route::get('/companies/{company}/media/{kind}/{record}/file', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'file'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
-    Route::post('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'store'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
-    Route::patch('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'update'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
-    Route::delete('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'destroy'])->whereNumber('company')->where('kind', 'vehicles|employees')->whereNumber('record');
+    Route::get('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'show'])->whereNumber('company')->where('kind', 'vehicles|employees|items')->whereNumber('record');
+    Route::get('/companies/{company}/media/{kind}/{record}/file', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'file'])->whereNumber('company')->where('kind', 'vehicles|employees|items')->whereNumber('record');
+    Route::post('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'store'])->whereNumber('company')->where('kind', 'vehicles|employees|items')->whereNumber('record');
+    Route::patch('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'update'])->whereNumber('company')->where('kind', 'vehicles|employees|items')->whereNumber('record');
+    Route::delete('/companies/{company}/media/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyMediaController::class, 'destroy'])->whereNumber('company')->where('kind', 'vehicles|employees|items')->whereNumber('record');
 });
 
 // BLOQUE 17 - Agenda administrativa: reservas, bloqueos, turnos y plantilla de personal.
