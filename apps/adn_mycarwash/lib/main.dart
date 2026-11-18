@@ -14,6 +14,7 @@ import 'ui/company_smart_pos_page.dart';
 import 'ui/company_pos_designer_page.dart';
 import 'ui/company_pos_reports_page.dart';
 import 'ui/company_unified_reports_page.dart';
+import 'ui/company_dashboard_24a_page.dart';
 import 'ui/company_purchasing_page.dart';
 import 'ui/company_sales_page.dart';
 
@@ -174,7 +175,7 @@ class _NavItem {
 }
 
 const _menu = [
-  _NavItem('Resumen', Icons.dashboard_outlined),
+  _NavItem('Dashboard', Icons.dashboard_outlined),
   _NavItem('Lavados', Icons.local_car_wash_outlined),
   _NavItem('Reservas', Icons.event_available_outlined),
   _NavItem('Clientes', Icons.people_outline_rounded),
@@ -349,7 +350,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
 
   // Navegacion compacta, un grupo desplegado a la vez y submodulos originales.
   Widget _buildCompactNavigation() {
-    final known = <String>{'Resumen'};
+    final known = <String>{'Dashboard'};
     for (final group in _compactNavGroups20_1) {
       known.addAll(group.entries);
     }
@@ -545,67 +546,6 @@ class _DashboardPreviewState extends State<DashboardPreview> {
             ),
           ),
           const Divider(color: AdnColors.border, height: 1),
-          ValueListenableBuilder<BusinessIdentityData>(
-            valueListenable: BusinessIdentity.current,
-            builder: (context, identity, _) {
-              final logo = identity.logoBytes;
-
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 5),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 43,
-                      height: 43,
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: logo != null
-                          ? Image.memory(
-                              logo,
-                              fit: BoxFit.contain,
-                              gaplessPlayback: true,
-                            )
-                          : const Icon(
-                              Icons.business_outlined,
-                              color: Color(0xFF64748B),
-                            ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            identity.companyName.isEmpty
-                                ? 'Mi Empresa'
-                                : identity.companyName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          const Text(
-                            'NEGOCIO ACTIVO',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: AdnColors.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
           const SizedBox(height: 16),
           Expanded(child: _buildCompactNavigation()),
           const Divider(color: AdnColors.border, height: 1),
@@ -617,7 +557,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
           const Padding(
             padding: EdgeInsets.fromLTRB(15, 0, 15, 16),
             child: Text(
-              'VISTA PREVIA · SIN DATOS',
+              'PANEL ADMINISTRATIVO',
               style: TextStyle(fontSize: 10, color: AdnColors.muted),
             ),
           ),
@@ -628,6 +568,14 @@ class _DashboardPreviewState extends State<DashboardPreview> {
 
   Widget _mainContent() {
     final destination = _menu[selected].title;
+    if (destination == 'Dashboard') {
+      return CompanyDashboard24APage(
+        onNavigate: (target) {
+          final index = _menu.indexWhere((item) => item.title == target);
+          if (index >= 0) setState(() => selected = index);
+        },
+      );
+    }
     if (destination == 'Resumen de reportes') {
       return const CompanyUnifiedReportsPage(kind: 'overview');
     }

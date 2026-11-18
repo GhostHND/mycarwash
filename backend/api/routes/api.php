@@ -250,3 +250,11 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::post('/companies/{company}/purchasing/orders/{order}/receive', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'receive'])->whereNumber('company')->whereNumber('order');
     Route::post('/companies/{company}/purchasing/orders/{order}/cancel', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'cancel'])->whereNumber('company')->whereNumber('order');
 });
+// BLOQUE 24A.1 - Dashboard ejecutivo: lectura autenticada, sin migraciones.
+Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/dashboard/overview', [\App\Http\Controllers\Api\V1\CompanyDashboardController::class, 'overview'])->whereNumber('company');
+    Route::get('/companies/{company}/dashboard/visual-24a3', [\App\Http\Controllers\Api\V1\CompanyDashboardVisual24A3Controller::class, 'show'])->whereNumber('company');
+    Route::get('/companies/{company}/dashboard/search-24a3', [\App\Http\Controllers\Api\V1\CompanyDashboardVisual24A3Controller::class, 'search'])->whereNumber('company');
+    Route::get('/companies/{company}/dashboard/analytics', [\App\Http\Controllers\Api\V1\CompanyDashboardAnalyticsController::class, 'overview'])->whereNumber('company');
+    Route::get('/companies/{company}/dashboard/active-washes', [\App\Http\Controllers\Api\V1\CompanyDashboardAnalyticsController::class, 'activeWashes'])->whereNumber('company');
+});
