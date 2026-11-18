@@ -26,6 +26,31 @@ class CompanyServiceVehiclePrices24FController extends Controller {
         if (!DB::table('wash_services')->where('company_id',$company)->where('id',$id)
             ->whereNull('deleted_at')->exists()) abort(404);
     }
+    /** Catálogo compartido por empresa: Servicios -> Vehículos (alta y edición). */
+    public function vehicleTypes(Request $request, int $company): JsonResponse {
+        $this->authorizeCompany($request, $company, 'company.view');
+        if (!Schema::hasTable('service_vehicle_prices')) {
+            abort(503, 'Las tarifas por vehículo aún no están instaladas.');
+        }
+        // Los tipos base son idénticos a los que presenta el editor de tarifas 24F.2.
+        $base = ['Turismo', 'Pickup', 'SUV', 'Camioneta', 'Motocicleta', 'Microbús', 'Camión'];
+        $stored = DB::table('service_vehicle_prices')->where('company_id', $company)
+            ->distinct()->pluck('vehicle_type');
+        foreach ($stored as $type) {
+            $value = trim((string)$type);
+            if ($value === '') continue;
+            $found = false;
+            foreach ($base as $existing) {
+                if (mb_strtolower($existing) === mb_strtolower($value)) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) $base[] = $value;
+        }
+        return response()->json(['data' => $base]);
+    }
+
     public function index(Request $request, int $company, int $service): JsonResponse {
         $this->authorizeCompany($request,$company,'company.view'); $this->service($company,$service);
         if (!Schema::hasTable('service_vehicle_prices')) abort(503,'La migración de tarifas no está instalada.');

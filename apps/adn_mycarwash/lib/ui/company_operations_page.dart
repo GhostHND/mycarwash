@@ -385,6 +385,61 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
     String clientName = (existing?['client_name'] ?? '').toString();
     bool saving = false;
     String? dialogError;
+    // Bloque 24F.3: categorías compartidas con las tarifas empresariales.
+    final vehicleCategories24F3 = <String>[];
+    if (widget.catalog == OperationsCatalog.vehicles) {
+      try {
+        final response24F3 = await _api.request(
+          'GET',
+          '/services/vehicle-types',
+        );
+        final rawTypes24F3 = response24F3['data'];
+        if (rawTypes24F3 is List) {
+          for (final item24F3 in rawTypes24F3) {
+            final type24F3 = '$item24F3'.trim();
+            if (type24F3.isNotEmpty &&
+                !vehicleCategories24F3.any(
+                  (t) => t.toLowerCase() == type24F3.toLowerCase(),
+                )) {
+              vehicleCategories24F3.add(type24F3);
+            }
+          }
+        }
+        if (vehicleCategories24F3.isEmpty) {
+          throw StateError(
+            'No hay categorías de vehículos disponibles en Servicios.',
+          );
+        }
+        final oldType24F3 = controllers['vehicle_type']?.text.trim() ?? '';
+        if (oldType24F3.isNotEmpty) {
+          final matching24F3 = vehicleCategories24F3.where(
+            (t) => t.toLowerCase() == oldType24F3.toLowerCase(),
+          );
+          if (matching24F3.isNotEmpty) {
+            controllers['vehicle_type']!.text = matching24F3.first;
+          } else {
+            // Conserva los valores históricos para editarlos sin perder información.
+            vehicleCategories24F3.add(oldType24F3);
+          }
+        }
+      } catch (error) {
+        for (final controller in controllers.values) {
+          controller.dispose();
+        }
+        _notify(
+          'No se pudieron consultar los tipos de Servicios: $error',
+          error: true,
+        );
+        return;
+      }
+    }
+    // Protección contra uso del contexto tras esperar la respuesta del servidor.
+    if (!mounted) {
+      for (final controller in controllers.values) {
+        controller.dispose();
+      }
+      return;
+    }
     bool didChange = false;
     final serviceTariffDraft24F2 = ServiceVehicleTariffDraft24F2(
       existing?['vehicle_prices'] is List
@@ -469,61 +524,107 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                         const SizedBox(height: 12),
                       ],
                       for (final field in _fields) ...[
-                        TextFormField(
-                          key: ValueKey('operations_${field.key}'),
-                          controller: controllers[field.key],
-                          enabled: !saving,
-                          maxLines: field.multiline ? 3 : 1,
-                          keyboardType: field.numeric
-                              ? const TextInputType.numberWithOptions(
-                                  decimal: true,
+                        if (widget.catalog == OperationsCatalog.vehicles &&
+                            field.key == 'vehicle_type')
+                          DropdownButtonFormField<String>(
+                            key: const ValueKey('operations_vehicle_type'),
+                            initialValue:
+                                controllers['vehicle_type']!.text.trim().isEmpty
+                                ? null
+                                : controllers['vehicle_type']!.text.trim(),
+                            isExpanded: true,
+                            dropdownColor: Theme.of(context)
+                                .colorScheme
+                                .surface,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: _decoration(
+                              'Tipo de vehículo (tarifas de Servicios)',
+                            ),
+                            items: vehicleCategories24F3
+                                .map(
+                                  (type) => DropdownMenuItem<String>(
+                                    value: type,
+                                    child: Text(
+                                      type,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 )
-                              : TextInputType.text,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: _decoration(field.label),
-                          validator: (text) {
-                            final value = (text ?? '').trim();
-                            if (field.required && value.isEmpty) {
-                              return 'Campo obligatorio.';
-                            }
-                            if (field.key == 'price') {
-                              final n = double.tryParse(value);
-                              if (n == null || !n.isFinite || n < 0) {
-                                return 'Precio inválido.';
+                                .toList(),
+                            onChanged: saving
+                                ? null
+                                : (value) {
+                                    update(
+                                      () => controllers['vehicle_type']!.text =
+                                          value ?? '',
+                                    );
+                                  },
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Selecciona el tipo de vehículo.';
                               }
-                              if (!RegExp(r'^\d+(?:\.\d{1,2})?$')
-                                  .hasMatch(value)) {
-                                return 'Máximo dos decimales.';
+                              if (!vehicleCategories24F3.contains(value)) {
+                                return 'Tipo no disponible en Servicios.';
                               }
-                            }
-                            if (field.key == 'duration_minutes' &&
-                                (int.tryParse(value) == null ||
-                                    int.parse(value) < 1 ||
-                                    int.parse(value) > 1440)) {
-                              return 'Entre 1 y 1440 minutos.';
-                            }
-                            if (field.key == 'year' &&
-                                value.isNotEmpty &&
-                                (int.tryParse(value) == null ||
-                                    int.parse(value) < 1900 ||
-                                    int.parse(value) >
-                                        DateTime.now().year + 1)) {
-                              return 'Año no válido.';
-                            }
-                            if (field.key == 'email' &&
-                                value.isNotEmpty &&
-                                !value.contains('@')) {
-                              return 'Correo no válido.';
-                            }
-                            if (field.key == 'hire_date' &&
-                                value.isNotEmpty &&
-                                !RegExp(r'^\d{4}-\d{2}-\d{2}$')
+                              return null;
+                            },
+                          )
+                        else
+                          TextFormField(
+                            key: ValueKey('operations_${field.key}'),
+                            controller: controllers[field.key],
+                            enabled: !saving,
+                            maxLines: field.multiline ? 3 : 1,
+                            keyboardType: field.numeric
+                                ? const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  )
+                                : TextInputType.text,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: _decoration(field.label),
+                            validator: (text) {
+                              final value = (text ?? '').trim();
+                              if (field.required && value.isEmpty) {
+                                return 'Campo obligatorio.';
+                              }
+                              if (field.key == 'price') {
+                                final n = double.tryParse(value);
+                                if (n == null || !n.isFinite || n < 0) {
+                                  return 'Precio inválido.';
+                                }
+                                if (!RegExp(r'^\d+(?:\.\d{1,2})?$')
                                     .hasMatch(value)) {
-                              return 'Usa AAAA-MM-DD.';
-                            }
-                            return null;
-                          },
-                        ),
+                                  return 'Máximo dos decimales.';
+                                }
+                              }
+                              if (field.key == 'duration_minutes' &&
+                                  (int.tryParse(value) == null ||
+                                      int.parse(value) < 1 ||
+                                      int.parse(value) > 1440)) {
+                                return 'Entre 1 y 1440 minutos.';
+                              }
+                              if (field.key == 'year' &&
+                                  value.isNotEmpty &&
+                                  (int.tryParse(value) == null ||
+                                      int.parse(value) < 1900 ||
+                                      int.parse(value) >
+                                          DateTime.now().year + 1)) {
+                                return 'Año no válido.';
+                              }
+                              if (field.key == 'email' &&
+                                  value.isNotEmpty &&
+                                  !value.contains('@')) {
+                                return 'Correo no válido.';
+                              }
+                              if (field.key == 'hire_date' &&
+                                  value.isNotEmpty &&
+                                  !RegExp(r'^\d{4}-\d{2}-\d{2}$')
+                                      .hasMatch(value)) {
+                                return 'Usa AAAA-MM-DD.';
+                              }
+                              return null;
+                            },
+                          ),
                         const SizedBox(height: 12),
                       ],
                       if (widget.catalog == OperationsCatalog.employees) ...[

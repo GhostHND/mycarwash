@@ -75,6 +75,15 @@ void main() {
     var created = false;
     final client = MockClient((request) async {
       expect(request.headers['Authorization'], 'Bearer catalog-test-token');
+      if (request.url.path.endsWith('/services/vehicle-types')) {
+        expect(request.method, 'GET');
+        return http.Response(
+          jsonEncode({
+            'data': ['Turismo', 'Pickup'],
+          }),
+          200,
+        );
+      }
       if (request.url.path.endsWith('/clients')) {
         return http.Response(
           jsonEncode(
@@ -92,6 +101,7 @@ void main() {
       final payload = jsonDecode(request.body) as Map<String, dynamic>;
       expect(payload['client_id'], 4);
       expect(payload['plate'], 'HBA-1000');
+      expect(payload['vehicle_type'], 'Pickup');
       created = true;
       return http.Response(
         jsonEncode({
@@ -114,6 +124,15 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('operations_choose_client')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cliente dueño'));
+    await tester.pumpAndSettle();
+    // Seleccionar una categoria recibida del API y comprobar que se envia.
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('operations_vehicle_type')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('operations_vehicle_type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pickup').last);
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('operations_plate')),
