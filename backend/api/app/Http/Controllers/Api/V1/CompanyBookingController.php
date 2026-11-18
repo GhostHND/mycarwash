@@ -208,6 +208,135 @@ class CompanyBookingController extends Controller
         return $data;
     }
 
+    /** Agenda: listado real por fecha, sin alterar el CRUD existente. */
+    public function agenda24D(Request $request, int $company): JsonResponse
+    {
+        $this->authorizeCompany($request,$company,'company.view');
+        $filters=$request->validate([
+            'date'=>['required','date_format:Y-m-d'],
+            'branch_id'=>['sometimes','integer','min:1'],
+            'limit'=>['sometimes','integer','between:1,50'],
+        ]);
+        // A booking only stores start_at_utc, not local_date. The branch timezone determines dates.
+        $branchId=(int)($filters['branch_id']??0);
+        if ($branchId<1) throw ValidationException::withMessages(['branch_id'=>'Selecciona una sucursal.']);
+        $branch=$this->branch($company,$branchId);
+        $tz=$branch->timezone;
+        $day=$filters['date'];
+        $from=CarbonImmutable::parse($day.' 00:00:00',$tz)->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $to=CarbonImmutable::parse($day.' 00:00:00',$tz)->addDay()->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $todayLocal=CarbonImmutable::now($tz)->toDateString();
+        $todayFrom=CarbonImmutable::parse($todayLocal.' 00:00:00',$tz)->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $todayTo=CarbonImmutable::parse($todayLocal.' 00:00:00',$tz)->addDay()->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $base=$this->scoped('bookings',$company)->where('branch_id',$branchId);
+        $selectedCount=(clone $base)->where('status','CONFIRMED')->where('start_at_utc','>=',$from)
+            ->where('start_at_utc','<',$to)->count();
+        $todayCount=(clone $base)->where('status','CONFIRMED')->where('start_at_utc','>=',$todayFrom)
+            ->where('start_at_utc','<',$todayTo)->count();
+        $upcoming=(clone $base)->where('status','CONFIRMED')
+            ->where('start_at_utc','>=',CarbonImmutable::now('UTC')->format('Y-m-d H:i:s'))
+            ->orderBy('start_at_utc')->limit($filters['limit']??20)->get();
+        $weekStart=CarbonImmutable::parse($day.' 00:00:00',$tz)->startOfWeek();
+        $weekFrom=$weekStart->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $weekTo=$weekStart->addWeek()->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $weekBookings=(clone $base)->where('status','CONFIRMED')
+            ->where('start_at_utc','>=',$weekFrom)->where('start_at_utc','<',$weekTo)
+            ->orderBy('start_at_utc')->limit(100)->get()
+            ->map(fn($row)=>$this->decorated('bookings',$company,$row));
+        $result=$upcoming->map(function($row) use ($company) {
+            $data=$this->decorated('bookings',$company,$row);
+            $v=DB::table('vehicles as v')->leftJoin('clients as c',function($j):void {
+                $j->on('c.id','=','v.client_id')->on('c.company_id','=','v.company_id');
+            })->where('v.company_id',$company)->where('v.id',$row->vehicle_id)
+                ->select('v.brand','v.model','v.plate','v.client_id','c.full_name as client_name')->first();
+            $data['vehicle_brand']=$v?->brand;
+            $data['vehicle_model']=$v?->model;
+            $data['vehicle_plate']=$v?->plate;
+            $data['client_name']=$v?->client_name;
+            $data['client_id']=$v?->client_id;
+            return $data;
+        });
+        return response()->json([
+            'data'=>$result->values(),
+            'confirmed_on_date'=>$selectedCount,
+            'today_count'=>$todayCount,
+            'week_bookings'=>$weekBookings->values(),
+            'selected_date'=>$day,
+        ]);
+    }
+
+    /** Horarios verificables. La confirmación POST vuelve a validar con lock de sucursal. */
+    public function availability24D(Request $request, int $company): JsonResponse
+    {
+        $this->authorizeCompany($request,$company,'company.view');
+        $f=$request->validate([
+            'branch_id'=>['required','integer','min:1'],
+            'vehicle_id'=>['required','integer','min:1'],
+            'service_id'=>['required','integer','min:1'],
+            'date'=>['required','date_format:Y-m-d'],
+        ]);
+        $branchId=(int)$f['branch_id'];
+        $branch=$this->branch($company,$branchId);
+        $this->vehicle($company,(int)$f['vehicle_id']);
+        $service=$this->service($company,(int)$f['service_id']);
+        $minutes=(int)$service->duration_minutes;
+        if ($minutes<=0 || $minutes>1440) {
+            throw ValidationException::withMessages(['service_id'=>'La duración del servicio no es válida.']);
+        }
+        $date=$f['date'];
+        $selected=CarbonImmutable::parse($date.' 12:00',$branch->timezone);
+        if ($selected->lessThan(CarbonImmutable::now($branch->timezone)->startOfDay()) ||
+            $selected->greaterThan(CarbonImmutable::now($branch->timezone)->addDays(180)->endOfDay())) {
+            throw ValidationException::withMessages(['date'=>'La fecha está fuera del período reservable.']);
+        }
+        $regularDay=(int)$selected->dayOfWeek;
+        $hours=DB::table('company_special_hours')->where('company_id',$company)
+            ->where('special_date',$date)->first()
+            ??DB::table('company_business_hours')->where('company_id',$company)
+                ->where('day_of_week',$regularDay)->first();
+        if (!$hours || $hours->is_closed || !$hours->opens_at || !$hours->closes_at) {
+            return response()->json(['date'=>$date,'duration_minutes'=>$minutes,'slots'=>[],
+                'message'=>'No hay horario de atención configurado para la fecha.']);
+        }
+        $bays=DB::table('wash_bays')->where('company_id',$company)->where('branch_id',$branchId)
+            ->whereNull('deleted_at')->where('is_active',true)->orderBy('id')->pluck('id');
+        if ($bays->isEmpty()) {
+            return response()->json(['date'=>$date,'duration_minutes'=>$minutes,'slots'=>[],
+                'message'=>'No existen puestos activos en la sucursal.']);
+        }
+        $open=substr($hours->opens_at,0,5);
+        $close=substr($hours->closes_at,0,5);
+        $first=CarbonImmutable::parse($date.' '.$open,$branch->timezone);
+        $last=CarbonImmutable::parse($date.' '.$close,$branch->timezone);
+        $slots=[];
+        // Intervalos de selección de 30 min; el horario de operación siempre proviene de BD.
+        for ($cursor=$first; $cursor->lessThan($last) && count($slots)<48; $cursor=$cursor->addMinutes(30)) {
+            $clock=$cursor->format('H:i');
+            $availableBay=null;
+            $error=null;
+            try {
+                [$start,$end,$utcFrom,$utcTo]=$this->timeRange($branch,$date,$clock,null,$minutes);
+                $this->ensureBookingWindow($company,$branch,$start,$end);
+                foreach ($bays as $bay) {
+                    try {
+                        $this->checkCapacity($company,$branch,(int)$bay,(int)$f['vehicle_id'],
+                            $start,$end,$utcFrom,$utcTo);
+                        $availableBay=(int)$bay;
+                        break;
+                    } catch (ValidationException $e) {
+                        $error=collect($e->errors())->flatten()->first();
+                    }
+                }
+            } catch (ValidationException $e) {
+                $error=collect($e->errors())->flatten()->first();
+            }
+            $slots[]=['time'=>$clock,'available'=>$availableBay!==null,
+                'bay_id'=>$availableBay,'reason'=>$availableBay===null?$error:null];
+        }
+        return response()->json(['date'=>$date,'duration_minutes'=>$minutes,'slots'=>$slots,
+            'available_count'=>count(array_filter($slots,fn($v)=>$v['available']))]);
+    }
+
     public function options(Request $request, int $company): JsonResponse
     {
         $this->authorizeCompany($request,$company,'company.view');

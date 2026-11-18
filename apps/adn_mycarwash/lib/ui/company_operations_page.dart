@@ -8,6 +8,8 @@ import 'company_media_photo_dialog.dart';
 import 'company_clients_cards_24c.dart';
 import 'company_vehicle_cards_24c2.dart';
 import 'company_vehicle_photo_form_24c2.dart';
+import 'company_employee_cards_24c3.dart';
+import 'company_employee_photo_form_24c3.dart';
 import '../core/business_identity.dart';
 
 enum OperationsCatalog { clients, vehicles, employees, services }
@@ -171,7 +173,11 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
         query: {
           'q': _search.text.trim(),
           'page': '$_page',
-          'per_page': widget.catalog == OperationsCatalog.clients ? '6' : '10',
+          'per_page':
+              widget.catalog == OperationsCatalog.clients ||
+                  widget.catalog == OperationsCatalog.employees
+              ? '6'
+              : '10',
         },
       );
       if (!mounted || version != _version) {
@@ -379,6 +385,8 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
     String? dialogError;
     bool didChange = false;
     final photoDraft24C2 = CompanyVehiclePhotoDraft24C2();
+    final photoDraft24C3 = CompanyEmployeePhotoDraft24C3();
+    int? persistedEmployeeId24C3 = int.tryParse('${existing?['id'] ?? ''}');
     int? persistedVehicleId24C2 = int.tryParse('${existing?['id'] ?? ''}');
 
     try {
@@ -441,6 +449,14 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                           client: _client,
                           vehicleId: int.tryParse('${existing?['id'] ?? ''}'),
                           draft: photoDraft24C2,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (widget.catalog == OperationsCatalog.employees) ...[
+                        CompanyEmployeePhotoField24C3(
+                          client: _client,
+                          employeeId: int.tryParse('${existing?['id'] ?? ''}'),
+                          draft: photoDraft24C3,
                         ),
                         const SizedBox(height: 12),
                       ],
@@ -607,9 +623,16 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                           // Si se creó el registro pero falló la foto, el reintento
                           // no debe duplicar el vehículo.
                           final saved24C2 =
-                              widget.catalog == OperationsCatalog.vehicles &&
-                                  existing == null &&
-                                  persistedVehicleId24C2 != null
+                              existing == null &&
+                                  widget.catalog ==
+                                      OperationsCatalog.employees &&
+                                  persistedEmployeeId24C3 != null
+                              ? <String, dynamic>{
+                                  'data': {'id': persistedEmployeeId24C3},
+                                }
+                              : widget.catalog == OperationsCatalog.vehicles &&
+                                    existing == null &&
+                                    persistedVehicleId24C2 != null
                               ? <String, dynamic>{
                                   'data': {'id': persistedVehicleId24C2},
                                 }
@@ -632,6 +655,19 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                             }
                             persistedVehicleId24C2 = savedId24C2;
                             await photoDraft24C2.save(_client, savedId24C2);
+                          }
+                          if (widget.catalog == OperationsCatalog.employees) {
+                            final data24C3 = saved24C2['data'];
+                            final savedId24C3 = int.tryParse(
+                              '${data24C3 is Map ? data24C3['id'] : existing?['id']}',
+                            );
+                            if (savedId24C3 == null) {
+                              throw Exception(
+                                'El servidor no devolvió el ID del empleado.',
+                              );
+                            }
+                            persistedEmployeeId24C3 = savedId24C3;
+                            await photoDraft24C3.save(_client, savedId24C3);
                           }
                           if (dialogContext.mounted) {
                             Navigator.of(dialogContext).pop(true);
@@ -753,7 +789,8 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
         ),
         const SizedBox(height: 12),
         if (widget.catalog == OperationsCatalog.clients ||
-            widget.catalog == OperationsCatalog.vehicles)
+            widget.catalog == OperationsCatalog.vehicles ||
+            widget.catalog == OperationsCatalog.employees)
           ValueListenableBuilder<BusinessIdentityData>(
             valueListenable: BusinessIdentity.current,
             builder: (context, identity, _) => Row(
@@ -795,7 +832,8 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
             ),
           ),
         if (widget.catalog != OperationsCatalog.clients &&
-            widget.catalog != OperationsCatalog.vehicles)
+            widget.catalog != OperationsCatalog.vehicles &&
+            widget.catalog != OperationsCatalog.employees)
           Text(
             _title,
             style: const TextStyle(
@@ -879,6 +917,13 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                 )
               else if (widget.catalog == OperationsCatalog.vehicles)
                 CompanyVehiclesGrid24C2(
+                  rows: _rows,
+                  client: _client,
+                  onEdit: _edit,
+                  onArchive: _delete,
+                )
+              else if (widget.catalog == OperationsCatalog.employees)
+                CompanyEmployeesGrid24C3(
                   rows: _rows,
                   client: _client,
                   onEdit: _edit,

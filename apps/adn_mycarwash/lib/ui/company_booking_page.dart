@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
+import 'company_reservations_agenda_24d.dart';
+import 'company_staff_schedule_cards_24c3.dart';
 
 enum BookingModule { shifts, roster, blocks, bookings }
 
@@ -44,6 +46,8 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
   late final http.Client _client;
   late final bool _ownsClient;
   final _search = TextEditingController();
+  Map<String, String> _bookingDefaults = {};
+  bool _agendaView = true;
   Timer? _debounce;
   int _version = 0;
   int _page = 1;
@@ -161,7 +165,15 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
       final result = await _api.request(
         'GET',
         _path,
-        query: {'q': _search.text.trim(), 'page': '$_page', 'per_page': '10'},
+        query: {
+          'q': _search.text.trim(),
+          'page': '$_page',
+          'per_page':
+              widget.module == BookingModule.shifts ||
+                  widget.module == BookingModule.roster
+              ? '6'
+              : '10',
+        },
       );
       if (!mounted || version != _version) {
         return;
@@ -336,6 +348,15 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
     }
   }
 
+  Future<void> _editForSlot(Map<String, String> defaults) async {
+    _bookingDefaults = defaults;
+    try {
+      await _edit();
+    } finally {
+      _bookingDefaults = {};
+    }
+  }
+
   Future<void> _edit([Map<String, dynamic>? existing]) async {
     Map<String, dynamic> options;
     try {
@@ -354,7 +375,8 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
         field.key: TextEditingController(
           text: field.clock && existing?[field.key] != null
               ? existing![field.key].toString().substring(0, 5)
-              : (existing?[field.key] ?? '').toString(),
+              : (existing?[field.key] ?? _bookingDefaults[field.key] ?? '')
+                    .toString(),
         ),
     };
     final key = GlobalKey<FormState>();
@@ -680,158 +702,225 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
   };
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      color: _surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: _border),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
+  Widget build(BuildContext context) =>
+      widget.module == BookingModule.bookings && _agendaView
+      ? CompanyReservationsAgenda24D(
+          client: _client,
+          onCreate: _editForSlot,
+          onEdit: (row) => _edit(row),
+          onDetails: _details,
+          onCancel: _delete,
+          onViewAll: () {
+            setState(() => _agendaView = false);
+            _load();
+          },
+        )
+      : Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _title,
-                  style: const TextStyle(
-                    fontSize: 23,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+            if (widget.module == BookingModule.bookings)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() => _agendaView = true);
+                  },
+                  icon: const Icon(Icons.calendar_month),
+                  label: const Text('Volver a agenda'),
                 ),
-                const SizedBox(height: 6),
-                Text(_description, style: const TextStyle(color: _muted)),
-              ],
-            ),
-            FilledButton.icon(
-              onPressed: () => _edit(),
-              icon: const Icon(Icons.add),
-              label: Text('Nuevo $_single'),
-              style: FilledButton.styleFrom(backgroundColor: _turquoise),
-            ),
-          ],
-        ),
-        const SizedBox(height: 19),
-        TextField(
-          controller: _search,
-          onChanged: _searchChanged,
-          decoration: _decoration(
-            'Buscar registros',
-          ).copyWith(prefixIcon: const Icon(Icons.search, color: _turquoise)),
-        ),
-        const SizedBox(height: 16),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator(color: _turquoise)),
-          )
-        else if (_error != null)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
-              OutlinedButton(onPressed: _load, child: const Text('Reintentar')),
-            ],
-          )
-        else if (_rows.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: Text('No hay registros.', style: TextStyle(color: _muted)),
-            ),
-          )
-        else
-          for (final row in _rows)
+              ),
             Container(
-              margin: const EdgeInsets.only(bottom: 9),
-              padding: const EdgeInsets.all(12),
+              width: double.infinity,
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                color: _surface,
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: _border),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.event_available_outlined, color: _turquoise),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _title,
+                            style: const TextStyle(
+                              fontSize: 23,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _description,
+                            style: const TextStyle(color: _muted),
+                          ),
+                        ],
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => _edit(),
+                        icon: const Icon(Icons.add),
+                        label: Text('Nuevo $_single'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _turquoise,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 19),
+                  TextField(
+                    controller: _search,
+                    onChanged: _searchChanged,
+                    decoration: _decoration('Buscar registros').copyWith(
+                      prefixIcon: const Icon(Icons.search, color: _turquoise),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: CircularProgressIndicator(color: _turquoise),
+                      ),
+                    )
+                  else if (_error != null)
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _summary(row),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
+                          _error!,
+                          style: const TextStyle(color: Color(0xFFFF8995)),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'ID ${row['id']}',
-                          style: const TextStyle(color: _muted, fontSize: 11),
+                        OutlinedButton(
+                          onPressed: _load,
+                          child: const Text('Reintentar'),
                         ),
                       ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Consultar',
-                    onPressed: () => _details(row),
-                    icon: const Icon(Icons.visibility_outlined, color: _muted),
-                  ),
-                  IconButton(
-                    tooltip: 'Editar',
-                    onPressed: () => _edit(row),
-                    icon: const Icon(Icons.edit_outlined, color: _turquoise),
-                  ),
-                  IconButton(
-                    tooltip: 'Eliminar',
-                    onPressed: () => _delete(row),
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Color(0xFFE84657),
-                    ),
+                    )
+                  else if (_rows.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'No hay registros.',
+                          style: TextStyle(color: _muted),
+                        ),
+                      ),
+                    )
+                  else if (widget.module == BookingModule.shifts ||
+                      widget.module == BookingModule.roster)
+                    CompanyStaffScheduleGrid24C3(
+                      rows: _rows,
+                      roster: widget.module == BookingModule.roster,
+                      client: _client,
+                      onView: _details,
+                      onEdit: _edit,
+                      onDelete: _delete,
+                    )
+                  else
+                    for (final row in _rows)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 9),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.event_available_outlined,
+                              color: _turquoise,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _summary(row),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'ID ${row['id']}',
+                                    style: const TextStyle(
+                                      color: _muted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Consultar',
+                              onPressed: () => _details(row),
+                              icon: const Icon(
+                                Icons.visibility_outlined,
+                                color: _muted,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Editar',
+                              onPressed: () => _edit(row),
+                              icon: const Icon(
+                                Icons.edit_outlined,
+                                color: _turquoise,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Eliminar',
+                              onPressed: () => _delete(row),
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Color(0xFFE84657),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: 'Página anterior',
+                        onPressed: _loading || _page <= 1
+                            ? null
+                            : () {
+                                _page--;
+                                _load();
+                              },
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Text(
+                        'Página $_page de $_pages',
+                        style: const TextStyle(color: _muted),
+                      ),
+                      IconButton(
+                        tooltip: 'Página siguiente',
+                        onPressed: _loading || _page >= _pages
+                            ? null
+                            : () {
+                                _page++;
+                                _load();
+                              },
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            IconButton(
-              tooltip: 'Página anterior',
-              onPressed: _loading || _page <= 1
-                  ? null
-                  : () {
-                      _page--;
-                      _load();
-                    },
-              icon: const Icon(Icons.chevron_left),
-            ),
-            Text(
-              'Página $_page de $_pages',
-              style: const TextStyle(color: _muted),
-            ),
-            IconButton(
-              tooltip: 'Página siguiente',
-              onPressed: _loading || _page >= _pages
-                  ? null
-                  : () {
-                      _page++;
-                      _load();
-                    },
-              icon: const Icon(Icons.chevron_right),
-            ),
           ],
-        ),
-      ],
-    ),
-  );
+        );
 }

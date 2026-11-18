@@ -92,7 +92,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(CompanyBookingPage), findsOneWidget);
-      expect(find.text('No hay registros.'), findsOneWidget);
+      if (module == BookingModule.bookings) {
+        expect(find.text('No hay próximas reservas'), findsOneWidget);
+      } else {
+        expect(find.text('No hay registros.'), findsOneWidget);
+      }
       final create = find.byIcon(Icons.add);
       expect(create, findsOneWidget);
       await tester.tap(create);

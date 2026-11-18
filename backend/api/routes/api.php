@@ -186,6 +186,8 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
 
 // BLOQUE 17 - Agenda administrativa: reservas, bloqueos, turnos y plantilla de personal.
 Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    Route::get('/companies/{company}/schedule/agenda-24d', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'agenda24D'])->whereNumber('company');
+    Route::get('/companies/{company}/schedule/availability-24d', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'availability24D'])->whereNumber('company');
     Route::get('/companies/{company}/schedule/options', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/schedule/bookings/{booking}/history', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'history'])->whereNumber('company')->whereNumber('booking');
     Route::get('/companies/{company}/schedule/{resource}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'index'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster');
