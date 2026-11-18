@@ -40,6 +40,11 @@ Route::prefix('v1')->group(function (): void {
 
         // MI EMPRESA
 
+        Route::get('/companies/{company}/monitor-theme-24b', [\App\Http\Controllers\Api\V1\CompanyMonitorTheme24BController::class, 'show'])->whereNumber('company');
+        Route::patch('/companies/{company}/monitor-theme-24b', [\App\Http\Controllers\Api\V1\CompanyMonitorTheme24BController::class, 'update'])->whereNumber('company');
+
+        Route::get('/companies/{company}/dashboard/monitor-24b2', [\App\Http\Controllers\Api\V1\CompanyWashMonitor24B2Controller::class, 'show'])->whereNumber('company');
+
         Route::get(
             '/companies/{company}/settings',
             [CompanySettingsController::class, 'show']

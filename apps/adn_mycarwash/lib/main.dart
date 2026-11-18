@@ -7,6 +7,7 @@ import 'ui/mycarwash_login.dart';
 import 'ui/company_settings_page.dart';
 import 'ui/company_operations_page.dart';
 import 'ui/company_wash_workflow_page.dart';
+import 'ui/company_wash_monitor_24b1.dart';
 import 'ui/company_booking_page.dart';
 import 'ui/company_inventory_page.dart';
 import 'ui/company_cash_page.dart';
@@ -673,6 +674,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     };
     if (bookingModule != null) {
       return CompanyBookingPage(module: bookingModule);
+    }
+    if (_menu[selected].title == 'Lavados') {
+      return const CompanyWashMonitor24B1();
     }
     final washModule = switch (_menu[selected].title) {
       'Puestos de lavado' => WashModule.bays,
