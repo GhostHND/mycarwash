@@ -14,9 +14,10 @@ import 'company_social_links_section.dart';
 import 'company_preferences_section.dart';
 
 class CompanySettingsPage extends StatefulWidget {
-  const CompanySettingsPage({super.key, this.client});
+  const CompanySettingsPage({super.key, this.client, this.initialSection = 0});
 
   final http.Client? client;
+  final int initialSection;
 
   @override
   State<CompanySettingsPage> createState() => _CompanySettingsPageState();
@@ -115,6 +116,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
 
     _ownsClient = widget.client == null;
     _client = widget.client ?? http.Client();
+    _section = widget.initialSection >= 0 && widget.initialSection <= 7
+        ? widget.initialSection
+        : 0;
 
     for (final key in profileLabels.keys) {
       _profile[key] = TextEditingController();
@@ -744,9 +748,20 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF102129), Color(0xFF0B181E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: const Color(0xFF2A414A)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 18,
+            offset: Offset(0, 7),
+          ),
+        ],
       ),
       child: child,
     );
@@ -770,6 +785,80 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     );
   }
 
+  Widget _profileGroup24N(
+    String title,
+    String description,
+    IconData icon,
+    List<String> keys,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12242C),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: const Color(0xFF2A414A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: turquoise.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: turquoise, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      description,
+                      style: const TextStyle(color: muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 17),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth >= 680
+                  ? (constraints.maxWidth - 14) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 14,
+                runSpacing: 14,
+                children: [
+                  for (final key in keys)
+                    SizedBox(
+                      width: width,
+                      child: _field(key, profileLabels[key]!),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _profileSection() {
     return _card(
       child: Column(
@@ -783,32 +872,52 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           const Text(
-            'Completa los datos de tu negocio. Los cambios se guardan en MySQL.',
+            'Organiza los datos comerciales, los canales de contacto y la presentación del negocio.',
             style: TextStyle(color: muted),
           ),
-          const SizedBox(height: 22),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth >= 700
-                  ? (constraints.maxWidth - 14) / 2
-                  : constraints.maxWidth;
-
-              return Wrap(
-                spacing: 14,
-                runSpacing: 14,
-                children: [
-                  for (final entry in profileLabels.entries)
-                    SizedBox(
-                      width: width,
-                      child: _field(entry.key, entry.value),
-                    ),
-                ],
-              );
-            },
+          const SizedBox(height: 18),
+          _profileGroup24N(
+            'Datos del establecimiento',
+            'Información principal del negocio',
+            Icons.business_outlined,
+            [
+              'commercial_name',
+              'business_category',
+              'business_type',
+              'slogan',
+              'founded_at',
+            ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
+          _profileGroup24N(
+            'Contacto y representación',
+            'Datos públicos y administrativos',
+            Icons.mail_outline,
+            [
+              'public_email',
+              'support_email',
+              'website_url',
+              'legal_representative',
+              'registration_number',
+            ],
+          ),
+          const SizedBox(height: 14),
+          _profileGroup24N(
+            'Identidad y trayectoria',
+            'Contenido descriptivo para presentar tu empresa',
+            Icons.description_outlined,
+            [
+              'short_description',
+              'description',
+              'history',
+              'mission',
+              'vision',
+              'business_values',
+            ],
+          ),
+          const SizedBox(height: 20),
           _saveButton(
             label: 'Guardar información empresarial',
             onPressed: _saveProfile,
@@ -926,10 +1035,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             for (final contact in _contacts)
               Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: border),
+                  color: const Color(0xFF12242C),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF2A414A)),
                 ),
                 child: Row(
                   children: [
@@ -1222,34 +1332,264 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     );
   }
 
-  Widget _tab(String title, IconData icon, int index) {
+  Widget _tab(
+    String title,
+    String description,
+    IconData icon,
+    int index,
+    double width,
+  ) {
     final active = _section == index;
-
-    return InkWell(
-      onTap: () => _changeSection(index),
-      borderRadius: BorderRadius.circular(11),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 13),
-        decoration: BoxDecoration(
-          color: active ? turquoise.withValues(alpha: 0.16) : surface,
-          border: Border.all(color: active ? turquoise : border),
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 19, color: active ? turquoise : muted),
-            const SizedBox(width: 9),
-            Text(
-              title,
-              style: TextStyle(
-                color: active ? Colors.white : muted,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+    return SizedBox(
+      width: width,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _changeSection(index),
+          borderRadius: BorderRadius.circular(15),
+          child: Container(
+            key: ValueKey('admin_tab_24n_$index'),
+            constraints: const BoxConstraints(minHeight: 91),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: active
+                    ? [
+                        turquoise.withValues(alpha: 0.22),
+                        const Color(0xFF142D34),
+                      ]
+                    : [const Color(0xFF12232B), const Color(0xFF0E1B22)],
+              ),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: active ? turquoise : const Color(0xFF2A414A),
+                width: active ? 1.5 : 1,
               ),
             ),
-          ],
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? turquoise.withValues(alpha: 0.23)
+                        : const Color(0xFF21343D),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 21,
+                    color: active ? turquoise : muted,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: active
+                              ? FontWeight.w800
+                              : FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: muted, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                if (active)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(Icons.check_circle, size: 15, color: turquoise),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _hero24N() {
+    return Container(
+      key: const ValueKey('admin_hero_24n'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF11313A), Color(0xFF10232B), Color(0xFF0B181E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: const Color(0xFF27616A)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 18,
+        runSpacing: 16,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'ADN PUBLICIDAD · SOFTWARE',
+                  style: TextStyle(
+                    color: turquoise,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Mi Empresa',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 29,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _companyName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFD8EAEC),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                const Text(
+                  'Configuración del negocio',
+                  style: TextStyle(color: muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+            decoration: BoxDecoration(
+              color: turquoise.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: turquoise.withValues(alpha: 0.32)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.tune_outlined, size: 18, color: turquoise),
+                SizedBox(width: 8),
+                Text(
+                  '8 áreas de configuración',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _navigation24N() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth;
+        final columns = available >= 1060
+            ? 4
+            : available >= 700
+            ? 3
+            : available >= 430
+            ? 2
+            : 1;
+        final width = (available - (columns - 1) * 12) / columns;
+        return Wrap(
+          key: const ValueKey('admin_sections_24n'),
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _tab(
+              'Información',
+              'Datos comerciales',
+              Icons.business_outlined,
+              0,
+              width,
+            ),
+            _tab(
+              'Contactos',
+              'Teléfonos y correos',
+              Icons.contacts_outlined,
+              1,
+              width,
+            ),
+            _tab(
+              'Identidad visual',
+              'Colores y logotipo',
+              Icons.palette_outlined,
+              2,
+              width,
+            ),
+            _tab(
+              'Datos fiscales',
+              'Información tributaria',
+              Icons.receipt_long_outlined,
+              3,
+              width,
+            ),
+            _tab(
+              'Direcciones',
+              'Sucursales y ubicación',
+              Icons.place_outlined,
+              4,
+              width,
+            ),
+            _tab(
+              'Horarios',
+              'Apertura y excepciones',
+              Icons.schedule_outlined,
+              5,
+              width,
+            ),
+            _tab(
+              'Redes sociales',
+              'Presencia digital',
+              Icons.public_outlined,
+              6,
+              width,
+            ),
+            _tab(
+              'Preferencias',
+              'Moneda e impresión',
+              Icons.tune_outlined,
+              7,
+              width,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1258,27 +1598,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'ADN PUBLICIDAD · SOFTWARE',
-          style: TextStyle(
-            color: turquoise,
-            fontSize: 11,
-            letterSpacing: 1.3,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 13),
-        const Text(
-          'Mi Empresa',
-          style: TextStyle(
-            fontSize: 31,
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 7),
-        Text(_companyName, style: const TextStyle(color: muted)),
-        const SizedBox(height: 23),
+        _hero24N(),
+        const SizedBox(height: 20),
         if (_loading)
           const Center(
             child: Padding(
@@ -1301,21 +1622,39 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             ),
           )
         else ...[
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          const Text(
+            'ADMINISTRACIÓN DEL NEGOCIO',
+            style: TextStyle(
+              color: turquoise,
+              fontSize: 11,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _navigation24N(),
+          const SizedBox(height: 17),
+          Row(
             children: [
-              _tab('Información', Icons.business_outlined, 0),
-              _tab('Contactos', Icons.contacts_outlined, 1),
-              _tab('Identidad visual', Icons.palette_outlined, 2),
-              _tab('Datos fiscales', Icons.receipt_long_outlined, 3),
-              _tab('Direcciones', Icons.place_outlined, 4),
-              _tab('Horarios', Icons.schedule_outlined, 5),
-              _tab('Redes sociales', Icons.public_outlined, 6),
-              _tab('Preferencias', Icons.tune_outlined, 7),
+              const Icon(Icons.edit_outlined, size: 17, color: turquoise),
+              const SizedBox(width: 7),
+              const Expanded(
+                child: Text(
+                  'Edita cada área por separado y utiliza su botón Guardar para confirmar los cambios.',
+                  style: TextStyle(color: muted, fontSize: 12),
+                ),
+              ),
+              Text(
+                '${_section + 1} / 8',
+                style: const TextStyle(
+                  color: turquoise,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 19),
+          const SizedBox(height: 13),
           if (_section == 0) _profileSection(),
           if (_section == 1) _contactSection(),
           if (_section == 2) _brandingSection(),
@@ -1328,7 +1667,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               client: _client,
               companyName: _companyName,
             ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           const Row(
             children: [
               Icon(Icons.lock_outline, color: muted, size: 16),

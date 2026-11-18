@@ -133,12 +133,16 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
   );
 
   Widget _panel(Widget child) => Container(
-    padding: const EdgeInsets.all(20),
     width: double.infinity,
+    padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: border),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(19),
+      border: Border.all(color: const Color(0xFF2A414A)),
     ),
     child: child,
   );
@@ -319,9 +323,15 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
               padding: const EdgeInsets.all(14),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF111F25),
-                border: Border.all(color: border),
-                borderRadius: BorderRadius.circular(12),
+                color: _days[i].closed
+                    ? const Color(0xFF17232A)
+                    : const Color(0xFF122C33),
+                border: Border.all(
+                  color: _days[i].closed
+                      ? border
+                      : turquoise.withValues(alpha: 0.38),
+                ),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -723,8 +733,9 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                border: Border.all(color: border),
-                borderRadius: BorderRadius.circular(11),
+                color: const Color(0xFF12242C),
+                border: Border.all(color: const Color(0xFF2A414A)),
+                borderRadius: BorderRadius.circular(13),
               ),
               child: Row(
                 children: [

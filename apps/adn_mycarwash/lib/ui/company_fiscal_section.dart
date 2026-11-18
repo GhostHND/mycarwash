@@ -225,22 +225,34 @@ class _CompanyFiscalSectionState extends State<CompanyFiscalSection> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: surface,
-        border: Border.all(color: border),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: const Color(0xFF2A414A)),
+        borderRadius: BorderRadius.circular(19),
       ),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Datos fiscales',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
+            const Row(
+              children: [
+                Icon(Icons.verified_user_outlined, color: turquoise, size: 25),
+                SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    'Datos fiscales',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             const Text(

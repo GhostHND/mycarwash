@@ -433,9 +433,13 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: surface,
-        border: Border.all(color: border),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: const Color(0xFF2A414A)),
+        borderRadius: BorderRadius.circular(19),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,11 +529,12 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
           else
             for (final item in _addresses)
               Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
+                margin: const EdgeInsets.only(bottom: 11),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  border: Border.all(color: border),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFF12242C),
+                  border: Border.all(color: const Color(0xFF2A414A)),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   children: [

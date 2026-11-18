@@ -682,6 +682,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     if (_menu[selected].title == 'Mi Empresa') {
       return const CompanySettingsPage();
     }
+    if (destination == 'Configuración') {
+      return const CompanySettingsPage(initialSection: 7);
+    }
     final catalog = switch (_menu[selected].title) {
       'Clientes' => OperationsCatalog.clients,
       'Vehículos' => OperationsCatalog.vehicles,

@@ -349,9 +349,13 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
     width: double.infinity,
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: surface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: border),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(19),
+      border: Border.all(color: const Color(0xFF2A414A)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,8 +414,14 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: border),
+                color: const Color(0xFF12242C),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color:
+                      social['is_visible'] == true || social['is_visible'] == 1
+                      ? turquoise.withValues(alpha: 0.40)
+                      : const Color(0xFF2A414A),
+                ),
               ),
               child: Row(
                 children: [

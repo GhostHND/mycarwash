@@ -285,33 +285,58 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
   }
 
   Widget _group(String heading, List<Widget> fields) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          heading,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12242C),
+        border: Border.all(color: const Color(0xFF2A414A)),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 5,
+                height: 25,
+                decoration: BoxDecoration(
+                  color: _turquoise,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Text(
+                  heading,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 14),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth >= 700
-                ? (constraints.maxWidth - 14) / 2
-                : constraints.maxWidth;
-            return Wrap(
-              spacing: 14,
-              runSpacing: 14,
-              children: [
-                for (final item in fields) SizedBox(width: width, child: item),
-              ],
-            );
-          },
-        ),
-      ],
+          const SizedBox(height: 15),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth >= 680
+                  ? (constraints.maxWidth - 14) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 14,
+                runSpacing: 14,
+                children: [
+                  for (final item in fields)
+                    SizedBox(width: width, child: item),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -369,9 +394,13 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: const Color(0xFF2A414A)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

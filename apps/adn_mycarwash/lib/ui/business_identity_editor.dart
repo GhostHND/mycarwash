@@ -21,7 +21,7 @@ class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
   static const turquoise = Color(0xFF0FA7B4);
   static const muted = Color(0xFF9BAEB6);
   static const border = Color(0xFF20343C);
-  static const surface = Color(0xFF111F25);
+  // Fondo del editor definido mediante el degradado 24N.
 
   bool _busy = false;
 
@@ -245,9 +245,13 @@ class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: border),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF122C33), Color(0xFF101E26)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF2A414A)),
               ),
               child: Wrap(
                 spacing: 20,
