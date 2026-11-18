@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
 import 'company_sale_checkout_dialog.dart';
+import 'company_service_price_label_24f4.dart';
 import 'company_workflow_cards_24f.dart';
 import 'company_wash_orders_cards_24e.dart';
 
@@ -398,7 +399,11 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                                 listName: 'services',
                                 value: service,
                                 setValue: (v) => service = v,
-                                label: (e) => '${e['name']} · ${e['price']}',
+                                label: (e) => servicePriceLabel24F4(
+                                  e,
+                                  vehicle,
+                                  maps['vehicles']!,
+                                ),
                               ),
                             ],
                             choice(
