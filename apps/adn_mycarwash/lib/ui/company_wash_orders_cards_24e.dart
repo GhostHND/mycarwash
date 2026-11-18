@@ -22,6 +22,9 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
     required this.onDetail,
     required this.onDelete,
     required this.onAdvance,
+    required this.onAssign,
+    required this.selectedDate,
+    required this.onDate,
   });
 
   final List<Map<String, dynamic>> orders;
@@ -41,6 +44,9 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
   final OrderAction onDetail;
   final OrderAction onDelete;
   final OrderAction onAdvance;
+  final OrderAction onAssign;
+  final String? selectedDate;
+  final ValueChanged<String?> onDate;
 
   static const accent = Color(0xFF0FA7B4);
   static const ink = Color(0xFF07161B);
@@ -291,6 +297,16 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
             ],
           ),
           const Spacer(),
+          if (state == 'EN_ESPERA' || state == 'ASIGNADO')
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: ValueKey('quick_assign_${order['id']}'),
+                onPressed: () => onAssign(order),
+                icon: const Icon(Icons.person_add_alt_outlined, size: 18),
+                label: const Text('Asignar lavador'),
+              ),
+            ),
           const Divider(color: line),
           Row(
             children: [
@@ -454,6 +470,45 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            OutlinedButton.icon(
+              key: const ValueKey('orders_filter_day_24h'),
+              onPressed: () async {
+                final today = DateTime.now();
+                final date = await showDatePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(today.year + 5, 12, 31),
+                  initialDate: selectedDate == null
+                      ? today
+                      : DateTime.tryParse(selectedDate!) ?? today,
+                  helpText: 'Selecciona el día de las órdenes',
+                );
+                if (date != null) {
+                  final yyyy = date.year.toString().padLeft(4, '0');
+                  final mm = date.month.toString().padLeft(2, '0');
+                  final dd = date.day.toString().padLeft(2, '0');
+                  onDate('$yyyy-$mm-$dd');
+                }
+              },
+              icon: const Icon(Icons.calendar_month_outlined),
+              label: Text(
+                selectedDate == null ? 'Filtrar por día' : 'Día: $selectedDate',
+              ),
+            ),
+            if (selectedDate != null)
+              TextButton.icon(
+                key: const ValueKey('orders_clear_day_24h'),
+                onPressed: () => onDate(null),
+                icon: const Icon(Icons.close),
+                label: const Text('Todos los días'),
+              ),
+          ],
+        ),
+        Wrap(
           spacing: 6,
           runSpacing: 5,
           children: filters.entries
@@ -511,7 +566,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                   crossAxisCount: effectiveColumns,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  mainAxisExtent: 340,
+                  mainAxisExtent: 393,
                 ),
                 itemBuilder: (_, i) => _card(orders[i]),
               );

@@ -35,12 +35,35 @@ class CompanyWashOrdersBoard24EController extends Controller
             'branch_id' => ['sometimes', 'integer', 'min:1'],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'between:1,30'],
+            'date' => ['sometimes', 'date_format:Y-m-d'],
         ]);
         $branchId = $input['branch_id'] ?? null;
         if ($branchId !== null && !DB::table('branches')->where('company_id', $company)->where('id', $branchId)->exists()) {
             abort(422, 'Sucursal no válida.');
         }
         $base = DB::table('wash_orders as o')->where('o.company_id', $company);
+        // Fecha de creación interpretada en la zona horaria de cada sucursal.
+        if (isset($input['date'])) {
+            $branches = DB::table('branches')->where('company_id', $company)
+                ->when($branchId !== null, fn ($query) => $query->where('id', $branchId))
+                ->select(\Illuminate\Support\Facades\Schema::hasColumn('branches', 'timezone') ? ['id', 'timezone'] : ['id'])->get();
+            $base->where(function ($query) use ($branches, $input): void {
+                foreach ($branches as $branch) {
+                    try {
+                        $local = \Carbon\CarbonImmutable::createFromFormat('!Y-m-d', $input['date'],
+                            new \DateTimeZone($branch->timezone ?? config('app.timezone', 'America/Tegucigalpa')));
+                    } catch (\Throwable $e) {
+                        $local = \Carbon\CarbonImmutable::createFromFormat('!Y-m-d', $input['date'], 'America/Tegucigalpa');
+                    }
+                    $query->orWhere(function ($perBranch) use ($branch, $local): void {
+                        $perBranch->where('o.branch_id', $branch->id)
+                            ->where('o.created_at', '>=', $local->startOfDay()->utc()->format('Y-m-d H:i:s'))
+                            ->where('o.created_at', '<', $local->addDay()->startOfDay()->utc()->format('Y-m-d H:i:s'));
+                    });
+                }
+                if ($branches->isEmpty()) $query->whereRaw('1 = 0');
+            });
+        }
         if ($branchId !== null) $base->where('o.branch_id', $branchId);
         $rawCounts = (clone $base)->select('o.status', DB::raw('COUNT(*) as total'))
             ->groupBy('o.status')->pluck('total', 'status')->toArray();
@@ -73,8 +96,10 @@ class CompanyWashOrdersBoard24EController extends Controller
                     ->orWhere('s.name', 'like', $like);
             });
         }
+        // Prioridad operativa 24H: pendientes primero; después órdenes en proceso.
         $page = $query->select('o.*', 'v.plate', 'v.brand', 'v.model',
             'c.full_name as client_name', 's.name as service_name', 'b.name as bay_name')
+            ->orderByRaw("CASE o.status WHEN 'ASIGNADO' THEN 0 WHEN 'EN_ESPERA' THEN 1 WHEN 'EN_PROCESO' THEN 2 WHEN 'TERMINADO' THEN 3 WHEN 'ENTREGADO' THEN 4 WHEN 'CANCELADO' THEN 5 ELSE 6 END")
             ->orderByDesc('o.id')->paginate($input['per_page'] ?? 9)->toArray();
         $ids = array_map(fn ($row) => (int) $row->id, $page['data']);
         $assignments = empty($ids) ? collect() : DB::table('wash_assignments as a')

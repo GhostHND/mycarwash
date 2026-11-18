@@ -44,7 +44,9 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
   int _page = 1;
   int _pages = 1;
   int _version = 0;
+
   String _ordersFilter24E = 'TODAS';
+  String? _ordersDate24H;
   Map<String, dynamic> _ordersSummary24E = {};
 
   CompanyBusinessApi get _api => CompanyBusinessApi(_client);
@@ -108,6 +110,9 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
             'status': _ordersFilter24E,
             'page': '$_page',
             'per_page': '9',
+            ...(_ordersDate24H == null
+                ? <String, String>{}
+                : <String, String>{'date': _ordersDate24H!}),
           },
         );
       } else if (widget.module == WashModule.queue) {
@@ -689,7 +694,179 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
     onDetail: (order) => _orderDetail24E(order),
     onDelete: (order) => _delete(order),
     onAdvance: (order) => _advance(order),
+    onAssign: (order) => _quickAssign24H(order),
+    selectedDate: _ordersDate24H,
+    onDate: (date) {
+      setState(() {
+        _ordersDate24H = date;
+        _page = 1;
+      });
+      _load();
+    },
   );
+
+  Future<void> _quickAssign24H(Map<String, dynamic> order) async {
+    final status = '${order['status'] ?? ''}';
+    if (status != 'EN_ESPERA' && status != 'ASIGNADO') {
+      return;
+    }
+    final orderId = int.tryParse('${order['id'] ?? ''}');
+    if (orderId == null) {
+      return;
+    }
+    List<Map<String, dynamic>> employees;
+    try {
+      employees = await _lookup('/employees');
+    } catch (e) {
+      _notice('No se pudo consultar el personal: $e', error: true);
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    employees = employees
+        .where(
+          (employee) =>
+              employee['is_active'] != false && employee['is_active'] != 0,
+        )
+        .toList();
+    if (employees.isEmpty) {
+      _notice(
+        'No existen empleados activos disponibles para asignar.',
+        error: true,
+      );
+      return;
+    }
+    final assigned = (order['washer_ids'] is List)
+        ? (order['washer_ids'] as List).map((e) => int.tryParse('$e')).toSet()
+        : <int?>{};
+    employees = employees
+        .where((e) => !assigned.contains(int.tryParse('${e['id']}')))
+        .toList();
+    if (employees.isEmpty) {
+      _notice(
+        'Todos los empleados consultados ya están asignados a esta orden.',
+        error: true,
+      );
+      return;
+    }
+    int? employeeId;
+    bool primary =
+        (order['washer_names'] is! List) ||
+        (order['washer_names'] as List).isEmpty;
+    bool saving = false;
+    String? failure;
+    final completed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) => AlertDialog(
+          title: const Text('Asignar lavador'),
+          content: SizedBox(
+            width: 490,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Orden: ${order['tracking_code'] ?? orderId}'),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<int>(
+                  key: const ValueKey('order_quick_assign_employee_24h'),
+                  isExpanded: true,
+                  initialValue: employeeId,
+                  decoration: _decor('Lavador'),
+                  items: employees
+                      .map(
+                        (employee) => DropdownMenuItem<int>(
+                          value: int.tryParse('${employee['id']}'),
+                          child: Text(
+                            '${employee['full_name'] ?? 'Empleado'}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: saving
+                      ? null
+                      : (value) => update(() => employeeId = value),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Lavador principal'),
+                  value: primary,
+                  onChanged: saving
+                      ? null
+                      : (value) => update(() => primary = value ?? false),
+                ),
+                const Text(
+                  'Las asignaciones adicionales se acumulan en la cola del lavador. '
+                  'Solo una orden puede permanecer en proceso por trabajador.',
+                ),
+                if (failure != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      failure!,
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              key: const ValueKey('order_quick_assign_save_24h'),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (employeeId == null) {
+                        update(() => failure = 'Selecciona un lavador.');
+                        return;
+                      }
+                      update(() {
+                        saving = true;
+                        failure = null;
+                      });
+                      try {
+                        await _api.request(
+                          'POST',
+                          '/workflow/assignments',
+                          body: {
+                            'order_id': orderId,
+                            'employee_id': employeeId,
+                            'function': 'lavado',
+                            'is_primary': primary,
+                          },
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop(true);
+                        }
+                      } catch (e) {
+                        if (dialogContext.mounted) {
+                          update(() {
+                            saving = false;
+                            failure = '$e';
+                          });
+                        }
+                      }
+                    },
+              child: Text(saving ? 'Guardando...' : 'Asignar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (completed == true && mounted) {
+      _notice('Lavador asignado. Puedes iniciar el lavado cuando corresponda.');
+      _load();
+    }
+  }
 
   Future<void> _orderDetail24E(Map<String, dynamic> order) async {
     final code = '${order['tracking_code'] ?? ''}';
