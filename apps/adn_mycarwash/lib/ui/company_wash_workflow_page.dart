@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
 import 'company_sale_checkout_dialog.dart';
+import 'company_wash_orders_cards_24e.dart';
 
 enum WashModule { bays, orders, assignments, queue }
 
@@ -35,6 +36,8 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
   int _page = 1;
   int _pages = 1;
   int _version = 0;
+  String _ordersFilter24E = 'TODAS';
+  Map<String, dynamic> _ordersSummary24E = {};
 
   CompanyBusinessApi get _api => CompanyBusinessApi(_client);
   String get _resource => switch (widget.module) {
@@ -88,7 +91,18 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
     });
     try {
       Map<String, dynamic> result;
-      if (widget.module == WashModule.queue) {
+      if (widget.module == WashModule.orders) {
+        result = await _api.request(
+          'GET',
+          '/workflow/orders-board-24e',
+          query: {
+            'q': _search.text.trim(),
+            'status': _ordersFilter24E,
+            'page': '$_page',
+            'per_page': '9',
+          },
+        );
+      } else if (widget.module == WashModule.queue) {
         final b = await _api.request('GET', '/workflow/branches');
         final branches = (b['data'] as List?)?.whereType<Map>().toList() ?? [];
         if (branches.isEmpty) {
@@ -125,6 +139,11 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                   .map((e) => Map<String, dynamic>.from(e))
                   .toList()
             : [];
+        if (widget.module == WashModule.orders) {
+          _ordersSummary24E = result['summary'] is Map
+              ? Map<String, dynamic>.from(result['summary'] as Map)
+              : <String, dynamic>{};
+        }
         _page = int.tryParse('${result['current_page'] ?? 1}') ?? 1;
         _pages = int.tryParse('${result['last_page'] ?? 1}') ?? 1;
         _loading = false;
@@ -626,155 +645,266 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
       '${row['function']} · ${row['is_active'] == false || row['is_active'] == 0 ? 'Liberado' : 'Activo'}',
   };
 
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Wrap(
-        spacing: 12,
-        runSpacing: 10,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(
-            _title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
+  Widget _ordersBoard24E() => CompanyWashOrdersCards24E(
+    orders: _rows,
+    summary: _ordersSummary24E,
+    loading: _loading,
+    error: _error,
+    search: _search,
+    filter: _ordersFilter24E,
+    page: _page,
+    pages: _pages,
+    onSearch: _onSearch,
+    onFilter: (state) {
+      if (state == _ordersFilter24E) return;
+      setState(() {
+        _ordersFilter24E = state;
+        _page = 1;
+      });
+      _load();
+    },
+    onCreate: () => _edit(),
+    onRefresh: _load,
+    onPage: (newPage) {
+      _page = newPage;
+      _load();
+    },
+    onEdit: (order) => _edit(order),
+    onDetail: (order) => _orderDetail24E(order),
+    onDelete: (order) => _delete(order),
+    onAdvance: (order) => _advance(order),
+  );
+
+  Future<void> _orderDetail24E(Map<String, dynamic> order) async {
+    final code = '${order['tracking_code'] ?? ''}';
+    await showDialog<void>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text('Orden $code'),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Cliente: ${order['client_name'] ?? 'Sin cliente'}'),
+                Text('Vehículo: ${order['vehicle_label'] ?? ''}'),
+                Text('Placa: ${order['plate'] ?? 'Sin placa'}'),
+                Text('Servicio: ${order['service_name'] ?? ''}'),
+                Text('Bahía: ${order['bay_name'] ?? 'Sin bahía'}'),
+                Text('Estado real: ${order['status'] ?? ''}'),
+                Text('Inicio: ${order['started_at'] ?? 'Sin iniciar'}'),
+                Text(
+                  'Finalización: ${order['completed_at'] ?? 'Sin terminar'}',
+                ),
+                Text('Importe cotizado: L ${order['quoted_price'] ?? ''}'),
+                const SizedBox(height: 12),
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _api.request(
+                    'GET',
+                    '/workflow/orders/${order['id']}/history',
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const LinearProgressIndicator();
+                    }
+                    if (snapshot.hasError) {
+                      return Text('Historial no disponible: ${snapshot.error}');
+                    }
+                    final events = snapshot.data?['data'];
+                    if (events is! List || events.isEmpty) {
+                      return const Text('Sin eventos de historial.');
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Historial',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        for (final event in events.whereType<Map>())
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              '${event['from_status'] ?? 'Inicio'} → ${event['to_status']}',
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
           ),
-          if (widget.module != WashModule.queue)
-            FilledButton.icon(
-              key: const ValueKey('workflow_create'),
-              onPressed: () => _edit(),
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo registro'),
-            ),
-          OutlinedButton.icon(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_outlined),
-            label: const Text('Actualizar'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialog).pop(),
+            child: const Text('Cerrar'),
           ),
         ],
       ),
-      const SizedBox(height: 18),
-      if (widget.module != WashModule.queue)
-        TextField(
-          controller: _search,
-          onChanged: _onSearch,
-          decoration: _decor('Buscar'),
-        ),
-      const SizedBox(height: 14),
-      Container(
-        padding: const EdgeInsets.all(16),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: _surface,
-          border: Border.all(color: _border),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: _loading
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(28),
-                  child: CircularProgressIndicator(color: _turquoise),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.module == WashModule.orders
+      ? _ordersBoard24E()
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  _title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              )
-            : _error != null
-            ? Text(_error!, style: const TextStyle(color: Colors.redAccent))
-            : _rows.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.all(28),
-                child: Center(child: Text('Sin registros para mostrar.')),
-              )
-            : Column(
-                children: [
-                  for (final row in _rows) ...[
-                    ListTile(
-                      leading: const Icon(
-                        Icons.local_car_wash_outlined,
-                        color: _turquoise,
+                if (widget.module != WashModule.queue)
+                  FilledButton.icon(
+                    key: const ValueKey('workflow_create'),
+                    onPressed: () => _edit(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Nuevo registro'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh_outlined),
+                  label: const Text('Actualizar'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            if (widget.module != WashModule.queue)
+              TextField(
+                controller: _search,
+                onChanged: _onSearch,
+                decoration: _decor('Buscar'),
+              ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: _surface,
+                border: Border.all(color: _border),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: _loading
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(28),
+                        child: CircularProgressIndicator(color: _turquoise),
                       ),
-                      title: Text(
-                        _display(row),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        _detail(row),
-                        style: const TextStyle(color: _muted),
-                      ),
-                      trailing: widget.module == WashModule.queue
-                          ? null
-                          : Wrap(
-                              spacing: 0,
-                              children: [
-                                if (widget.module == WashModule.orders &&
-                                    [
-                                      'ASIGNADO',
-                                      'EN_PROCESO',
-                                      'TERMINADO',
-                                    ].contains('${row['status']}'))
-                                  IconButton(
-                                    tooltip: row['status'] == 'TERMINADO'
-                                        ? 'Cobrar y entregar'
-                                        : 'Avanzar estado',
-                                    onPressed: () => _advance(row),
-                                    icon: const Icon(
-                                      Icons.play_circle_outline,
-                                      color: _turquoise,
-                                    ),
-                                  ),
-                                IconButton(
-                                  tooltip: 'Editar',
-                                  onPressed: () => _edit(row),
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    color: _turquoise,
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: widget.module == WashModule.orders
-                                      ? 'Cancelar'
-                                      : 'Archivar o liberar',
-                                  onPressed: () => _delete(row),
-                                  icon: const Icon(
-                                    Icons.archive_outlined,
-                                    color: Colors.redAccent,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                    const Divider(color: _border),
-                  ],
-                  if (widget.module != WashModule.queue)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    )
+                  : _error != null
+                  ? Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.redAccent),
+                    )
+                  : _rows.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(28),
+                      child: Center(child: Text('Sin registros para mostrar.')),
+                    )
+                  : Column(
                       children: [
-                        IconButton(
-                          onPressed: _page <= 1
-                              ? null
-                              : () {
-                                  _page--;
-                                  _load();
-                                },
-                          icon: const Icon(Icons.chevron_left),
-                        ),
-                        Text('Página $_page / $_pages'),
-                        IconButton(
-                          onPressed: _page >= _pages
-                              ? null
-                              : () {
-                                  _page++;
-                                  _load();
-                                },
-                          icon: const Icon(Icons.chevron_right),
-                        ),
+                        for (final row in _rows) ...[
+                          ListTile(
+                            leading: const Icon(
+                              Icons.local_car_wash_outlined,
+                              color: _turquoise,
+                            ),
+                            title: Text(
+                              _display(row),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            subtitle: Text(
+                              _detail(row),
+                              style: const TextStyle(color: _muted),
+                            ),
+                            trailing: widget.module == WashModule.queue
+                                ? null
+                                : Wrap(
+                                    spacing: 0,
+                                    children: [
+                                      if (widget.module == WashModule.orders &&
+                                          [
+                                            'ASIGNADO',
+                                            'EN_PROCESO',
+                                            'TERMINADO',
+                                          ].contains('${row['status']}'))
+                                        IconButton(
+                                          tooltip: row['status'] == 'TERMINADO'
+                                              ? 'Cobrar y entregar'
+                                              : 'Avanzar estado',
+                                          onPressed: () => _advance(row),
+                                          icon: const Icon(
+                                            Icons.play_circle_outline,
+                                            color: _turquoise,
+                                          ),
+                                        ),
+                                      IconButton(
+                                        tooltip: 'Editar',
+                                        onPressed: () => _edit(row),
+                                        icon: const Icon(
+                                          Icons.edit_outlined,
+                                          color: _turquoise,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip:
+                                            widget.module == WashModule.orders
+                                            ? 'Cancelar'
+                                            : 'Archivar o liberar',
+                                        onPressed: () => _delete(row),
+                                        icon: const Icon(
+                                          Icons.archive_outlined,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                          const Divider(color: _border),
+                        ],
+                        if (widget.module != WashModule.queue)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                onPressed: _page <= 1
+                                    ? null
+                                    : () {
+                                        _page--;
+                                        _load();
+                                      },
+                                icon: const Icon(Icons.chevron_left),
+                              ),
+                              Text('Página $_page / $_pages'),
+                              IconButton(
+                                onPressed: _page >= _pages
+                                    ? null
+                                    : () {
+                                        _page++;
+                                        _load();
+                                      },
+                                icon: const Icon(Icons.chevron_right),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
-                ],
-              ),
-      ),
-    ],
-  );
+            ),
+          ],
+        );
 }

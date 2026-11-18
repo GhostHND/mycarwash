@@ -9,6 +9,7 @@ import 'ui/company_operations_page.dart';
 import 'ui/company_wash_workflow_page.dart';
 import 'ui/company_wash_monitor_24b1.dart';
 import 'ui/company_booking_page.dart';
+import 'ui/company_booking_daily_24d2.dart';
 import 'ui/company_inventory_page.dart';
 import 'ui/company_cash_page.dart';
 import 'ui/company_smart_pos_page.dart';
@@ -341,7 +342,13 @@ class _DashboardPreviewState extends State<DashboardPreview> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(26),
-              child: _mainContent(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const CompanyBookingDailyStartup24D2(),
+                  _mainContent(),
+                ],
+              ),
             ),
           ),
         ],

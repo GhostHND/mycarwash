@@ -170,6 +170,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
 Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
     Route::get('/companies/{company}/workflow/branches', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'branches'])->whereNumber('company');
     Route::get('/companies/{company}/workflow/queue', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'queue'])->whereNumber('company');
+    Route::get('/companies/{company}/workflow/orders-board-24e', [\App\Http\Controllers\Api\V1\CompanyWashOrdersBoard24EController::class, 'index'])->whereNumber('company');
     Route::post('/companies/{company}/workflow/orders/{order}/transition', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'transition'])->whereNumber('company')->whereNumber('order');
     Route::get('/companies/{company}/workflow/orders/{order}/history', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'history'])->whereNumber('company')->whereNumber('order');
     Route::get('/companies/{company}/workflow/{resource}', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'index'])->whereNumber('company')->where('resource', 'bays|orders|assignments');
@@ -188,6 +189,10 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
 Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::get('/companies/{company}/schedule/agenda-24d', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'agenda24D'])->whereNumber('company');
     Route::get('/companies/{company}/schedule/availability-24d', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'availability24D'])->whereNumber('company');
+    // Bloque 24D.2: avisos diarios y asignacion previa, sin iniciar lavados.
+    Route::get('/companies/{company}/schedule/daily-24d2', [\App\Http\Controllers\Api\V1\CompanyBookingDaily24D2Controller::class, 'overview'])->whereNumber('company');
+    Route::post('/companies/{company}/schedule/daily-24d2/reminder-read', [\App\Http\Controllers\Api\V1\CompanyBookingDaily24D2Controller::class, 'acknowledgeTomorrow'])->whereNumber('company');
+    Route::post('/companies/{company}/schedule/daily-24d2/{booking}/assign', [\App\Http\Controllers\Api\V1\CompanyBookingDaily24D2Controller::class, 'assign'])->whereNumber('company')->whereNumber('booking');
     Route::get('/companies/{company}/schedule/options', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/schedule/bookings/{booking}/history', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'history'])->whereNumber('company')->whereNumber('booking');
     Route::get('/companies/{company}/schedule/{resource}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'index'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster');
