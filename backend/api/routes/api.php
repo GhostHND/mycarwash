@@ -234,6 +234,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::post('/companies/{company}/pos/fiscal-settings', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'saveFiscalSettings'])->whereNumber('company');
     Route::get('/companies/{company}/pos/products', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'products'])->whereNumber('company');
     Route::get('/companies/{company}/pos/customers', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'customers'])->whereNumber('company');
+    Route::get('/companies/{company}/pos/reports/summary', [\App\Http\Controllers\Api\V1\CompanyPosReportsController::class, 'summary'])->whereNumber('company');
+    Route::get('/companies/{company}/reports/unified', [\App\Http\Controllers\Api\V1\CompanyUnifiedReportsController::class, 'show'])->whereNumber('company');
     Route::get('/companies/{company}/pos/sales', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'index'])->whereNumber('company');
     Route::post('/companies/{company}/pos/sales', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'checkout'])->whereNumber('company');
     Route::get('/companies/{company}/pos/sales/{sale}', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'show'])->whereNumber('company')->whereNumber('sale');

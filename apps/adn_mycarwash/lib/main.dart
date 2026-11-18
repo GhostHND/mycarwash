@@ -12,6 +12,8 @@ import 'ui/company_inventory_page.dart';
 import 'ui/company_cash_page.dart';
 import 'ui/company_smart_pos_page.dart';
 import 'ui/company_pos_designer_page.dart';
+import 'ui/company_pos_reports_page.dart';
+import 'ui/company_unified_reports_page.dart';
 import 'ui/company_sales_page.dart';
 
 import 'package:flutter/material.dart';
@@ -202,6 +204,16 @@ const _menu = [
   _NavItem('Configuración', Icons.settings_outlined),
   _NavItem('Smart POS', Icons.point_of_sale_outlined),
   _NavItem('Historial de ventas', Icons.receipt_long_outlined),
+  _NavItem('Resumen de reportes', Icons.dashboard_outlined),
+  _NavItem('Reporte de ventas', Icons.shopping_bag_outlined),
+  _NavItem('Reporte de lavados', Icons.local_car_wash_outlined),
+  _NavItem('Reporte de agenda', Icons.event_available_outlined),
+  _NavItem('Reporte de caja', Icons.account_balance_wallet_outlined),
+  _NavItem('Reporte de inventario', Icons.inventory_2_outlined),
+  _NavItem('Reporte de clientes', Icons.people_outline),
+  _NavItem('Reporte de personal', Icons.badge_outlined),
+  _NavItem('Reporte fiscal', Icons.receipt_long_outlined),
+  _NavItem('Reporte de compras', Icons.local_shipping_outlined),
   _NavItem('Diseñar comprobantes', Icons.design_services_outlined),
 ];
 
@@ -254,6 +266,18 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
     'Cobros de lavados',
     'Medios de pago',
     'Descuentos de lavados',
+  ]),
+  _CompactNavGroup('Reportes', Icons.insights_outlined, [
+    'Resumen de reportes',
+    'Reporte de ventas',
+    'Reporte de lavados',
+    'Reporte de agenda',
+    'Reporte de caja',
+    'Reporte de inventario',
+    'Reporte de clientes',
+    'Reporte de personal',
+    'Reporte fiscal',
+    'Reporte de compras',
   ]),
   _CompactNavGroup('Mi empresa', Icons.business_outlined, [
     'Mi Empresa',
@@ -601,6 +625,39 @@ class _DashboardPreviewState extends State<DashboardPreview> {
 
   Widget _mainContent() {
     final destination = _menu[selected].title;
+    if (destination == 'Resumen de reportes') {
+      return const CompanyUnifiedReportsPage(kind: 'overview');
+    }
+    if (destination == 'Reporte de ventas') {
+      return const CompanyUnifiedReportsPage(kind: 'pos');
+    }
+    if (destination == 'Reporte de lavados') {
+      return const CompanyUnifiedReportsPage(kind: 'washes');
+    }
+    if (destination == 'Reporte de agenda') {
+      return const CompanyUnifiedReportsPage(kind: 'bookings');
+    }
+    if (destination == 'Reporte de caja') {
+      return const CompanyUnifiedReportsPage(kind: 'cash');
+    }
+    if (destination == 'Reporte de inventario') {
+      return const CompanyUnifiedReportsPage(kind: 'inventory');
+    }
+    if (destination == 'Reporte de clientes') {
+      return const CompanyUnifiedReportsPage(kind: 'customers');
+    }
+    if (destination == 'Reporte de personal') {
+      return const CompanyUnifiedReportsPage(kind: 'staff');
+    }
+    if (destination == 'Reporte fiscal') {
+      return const CompanyUnifiedReportsPage(kind: 'fiscal');
+    }
+    if (destination == 'Reporte de compras') {
+      return const CompanyUnifiedReportsPage(kind: 'purchases');
+    }
+    if (destination == 'Reportes Smart POS') {
+      return const CompanyPosReportsPage();
+    }
     if (destination == 'Diseñar comprobantes') {
       return const CompanyPosDesignerPage();
     }
