@@ -373,7 +373,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     child: Row(
       children: [
         Image.asset(
-          'assets/branding/logo_adn.png',
+          'assets/branding/logo_adn_blanco.png',
           height: 88,
           width: 170,
           fit: BoxFit.contain,
