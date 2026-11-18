@@ -472,10 +472,13 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF152C33), panel],
+          colors: [Color(0xFF173D45), Color(0xFF0C2229)],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF28515A)),
+        border: Border.all(color: const Color(0xFF28626D)),
+        boxShadow: [
+          BoxShadow(color: accent.withValues(alpha: .045), blurRadius: 16),
+        ],
       ),
       child: Row(
         children: [
@@ -547,6 +550,15 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
         children: [
           Row(
             children: [
+              Container(
+                width: 3,
+                height: 21,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 9),
               const Icon(Icons.insert_chart_outlined, color: accent, size: 20),
               const SizedBox(width: 9),
               Expanded(
@@ -721,6 +733,169 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
     ),
   );
 
+  static const Map<String, String> _reportDescriptions24M = {
+    'overview':
+        'Una lectura clara de la operación y los resultados del negocio.',
+    'pos': 'Ventas, formas de cobro y comportamiento comercial.',
+    'washes': 'Servicios, órdenes y actividad de lavado.',
+    'bookings': 'Reservas, agenda y cumplimiento de citas.',
+    'cash': 'Movimientos y resultados registrados en caja.',
+    'inventory': 'Existencias y movimientos registrados del inventario.',
+    'customers': 'Actividad de clientes y vehículos.',
+    'staff': 'Personal, asignaciones y desempeño operativo.',
+    'fiscal': 'Comprobantes fiscales e impuestos registrados.',
+    'purchases': 'Compras, proveedores y entradas de productos.',
+  };
+
+  static IconData _reportIcon24M(String kind) {
+    switch (kind) {
+      case 'overview':
+        return Icons.space_dashboard_outlined;
+      case 'pos':
+        return Icons.point_of_sale_outlined;
+      case 'washes':
+        return Icons.local_car_wash_outlined;
+      case 'bookings':
+        return Icons.event_available_outlined;
+      case 'cash':
+        return Icons.account_balance_wallet_outlined;
+      case 'inventory':
+        return Icons.inventory_2_outlined;
+      case 'customers':
+        return Icons.people_outline;
+      case 'staff':
+        return Icons.badge_outlined;
+      case 'fiscal':
+        return Icons.receipt_long_outlined;
+      case 'purchases':
+        return Icons.local_shipping_outlined;
+      default:
+        return Icons.insights_outlined;
+    }
+  }
+
+  Widget _reportHero24M() => Container(
+    key: const ValueKey('reports-hero-24m'),
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 21),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF123D46), Color(0xFF0B2027), Color(0xFF102229)],
+      ),
+      borderRadius: BorderRadius.circular(17),
+      border: Border.all(color: const Color(0xFF23717B)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: const Color(0xFF0B3038),
+            border: Border.all(color: const Color(0xFF278792)),
+          ),
+          child: Icon(_reportIcon24M(widget.kind), color: accent, size: 28),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                titles[widget.kind] ?? 'Reportes',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                _reportDescriptions24M[widget.kind] ??
+                    'Información operativa de la empresa.',
+                style: const TextStyle(color: Color(0xFFD4E5E8), fontSize: 12),
+              ),
+              const SizedBox(height: 9),
+              const Text(
+                'Reportes por sucursal, período y fuente verificable',
+                style: TextStyle(color: muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _quickRange24M(DateTime start, DateTime end) async {
+    if (loading || exporting) {
+      return;
+    }
+    setState(() {
+      from = start;
+      to = end;
+    });
+    await loadReport();
+  }
+
+  Widget _periodButton24M(String label, DateTime start, DateTime end) {
+    final selected = date(from) == date(start) && date(to) == date(end);
+    return OutlinedButton(
+      key: ValueKey<String>('reports-quick-$label'),
+      onPressed: loading ? null : () => _quickRange24M(start, end),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+        visualDensity: VisualDensity.compact,
+        backgroundColor: selected ? const Color(0xFF16434B) : panel,
+        foregroundColor: selected ? Colors.white : muted,
+        side: BorderSide(color: selected ? accent : const Color(0xFF35535C)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+
+  Widget _quickPeriods24M() {
+    final today = DateUtils.dateOnly(DateTime.now());
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(right: 5),
+          child: Text(
+            'PERÍODO RÁPIDO',
+            style: TextStyle(
+              color: muted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        _periodButton24M('Hoy', today, today),
+        _periodButton24M(
+          '7 días',
+          today.subtract(const Duration(days: 6)),
+          today,
+        ),
+        _periodButton24M(
+          '30 días',
+          today.subtract(const Duration(days: 29)),
+          today,
+        ),
+        _periodButton24M('Este mes', DateTime(today.year, today.month), today),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = report;
@@ -739,100 +914,103 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                titles[widget.kind] ?? 'Reportes',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
+              _reportHero24M(),
+              const SizedBox(height: 14),
+              Container(
+                key: const ValueKey('reports-filters-24m'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D252C),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF28515A)),
+                ),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 245,
+                      child: DropdownButtonFormField<int>(
+                        key: ValueKey(branch),
+                        initialValue: branch,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Sucursal',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: 0,
+                            child: Text('Todas las sucursales'),
+                          ),
+                          for (final row in branches)
+                            DropdownMenuItem(
+                              value: int.tryParse('${row['id']}') ?? -1,
+                              child: Text(
+                                '${row['name']}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: (v) {
+                          if (v == null) {
+                            return;
+                          }
+                          setState(() => branch = v);
+                          loadReport();
+                        },
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: selectDates,
+                      icon: const Icon(Icons.date_range),
+                      label: Text('${date(from)} — ${date(to)}'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: loading ? null : loadReport,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Actualizar'),
+                    ),
+                    SizedBox(
+                      width: 155,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: pageFormat,
+                        decoration: const InputDecoration(
+                          labelText: 'Papel PDF',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Carta',
+                            child: Text('Carta'),
+                          ),
+                          DropdownMenuItem(value: 'A4', child: Text('A4')),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() => pageFormat = v);
+                          }
+                        },
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: snapshot == null || loading || exporting
+                          ? null
+                          : exportPdf,
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label: Text(
+                        exporting
+                            ? 'Generando documento...'
+                            : 'Exportar PDF del período',
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 5),
-              const Text(
-                'Reportes por sucursal, período y fuente verificable',
-                style: TextStyle(color: muted),
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 245,
-                    child: DropdownButtonFormField<int>(
-                      key: ValueKey(branch),
-                      initialValue: branch,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Sucursal',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                          value: 0,
-                          child: Text('Todas las sucursales'),
-                        ),
-                        for (final row in branches)
-                          DropdownMenuItem(
-                            value: int.tryParse('${row['id']}') ?? -1,
-                            child: Text(
-                              '${row['name']}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                      onChanged: (v) {
-                        if (v == null) {
-                          return;
-                        }
-                        setState(() => branch = v);
-                        loadReport();
-                      },
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: selectDates,
-                    icon: const Icon(Icons.date_range),
-                    label: Text('${date(from)} — ${date(to)}'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: loading ? null : loadReport,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Actualizar'),
-                  ),
-                  SizedBox(
-                    width: 155,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: pageFormat,
-                      decoration: const InputDecoration(
-                        labelText: 'Papel PDF',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'Carta', child: Text('Carta')),
-                        DropdownMenuItem(value: 'A4', child: Text('A4')),
-                      ],
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() => pageFormat = v);
-                        }
-                      },
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: snapshot == null || loading || exporting
-                        ? null
-                        : exportPdf,
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: Text(
-                      exporting
-                          ? 'Generando documento...'
-                          : 'Exportar PDF del período',
-                    ),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 12),
+              _quickPeriods24M(),
               const SizedBox(height: 18),
               if (loading) const LinearProgressIndicator(color: accent),
               if (error != null)
@@ -884,11 +1062,32 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                 ),
                 const SizedBox(height: 17),
                 for (final w in warnings)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    child: Text(
-                      '• $w',
-                      style: const TextStyle(color: muted, fontSize: 12),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF30271E),
+                      border: Border.all(color: const Color(0xFF665037)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          color: Color(0xFFEAB77A),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            w,
+                            style: const TextStyle(
+                              color: Color(0xFFE7D8C2),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 const SizedBox(height: 13),
