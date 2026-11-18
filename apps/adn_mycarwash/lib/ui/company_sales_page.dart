@@ -575,6 +575,223 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
     SalesModule.payments =>
       '${row['tracking_code']} · L ${row['amount']} · ${row['status']}',
   };
+  // 24L.1: Tarjetas compactas exclusivas de Cobros, Medios y Descuentos.
+  // Bancos conserva su interfaz y los formularios actuales no cambian.
+  Widget _salesInfo24L(IconData icon, Object? value) {
+    final text = '${value ?? ''}'.trim();
+    if (text.isEmpty || text == 'null') {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: muted, size: 14),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: muted, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _salesRecordCard24L(Map<String, dynamic> row) {
+    final isPayment = widget.module == SalesModule.payments;
+    final isDiscount = widget.module == SalesModule.discounts;
+    final isMethod = widget.module == SalesModule.methods;
+    final posted = row['status'] == 'POSTED';
+    final active =
+        row['is_active'] != false &&
+        row['is_active'] != 0 &&
+        row['is_active'] != '0';
+    final methodIsCash = row['channel'] == 'CASH';
+    final orderLabel = '${row['tracking_code'] ?? ''}'.trim();
+    final name = isMethod
+        ? '${row['name'] ?? 'Medio de pago'}'
+        : orderLabel.isNotEmpty
+        ? orderLabel
+        : 'Orden #${row['order_id'] ?? '—'}';
+    final label = isPayment
+        ? 'COBRO DE LAVADO'
+        : isDiscount
+        ? 'DESCUENTO DE LAVADO'
+        : 'MEDIO DE PAGO';
+    final icon = isPayment
+        ? Icons.receipt_long_outlined
+        : isDiscount
+        ? Icons.local_offer_outlined
+        : methodIsCash
+        ? Icons.payments_outlined
+        : Icons.account_balance_outlined;
+    final locked = isPayment && posted;
+    final positiveState = isMethod ? active : posted;
+    final stateLabel = isMethod
+        ? (active ? 'Activo' : 'Inactivo')
+        : isPayment
+        ? (posted ? 'Confirmado' : 'Pendiente')
+        : null;
+
+    return Container(
+      key: ValueKey<String>(
+        'sales_card_24l_${widget.module.name}_${row['id']}',
+      ),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFF102127),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: accent, size: 20),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: .5,
+                  ),
+                ),
+              ),
+              if (stateLabel != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (positiveState ? const Color(0xFF17AD91) : muted)
+                        .withValues(alpha: .13),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    stateLabel,
+                    style: TextStyle(
+                      color: positiveState ? const Color(0xFF66E0C7) : muted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (!isMethod) ...[
+            const SizedBox(height: 4),
+            Text(
+              'L ${row['amount'] ?? '—'}',
+              style: const TextStyle(
+                color: accent,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+          if (isMethod) ...[
+            _salesInfo24L(
+              methodIsCash
+                  ? Icons.wallet_outlined
+                  : Icons.account_balance_outlined,
+              methodIsCash
+                  ? 'Efectivo'
+                  : row['channel'] == 'BANK'
+                  ? 'Banco / transferencia'
+                  : row['channel'],
+            ),
+            _salesInfo24L(Icons.notes_outlined, row['notes']),
+          ],
+          if (isDiscount) ...[
+            _salesInfo24L(Icons.description_outlined, row['reason']),
+            _salesInfo24L(Icons.schedule_outlined, row['created_at']),
+          ],
+          if (isPayment) ...[
+            _salesInfo24L(Icons.credit_card_outlined, row['method_name']),
+            _salesInfo24L(Icons.tag_outlined, row['reference']),
+            _salesInfo24L(
+              Icons.schedule_outlined,
+              row['posted_at'] ?? row['created_at'],
+            ),
+          ],
+          const SizedBox(height: 9),
+          const Divider(height: 1, color: border),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                '#${row['id'] ?? '—'}',
+                style: const TextStyle(color: muted, fontSize: 11),
+              ),
+              const Spacer(),
+              IconButton(
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: EdgeInsets.zero,
+                tooltip: 'Consultar',
+                onPressed: () => _details(row),
+                icon: const Icon(
+                  Icons.visibility_outlined,
+                  color: muted,
+                  size: 19,
+                ),
+              ),
+              IconButton(
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: EdgeInsets.zero,
+                tooltip: 'Editar',
+                onPressed: locked ? null : () => _edit(row),
+                icon: const Icon(Icons.edit_outlined, color: accent, size: 19),
+              ),
+              IconButton(
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: EdgeInsets.zero,
+                tooltip: 'Eliminar',
+                onPressed: locked ? null : () => _delete(row),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.redAccent,
+                  size: 19,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Container(
@@ -642,6 +859,29 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
           const Padding(
             padding: EdgeInsets.all(25),
             child: Text('Sin registros para mostrar.'),
+          )
+        else if (widget.module != SalesModule.banks)
+          LayoutBuilder(
+            builder: (context, bounds) {
+              final columns = bounds.maxWidth >= 1190
+                  ? 4
+                  : bounds.maxWidth >= 900
+                  ? 3
+                  : bounds.maxWidth >= 610
+                  ? 2
+                  : 1;
+              const gap = 10.0;
+              final cardWidth =
+                  (bounds.maxWidth - (columns - 1) * gap) / columns;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final row in _rows)
+                    SizedBox(width: cardWidth, child: _salesRecordCard24L(row)),
+                ],
+              );
+            },
           )
         else
           for (final row in _rows)

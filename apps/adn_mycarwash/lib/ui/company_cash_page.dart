@@ -794,6 +794,91 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
       '${row['direction'] == 'IN' ? 'Ingreso' : 'Egreso'} · '
           'L ${row['amount']} · ${row['register_name'] ?? row['session_id']}',
   };
+  Widget _financeCard24K(Map<String, dynamic> row) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0D2025),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: _border),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.payments_outlined, color: _turquoise, size: 21),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _summary(row),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'ID ${row['id']}',
+          style: const TextStyle(color: _muted, fontSize: 11),
+        ),
+        const SizedBox(height: 10),
+        const Divider(color: _border, height: 1),
+        const SizedBox(height: 5),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (widget.module == CashModule.sessions && row['status'] == 'OPEN')
+              FilledButton.icon(
+                key: ValueKey('cash_close_${row['id']}'),
+                onPressed: () => _closeSession(row),
+                icon: const Icon(Icons.lock_outline, size: 16),
+                label: const Text('Cerrar caja'),
+                style: FilledButton.styleFrom(backgroundColor: _turquoise),
+              ),
+            if (widget.module == CashModule.movements)
+              IconButton(
+                tooltip: 'Historial',
+                onPressed: () => _history(row),
+                icon: const Icon(Icons.history, color: _muted),
+              ),
+            IconButton(
+              tooltip: 'Consultar',
+              onPressed: () => _details(row),
+              icon: const Icon(Icons.visibility_outlined, color: _muted),
+            ),
+            IconButton(
+              tooltip: 'Editar',
+              onPressed:
+                  widget.module == CashModule.sessions &&
+                      row['status'] == 'CLOSED'
+                  ? null
+                  : () => _edit(row),
+              icon: const Icon(Icons.edit_outlined, color: _turquoise),
+            ),
+            IconButton(
+              tooltip: 'Eliminar',
+              onPressed:
+                  widget.module == CashModule.sessions &&
+                      row['status'] == 'CLOSED'
+                  ? null
+                  : () => _delete(row),
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFE84657)),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => Container(
@@ -865,83 +950,24 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
             ),
           )
         else
-          for (final row in _rows)
-            Container(
-              margin: const EdgeInsets.only(bottom: 9),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _border),
-              ),
-              child: Row(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final count = constraints.maxWidth < 680
+                  ? 1
+                  : constraints.maxWidth < 1070
+                  ? 2
+                  : 3;
+              final width = (constraints.maxWidth - (count - 1) * 12) / count;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
                 children: [
-                  const Icon(Icons.payments_outlined, color: _turquoise),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _summary(row),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'ID ${row['id']}',
-                          style: const TextStyle(color: _muted, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (widget.module == CashModule.sessions &&
-                      row['status'] == 'OPEN')
-                    FilledButton.icon(
-                      key: ValueKey('cash_close_${row['id']}'),
-                      onPressed: () => _closeSession(row),
-                      icon: const Icon(Icons.lock_outline),
-                      label: const Text('Cerrar caja'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _turquoise,
-                      ),
-                    ),
-                  if (widget.module == CashModule.movements)
-                    IconButton(
-                      tooltip: 'Historial',
-                      onPressed: () => _history(row),
-                      icon: const Icon(Icons.history, color: _muted),
-                    ),
-                  IconButton(
-                    tooltip: 'Consultar',
-                    onPressed: () => _details(row),
-                    icon: const Icon(Icons.visibility_outlined, color: _muted),
-                  ),
-                  IconButton(
-                    tooltip: 'Editar',
-                    onPressed:
-                        widget.module == CashModule.sessions &&
-                            row['status'] == 'CLOSED'
-                        ? null
-                        : () => _edit(row),
-                    icon: const Icon(Icons.edit_outlined, color: _turquoise),
-                  ),
-                  IconButton(
-                    tooltip: 'Eliminar',
-                    onPressed:
-                        widget.module == CashModule.sessions &&
-                            row['status'] == 'CLOSED'
-                        ? null
-                        : () => _delete(row),
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Color(0xFFE84657),
-                    ),
-                  ),
+                  for (final row in _rows)
+                    SizedBox(width: width, child: _financeCard24K(row)),
                 ],
-              ),
-            ),
+              );
+            },
+          ),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,

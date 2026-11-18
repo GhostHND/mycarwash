@@ -12,6 +12,7 @@ import 'ui/company_booking_page.dart';
 import 'ui/company_booking_daily_24d2.dart';
 import 'ui/company_inventory_page.dart';
 import 'ui/company_cash_page.dart';
+import 'ui/company_finance_hub_24k.dart';
 import 'ui/company_smart_pos_page.dart';
 import 'ui/company_pos_designer_page.dart';
 import 'ui/company_pos_reports_page.dart';
@@ -201,6 +202,9 @@ const _menu = [
   _NavItem('Categorías de egresos', Icons.category_outlined),
   _NavItem('Movimientos de caja', Icons.swap_horiz_outlined),
   _NavItem('Cuentas bancarias', Icons.account_balance_outlined),
+  _NavItem('Cuadres y arqueos', Icons.fact_check_outlined),
+  _NavItem('Cajas registradoras', Icons.point_of_sale_outlined),
+
   _NavItem('Medios de pago', Icons.credit_card_outlined),
   _NavItem('Descuentos de lavados', Icons.local_offer_outlined),
   _NavItem('Cobros de lavados', Icons.payments_outlined),
@@ -265,6 +269,8 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
     'Movimientos de caja',
     'Categorías de egresos',
     'Cuentas bancarias',
+    'Cuadres y arqueos',
+    'Cajas registradoras',
   ]),
   _CompactNavGroup('Ventas y cobros', Icons.payments_outlined, [
     'Smart POS',
@@ -592,6 +598,24 @@ class _DashboardPreviewState extends State<DashboardPreview> {
 
   Widget _mainContent() {
     final destination = _menu[selected].title;
+    if (destination == 'Caja y ventas' ||
+        destination == 'Cuentas bancarias' ||
+        destination == 'Cuadres y arqueos') {
+      return CompanyFinanceHub24K(
+        key: ValueKey<String>('finance24k_$destination'),
+        section: destination == 'Cuentas bancarias'
+            ? 'banks'
+            : destination == 'Cuadres y arqueos'
+            ? 'reconciliations'
+            : 'cash',
+        onNavigate: (target) {
+          final index = _menu.indexWhere((item) => item.title == target);
+          if (index >= 0 && mounted) {
+            setState(() => selected = index);
+          }
+        },
+      );
+    }
     if (destination == 'Dashboard') {
       return CompanyDashboard24APage(
         onNavigate: (target) {
@@ -680,6 +704,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     }
     final cashModule = switch (_menu[selected].title) {
       'Caja y ventas' => CashModule.registers,
+      'Cajas registradoras' => CashModule.registers,
       'Sesiones de caja' => CashModule.sessions,
       'Categorías de egresos' => CashModule.categories,
       'Movimientos de caja' => CashModule.movements,

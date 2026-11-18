@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -139,6 +140,18 @@ class CompanyCashController extends Controller
         ?array $substitute = null): int
     {
         $balance = $this->money($session->opening_cash, 'opening_cash');
+        // Los traspasos no son ingresos ni gastos. Se consideran sólo en el arqueo.
+        $transferOut = 0;
+        if (Schema::hasTable('finance_internal_transfers_24k2')) {
+            foreach (DB::table('finance_internal_transfers_24k2')
+                ->where('company_id',$company)->where('cash_session_id',$session->id)
+                ->get(['direction','amount']) as $transfer) {
+                $sum = $this->money($transfer->amount);
+                if ($transfer->direction === 'BANK_TO_CASH') $balance += $sum;
+                else $transferOut += $sum;
+            }
+        }
+
         $rows = $this->scoped('movements', $company)->where('session_id', $session->id)
             ->orderBy('id')->get(['id','direction','amount']);
         $found = false;
@@ -158,6 +171,10 @@ class CompanyCashController extends Controller
             if ($balance < 0) {
                 throw ValidationException::withMessages(['amount'=>'El egreso supera el efectivo disponible.']);
             }
+        }
+                $balance -= $transferOut;
+        if ($balance < 0) {
+            throw ValidationException::withMessages(['amount'=>'Efectivo insuficiente considerando los traspasos internos.']);
         }
         return $balance;
     }
@@ -395,6 +412,9 @@ class CompanyCashController extends Controller
                     throw ValidationException::withMessages(['register_id'=>'La caja de una sesión no se puede cambiar.']);
                 unset($data['register_id']);
                 $existingMoves=$this->scoped('movements',$company)->where('session_id',$record)->exists();
+                if (Schema::hasTable('finance_internal_transfers_24k2') &&
+                    DB::table('finance_internal_transfers_24k2')->where('company_id',$company)
+                        ->where('cash_session_id',$record)->exists()) $existingMoves = true;
                 if (isset($data['opening_cash']) && $existingMoves &&
                     $this->money($data['opening_cash'], 'opening_cash') !== $this->money($old->opening_cash, 'opening_cash')) {
                     throw ValidationException::withMessages(['opening_cash'=>'No se puede cambiar el fondo tras registrar movimientos.']);
@@ -463,6 +483,11 @@ class CompanyCashController extends Controller
                 $old=$this->openSession($company,$record);
                 if (DB::table('cash_movements')->where('company_id',$company)->where('session_id',$record)->exists())
                     throw ValidationException::withMessages(['id'=>'Sesión con movimientos: ciérrala, no la elimines.']);
+                if (Schema::hasTable('finance_internal_transfers_24k2') &&
+                    DB::table('finance_internal_transfers_24k2')->where('company_id',$company)
+                        ->where('cash_session_id',$record)->exists()) {
+                    throw ValidationException::withMessages(['id'=>'Sesión con traspasos internos: ciérrala, no la elimines.']);
+                }
                 DB::table('cash_sessions')->where('company_id',$company)->where('id',$record)
                     ->update(['open_register_id'=>null]);
             }

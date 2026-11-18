@@ -883,6 +883,107 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     }
   }
 
+  // 24L.1: Presentacion del historial, sin modificar el flujo de cobro.
+  Widget _saleHistoryCard24L(Map<String, dynamic> sale) {
+    final id = _asInt(sale['id']);
+    final invoice = sale['document_type'] == 'FISCAL_INVOICE';
+    final customer = '${sale['customer_name_snapshot'] ?? 'Consumidor final'}';
+    final date = '${sale['posted_at'] ?? ''}'.trim();
+    final state = '${sale['status'] ?? ''}'.trim();
+    return Container(
+      key: ValueKey<String>('pos_history_card_24l_${sale['id']}'),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12252B),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: const Color(0xFF29434B)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.receipt_long_outlined, color: _teal, size: 19),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  'Venta #${sale['id']}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _teal.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  invoice ? 'Factura' : 'Recibo',
+                  style: const TextStyle(
+                    color: _teal,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            'L ${sale['total'] ?? '—'}',
+            style: const TextStyle(
+              color: _teal,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (customer.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              customer,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+          if (date.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(
+              date,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: _muted, fontSize: 11),
+            ),
+          ],
+          if (state.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(state, style: const TextStyle(color: _muted, fontSize: 11)),
+          ],
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: id == null ? null : () => _viewSale(id),
+              icon: const Icon(Icons.visibility_outlined, size: 17),
+              label: const Text('Consultar comprobante'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _teal,
+                side: const BorderSide(color: Color(0xFF31545C)),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _historyPanel() => _card(
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -904,20 +1005,27 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             'No hay ventas registradas.',
             style: TextStyle(color: _muted),
           ),
-        for (final sale in _sales)
-          ListTile(
-            title: Text('Venta #${sale['id']} · L ${sale['total']}'),
-            subtitle: Text(
-              '${sale['document_type'] == 'FISCAL_INVOICE' ? 'Factura' : 'Recibo'} · ${sale['customer_name_snapshot'] ?? 'Consumidor final'} · '
-              '${sale['posted_at']} · ${sale['status']}',
-              style: const TextStyle(color: _muted),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.receipt_long_outlined),
-              tooltip: 'Consultar comprobante',
-              onPressed: () => _viewSale(_asInt(sale['id']) ?? 0),
-            ),
-          ),
+        LayoutBuilder(
+          builder: (context, bounds) {
+            final columns = bounds.maxWidth >= 1050
+                ? 4
+                : bounds.maxWidth >= 780
+                ? 3
+                : bounds.maxWidth >= 520
+                ? 2
+                : 1;
+            const gap = 10.0;
+            final cardWidth = (bounds.maxWidth - (columns - 1) * gap) / columns;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final sale in _sales)
+                  SizedBox(width: cardWidth, child: _saleHistoryCard24L(sale)),
+              ],
+            );
+          },
+        ),
       ],
     ),
   );

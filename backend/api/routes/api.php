@@ -219,6 +219,15 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
 
 // BLOQUE 19 - Caja manual: cajas, sesiones, categorias de egresos y movimientos.
 Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+    // 24K - tarjetas, movimientos auditados y conciliaciones bancarias.
+        Route::post('/companies/{company}/finance/transfers', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'internalTransfer'])->whereNumber('company');
+    Route::get('/companies/{company}/finance/transfers', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'internalTransfers'])->whereNumber('company');
+    Route::get('/companies/{company}/finance/overview', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'overview'])->whereNumber('company');
+    Route::post('/companies/{company}/finance/banks/{bank}/initialize', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'initializeBank'])->whereNumber('company')->whereNumber('bank');
+    Route::get('/companies/{company}/finance/banks/{bank}/entries', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'entries'])->whereNumber('company')->whereNumber('bank');
+    Route::post('/companies/{company}/finance/banks/{bank}/entries', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'bankEntry'])->whereNumber('company')->whereNumber('bank');
+    Route::post('/companies/{company}/finance/banks/{bank}/closings/open', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'openClosing'])->whereNumber('company')->whereNumber('bank');
+    Route::post('/companies/{company}/finance/banks/{bank}/closings/{closing}/close', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'closeClosing'])->whereNumber('company')->whereNumber('bank')->whereNumber('closing');
     Route::get('/companies/{company}/cash/options', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/cash/movements/{movement}/history', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'history'])->whereNumber('company')->whereNumber('movement');
     Route::get('/companies/{company}/cash/{resource}', [\App\Http\Controllers\Api\V1\CompanyCashController::class, 'index'])->whereNumber('company')->where('resource', 'registers|sessions|categories|movements');
