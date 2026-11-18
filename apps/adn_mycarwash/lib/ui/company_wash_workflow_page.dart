@@ -11,10 +11,16 @@ import 'company_wash_orders_cards_24e.dart';
 enum WashModule { bays, orders, assignments, queue }
 
 class CompanyWashWorkflowPage extends StatefulWidget {
-  const CompanyWashWorkflowPage({super.key, required this.module, this.client});
+  const CompanyWashWorkflowPage({
+    super.key,
+    required this.module,
+    this.client,
+    this.onCheckoutInPos,
+  });
 
   final WashModule module;
   final http.Client? client;
+  final ValueChanged<Map<String, dynamic>>? onCheckoutInPos;
 
   @override
   State<CompanyWashWorkflowPage> createState() =>
@@ -600,6 +606,10 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
       _ => null,
     };
     if (next == null) {
+      return;
+    }
+    if (next == 'ENTREGADO' && widget.onCheckoutInPos != null) {
+      widget.onCheckoutInPos!(row);
       return;
     }
     if (next == 'ENTREGADO') {

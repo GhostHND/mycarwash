@@ -308,6 +308,22 @@ class _DashboardPreviewState extends State<DashboardPreview> {
   }
 
   int selected = 0;
+  int? _pendingWashOrderId;
+  int _washPosSequence = 0;
+
+  void _openWashInPos(Map<String, dynamic> order) {
+    final washId = int.tryParse('${order['id']}');
+    final posIndex = _menu.indexWhere((item) => item.title == 'Smart POS');
+    if (washId == null || washId <= 0 || posIndex < 0) {
+      return;
+    }
+    setState(() {
+      _pendingWashOrderId = washId;
+      _washPosSequence++;
+      selected = posIndex;
+    });
+  }
+
   String? _expandedNavGroup;
 
   @override
@@ -625,8 +641,18 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     }
     if (destination == 'Smart POS' || destination == 'Historial de ventas') {
       return CompanySmartPosPage(
-        key: ValueKey<String>('pos_$destination'),
+        key: ValueKey<String>(
+          'pos_${destination}_${_pendingWashOrderId ?? 0}_$_washPosSequence',
+        ),
         initialHistory: destination == 'Historial de ventas',
+        initialWashOrderId: destination == 'Smart POS'
+            ? _pendingWashOrderId
+            : null,
+        onWashSaleCompleted: () {
+          if (mounted) {
+            setState(() => _pendingWashOrderId = null);
+          }
+        },
       );
     }
     if (_menu[selected].title == 'Mi Empresa') {
@@ -693,7 +719,10 @@ class _DashboardPreviewState extends State<DashboardPreview> {
       _ => null,
     };
     if (washModule != null) {
-      return CompanyWashWorkflowPage(module: washModule);
+      return CompanyWashWorkflowPage(
+        module: washModule,
+        onCheckoutInPos: _openWashInPos,
+      );
     }
     final isHome = selected == 0;
     return Column(

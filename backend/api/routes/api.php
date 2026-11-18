@@ -247,6 +247,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::post('/companies/{company}/pos/document-designs', [\App\Http\Controllers\Api\V1\CompanyPosDocumentTemplateController::class, 'save'])->whereNumber('company');
     Route::get('/companies/{company}/pos/fiscal-settings', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'fiscalSettings'])->whereNumber('company');
     Route::post('/companies/{company}/pos/fiscal-settings', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'saveFiscalSettings'])->whereNumber('company');
+    Route::get('/companies/{company}/pos/wash/{order}', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'washForCheckout'])->whereNumber('company')->whereNumber('order');
     Route::get('/companies/{company}/pos/products', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'products'])->whereNumber('company');
     Route::get('/companies/{company}/pos/customers', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'customers'])->whereNumber('company');
     Route::get('/companies/{company}/pos/reports/summary', [\App\Http\Controllers\Api\V1\CompanyPosReportsController::class, 'summary'])->whereNumber('company');

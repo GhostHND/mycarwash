@@ -17,9 +17,13 @@ class CompanySmartPosPage extends StatefulWidget {
     super.key,
     this.client,
     this.initialHistory = false,
+    this.initialWashOrderId,
+    this.onWashSaleCompleted,
   });
   final http.Client? client;
   final bool initialHistory;
+  final int? initialWashOrderId;
+  final VoidCallback? onWashSaleCompleted;
 
   @override
   State<CompanySmartPosPage> createState() => _CompanySmartPosPageState();
@@ -53,6 +57,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   List<Map<String, dynamic>> _sales = [];
   final Map<int, int> _cart = {};
   final Map<int, Map<String, dynamic>> _chosen = {};
+  Map<String, dynamic>? _wash;
 
   @override
   void initState() {
@@ -111,7 +116,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   }
 
   int get _subtotal {
-    var result = 0;
+    var result = _wash == null ? 0 : _cents('${_wash!['price']}');
     for (final entry in _cart.entries) {
       result +=
           (_cents('${_chosen[entry.key]?['sale_price'] ?? '0'}') * entry.value);
@@ -198,11 +203,25 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       final raw = Map<String, dynamic>.from(response['data'] as Map);
       final branches = _rows(raw['branches']);
       final methods = _rows(raw['methods']);
+      Map<String, dynamic>? wash;
+      if (widget.initialWashOrderId != null) {
+        final washResponse = await _api.request(
+          'GET',
+          '/pos/wash/${widget.initialWashOrderId}',
+        );
+        if (washResponse['data'] is! Map) {
+          throw const FormatException(
+            'El servidor no devolvió la orden de lavado.',
+          );
+        }
+        wash = Map<String, dynamic>.from(washResponse['data'] as Map);
+      }
       if (!mounted) {
         return;
       }
       setState(() {
         _branches = branches;
+        _wash = wash;
         _sessions = _rows(raw['sessions']);
         _banks = _rows(raw['banks']);
         _cashMethodId = methods
@@ -213,7 +232,9 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             .where((x) => x['channel'] == 'BANK')
             .map((x) => _asInt(x['id']))
             .firstOrNull;
-        _branchId = branches.isNotEmpty ? _asInt(branches.first['id']) : null;
+        _branchId = wash != null
+            ? _asInt(wash['branch_id'])
+            : (branches.isNotEmpty ? _asInt(branches.first['id']) : null);
         _loading = false;
       });
       _chooseBranch(_branchId);
@@ -229,6 +250,13 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   }
 
   void _chooseBranch(int? branch) {
+    if (_wash != null && branch != _asInt(_wash!['branch_id'])) {
+      _message(
+        'Para cobrar este lavado conserva su sucursal original.',
+        error: true,
+      );
+      return;
+    }
     setState(() {
       _branchId = branch;
       _cart.clear();
@@ -488,7 +516,20 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          if (_cart.isEmpty)
+          if (_wash != null) ...[
+            ListTile(
+              leading: const Icon(Icons.local_car_wash_outlined, color: _teal),
+              title: Text(
+                'Lavado: ${_wash!['service_name']} · ${_wash!['vehicle_label']}',
+              ),
+              subtitle: Text(
+                'Cliente: ${_wash!['customer_name']} · L ${_wash!['price']}',
+              ),
+              trailing: const Icon(Icons.lock_outline, size: 18),
+            ),
+            const Divider(),
+          ],
+          if (_cart.isEmpty && _wash == null)
             const Text(
               'Agrega productos desde el catálogo.',
               style: TextStyle(color: _muted),
@@ -633,7 +674,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               onPressed:
-                  _cart.isEmpty ||
+                  (_cart.isEmpty && _wash == null) ||
                       (_documentType == 'FISCAL_INVOICE' && !_fiscalReady)
                   ? null
                   : _openPaymentDialog,
@@ -654,7 +695,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
   Future<void> _openPaymentDialog() async {
     final branch = _branchId;
     final discount = _cents(_discount.text);
-    if (branch == null || _cart.isEmpty) {
+    if (branch == null || (_cart.isEmpty && _wash == null)) {
       _message('Selecciona sucursal y artículos.', error: true);
       return;
     }
@@ -681,6 +722,10 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       builder: (_) => CompanyPosCheckoutDialog(
         api: _api,
         branchId: branch,
+        washOrderId: _asInt(_wash?['order_id']),
+        washExpectedVersion: _asInt(_wash?['version']),
+        washCustomerId: _asInt(_wash?['customer_id']),
+        washCustomerName: _wash?['customer_name']?.toString(),
         lines: _cart.entries
             .map(
               (entry) => <String, dynamic>{
@@ -710,6 +755,10 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     // Mostrar primero la confirmación; nunca bloquear el comprobante esperando
     // una actualización del catálogo que puede tardar o fallar por la red.
     await _showReceipt(receipt, afterSale: true);
+    if (widget.initialWashOrderId != null) {
+      _wash = null;
+      widget.onWashSaleCompleted?.call();
+    }
     if (!mounted) return;
     await _loadProducts();
     if (_history && mounted) await _loadSales();

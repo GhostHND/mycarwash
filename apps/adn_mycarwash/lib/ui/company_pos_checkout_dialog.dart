@@ -11,6 +11,10 @@ class CompanyPosCheckoutDialog extends StatefulWidget {
   const CompanyPosCheckoutDialog({
     super.key,
     required this.api,
+    this.washOrderId,
+    this.washExpectedVersion,
+    this.washCustomerId,
+    this.washCustomerName,
     required this.branchId,
     required this.lines,
     required this.subtotalCents,
@@ -24,6 +28,10 @@ class CompanyPosCheckoutDialog extends StatefulWidget {
   });
 
   final CompanyBusinessApi api;
+  final int? washOrderId;
+  final int? washExpectedVersion;
+  final int? washCustomerId;
+  final String? washCustomerName;
   final int branchId;
   final List<Map<String, dynamic>> lines;
   final int subtotalCents;
@@ -96,8 +104,14 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
     if (widget.cashMethodId == null && widget.bankMethodId != null) {
       _paymentMode = 'BANK';
     }
+    if (widget.washOrderId != null) {
+      _customerMode = 'EXISTING';
+      _customerId = widget.washCustomerId;
+    }
     _setPaymentMode(_paymentMode, refresh: false);
-    _searchCustomers('');
+    if (widget.washOrderId == null) {
+      _searchCustomers('');
+    }
   }
 
   @override
@@ -206,144 +220,152 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
     ),
   );
 
-  Widget _customerSection() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _heading(
-        'Datos del comprador',
-        'Selecciona cómo identificar esta venta.',
-        Icons.person_outline,
-      ),
-      Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        children: [
-          for (final option in const [
-            ('CONSUMER', 'Consumidor final'),
-            ('EXISTING', 'Cliente registrado'),
-            ('NEW', 'Cliente nuevo'),
-          ])
-            ChoiceChip(
-              label: Text(option.$2),
-              selected: _customerMode == option.$1,
-              selectedColor: teal.withValues(alpha: .22),
-              onSelected: (_) {
-                _edited();
-                setState(() => _customerMode = option.$1);
-              },
-            ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      if (_customerMode == 'CONSUMER')
-        const Text(
-          'Venta sin datos personales. El comprobante mostrará «Consumidor final».',
-          style: TextStyle(color: muted, fontSize: 12),
-        ),
-      if (_customerMode == 'EXISTING') ...[
-        TextField(
-          controller: _search,
-          decoration: _input(
-            'Buscar por nombre, identidad o teléfono',
-            icon: Icons.search,
-          ),
-          onChanged: (value) {
-            _edited();
-            _debounce?.cancel();
-            setState(() => _customerId = null);
-            _debounce = Timer(
-              const Duration(milliseconds: 320),
-              () => _searchCustomers(value),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        if (_searching) const LinearProgressIndicator(minHeight: 2),
-        DropdownButtonFormField<int>(
-          key: ValueKey('pos_customers_${_searchVersion}_${_customerId ?? 0}'),
-          initialValue:
-              _customers.any((row) => _integer(row['id']) == _customerId)
-              ? _customerId
-              : null,
-          isExpanded: true,
-          decoration: _input('Cliente seleccionado'),
-          items: _customers
-              .map(
-                (row) => DropdownMenuItem<int>(
-                  value: _integer(row['id']),
-                  child: Text(
-                    '${row['full_name']} · ${row['identity_document'] ?? 'Sin documento'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            _edited();
-            setState(() => _customerId = value);
-          },
-        ),
-      ],
-      if (_customerMode == 'NEW') ...[
-        TextField(
-          key: const ValueKey('pos_customer_name'),
-          controller: _fullName,
-          decoration: _input('Nombre completo *'),
-          maxLength: 180,
-          onChanged: (_) => _edited(),
-        ),
-        const SizedBox(height: 5),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
+  Widget _customerSection() => widget.washOrderId != null
+      ? ListTile(
+          leading: const Icon(Icons.person_outline, color: teal),
+          title: Text(widget.washCustomerName ?? 'Propietario del vehículo'),
+          subtitle: const Text('Cliente vinculado a la orden (no modificable)'),
+        )
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 270,
-              child: TextField(
-                controller: _document,
-                decoration: _input('Identidad o RTN (opcional)'),
-                maxLength: 50,
+            _heading(
+              'Datos del comprador',
+              'Selecciona cómo identificar esta venta.',
+              Icons.person_outline,
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final option in const [
+                  ('CONSUMER', 'Consumidor final'),
+                  ('EXISTING', 'Cliente registrado'),
+                  ('NEW', 'Cliente nuevo'),
+                ])
+                  ChoiceChip(
+                    label: Text(option.$2),
+                    selected: _customerMode == option.$1,
+                    selectedColor: teal.withValues(alpha: .22),
+                    onSelected: (_) {
+                      _edited();
+                      setState(() => _customerMode = option.$1);
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_customerMode == 'CONSUMER')
+              const Text(
+                'Venta sin datos personales. El comprobante mostrará «Consumidor final».',
+                style: TextStyle(color: muted, fontSize: 12),
+              ),
+            if (_customerMode == 'EXISTING') ...[
+              TextField(
+                controller: _search,
+                decoration: _input(
+                  'Buscar por nombre, identidad o teléfono',
+                  icon: Icons.search,
+                ),
+                onChanged: (value) {
+                  _edited();
+                  _debounce?.cancel();
+                  setState(() => _customerId = null);
+                  _debounce = Timer(
+                    const Duration(milliseconds: 320),
+                    () => _searchCustomers(value),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              if (_searching) const LinearProgressIndicator(minHeight: 2),
+              DropdownButtonFormField<int>(
+                key: ValueKey(
+                  'pos_customers_${_searchVersion}_${_customerId ?? 0}',
+                ),
+                initialValue:
+                    _customers.any((row) => _integer(row['id']) == _customerId)
+                    ? _customerId
+                    : null,
+                isExpanded: true,
+                decoration: _input('Cliente seleccionado'),
+                items: _customers
+                    .map(
+                      (row) => DropdownMenuItem<int>(
+                        value: _integer(row['id']),
+                        child: Text(
+                          '${row['full_name']} · ${row['identity_document'] ?? 'Sin documento'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  _edited();
+                  setState(() => _customerId = value);
+                },
+              ),
+            ],
+            if (_customerMode == 'NEW') ...[
+              TextField(
+                key: const ValueKey('pos_customer_name'),
+                controller: _fullName,
+                decoration: _input('Nombre completo *'),
+                maxLength: 180,
                 onChanged: (_) => _edited(),
               ),
-            ),
-            SizedBox(
-              width: 270,
-              child: TextField(
-                controller: _phone,
-                decoration: _input('Teléfono (opcional)'),
-                maxLength: 40,
-                keyboardType: TextInputType.phone,
+              const SizedBox(height: 5),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  SizedBox(
+                    width: 270,
+                    child: TextField(
+                      controller: _document,
+                      decoration: _input('Identidad o RTN (opcional)'),
+                      maxLength: 50,
+                      onChanged: (_) => _edited(),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 270,
+                    child: TextField(
+                      controller: _phone,
+                      decoration: _input('Teléfono (opcional)'),
+                      maxLength: 40,
+                      keyboardType: TextInputType.phone,
+                      onChanged: (_) => _edited(),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 270,
+                    child: TextField(
+                      controller: _email,
+                      decoration: _input('Correo electrónico (opcional)'),
+                      maxLength: 190,
+                      keyboardType: TextInputType.emailAddress,
+                      onChanged: (_) => _edited(),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _address,
+                decoration: _input('Dirección (opcional)'),
+                maxLines: 2,
                 onChanged: (_) => _edited(),
               ),
-            ),
-            SizedBox(
-              width: 270,
-              child: TextField(
-                controller: _email,
-                decoration: _input('Correo electrónico (opcional)'),
-                maxLength: 190,
-                keyboardType: TextInputType.emailAddress,
-                onChanged: (_) => _edited(),
+              const SizedBox(height: 5),
+              const Text(
+                'Se registrará en Clientes únicamente cuando la venta sea confirmada.',
+                style: TextStyle(color: muted, fontSize: 12),
               ),
-            ),
+            ],
           ],
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _address,
-          decoration: _input('Dirección (opcional)'),
-          maxLines: 2,
-          onChanged: (_) => _edited(),
-        ),
-        const SizedBox(height: 5),
-        const Text(
-          'Se registrará en Clientes únicamente cuando la venta sea confirmada.',
-          style: TextStyle(color: muted, fontSize: 12),
-        ),
-      ],
-    ],
-  );
+        );
 
   Widget _paymentSection() {
     final cashPart = _paymentMode == 'BANK'
@@ -603,6 +625,10 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
       'cash_received': cashPart > 0 ? _amount(tendered) : null,
       'payments': payments,
     };
+    if (widget.washOrderId != null) {
+      body['wash_order_id'] = widget.washOrderId;
+      body['wash_expected_version'] = widget.washExpectedVersion;
+    }
     if (_customerMode == 'EXISTING') body['customer_id'] = _customerId;
     if (_customerMode == 'NEW') {
       body['customer'] = {

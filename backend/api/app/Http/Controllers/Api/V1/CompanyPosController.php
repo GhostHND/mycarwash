@@ -194,6 +194,15 @@ class CompanyPosController extends Controller
                 $v['quantity'] = $this->stockLabel((int) round((float) $r->quantity * 1000));
                 return $v;
             });
+        if (($sale->wash_order_id ?? null) !== null) {
+            $lines->prepend([
+                'id' => null, 'item_id' => null, 'sku_snapshot' => 'LAVADO',
+                'name_snapshot' => $sale->wash_service_snapshot ?? 'Lavado de vehículo',
+                'unit_snapshot' => 'servicio', 'quantity' => '1.000',
+                'unit_price' => $this->money($this->cents($sale->wash_price_snapshot)),
+                'line_total' => $this->money($this->cents($sale->wash_price_snapshot)),
+            ]);
+        }
         $payments = DB::table('pos_sale_payments')->where('company_id', $company)->where('sale_id', $saleId)
             ->orderBy('id')->get(['id', 'channel', 'amount', 'reference', 'cash_session_id', 'bank_account_id'])
             ->map(function ($r): array {
@@ -225,6 +234,7 @@ class CompanyPosController extends Controller
             'fiscal_rtn'=>$sale->fiscal_rtn,'fiscal_legal_name'=>$sale->fiscal_legal_name,
             'fiscal_range_start'=>$sale->fiscal_range_start,'fiscal_range_end'=>$sale->fiscal_range_end,
             'fiscal_expires_on'=>$sale->fiscal_expires_on,
+            'wash_order_id' => $sale->wash_order_id ?? null,
             'customer_type' => $sale->customer_type, 'customer_id' => $sale->customer_id,
             'customer_name' => $sale->customer_name_snapshot,
             'customer_identity' => $sale->customer_identity_snapshot,
@@ -321,6 +331,31 @@ class CompanyPosController extends Controller
         return $this->fiscalSettings($request, $company);
     }
 
+    /** Vista de solo lectura para la venta unificada. Nunca inicia ni entrega por si sola. */
+    public function washForCheckout(Request $request, int $company, int $order): JsonResponse
+    {
+        $this->authorizeCompany($request, $company, 'company.view');
+        $wash = DB::table('wash_orders')->where('company_id', $company)->where('id', $order)->first();
+        if (!$wash || $wash->status !== 'TERMINADO') {
+            throw ValidationException::withMessages(['order' => 'Solo se puede cobrar un lavado terminado.']);
+        }
+        if (DB::table('pos_sales')->where('company_id', $company)->where('wash_order_id', $order)->exists()) {
+            throw ValidationException::withMessages(['order' => 'Este lavado ya aparece en una venta confirmada.']);
+        }
+        $vehicle = DB::table('vehicles')->where('company_id', $company)->where('id', $wash->vehicle_id)->first();
+        $customer = $vehicle ? DB::table('clients')->where('company_id', $company)
+            ->where('id', $vehicle->client_id)->whereNull('deleted_at')->where('is_active', true)->first() : null;
+        if (!$customer) throw ValidationException::withMessages(['order' => 'No hay propietario activo vinculado al vehículo.']);
+        $service = DB::table('wash_services')->where('company_id', $company)->where('id', $wash->service_id)->value('name');
+        return response()->json(['data' => [
+            'order_id' => $wash->id, 'version' => $wash->version, 'branch_id' => $wash->branch_id,
+            'customer_id' => $customer->id, 'customer_name' => $customer->full_name,
+            'vehicle_label' => trim(($vehicle->brand ?? '').' '.($vehicle->model ?? '')),
+            'plate' => $vehicle->plate ?? null,
+            'service_name' => $service ?: 'Lavado', 'price' => $this->money($this->cents($wash->quoted_price)),
+        ]]);
+    }
+
     public function checkout(Request $request, int $company): JsonResponse
     {
         $this->authorizeCompany($request, $company, 'company.update');
@@ -332,7 +367,9 @@ class CompanyPosController extends Controller
         $data = $request->validate([
             'branch_id' => ['required', 'integer', 'min:1'],
             'idempotency_key' => ['required', 'string', 'min:12', 'max:100', 'regex:/^[A-Za-z0-9._-]+$/'],
-            'lines' => ['required', 'array', 'min:1', 'max:40'],
+            'lines' => ['present', 'array', 'min:0', 'max:40'],
+            'wash_order_id' => ['sometimes', 'integer', 'min:1'],
+            'wash_expected_version' => ['required_with:wash_order_id', 'integer', 'min:1'],
             'lines.*.item_id' => ['required', 'integer', 'min:1', 'distinct'],
             'lines.*.quantity' => ['required', 'integer', 'between:1,999'],
             'discount_amount' => ['required', 'regex:/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?$/D'],
@@ -354,6 +391,9 @@ class CompanyPosController extends Controller
             'payments.*.amount' => ['required', 'regex:/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?$/D'],
             'payments.*.reference' => ['sometimes', 'nullable', 'string', 'max:120'],
         ]);
+        if (empty($data['lines']) && empty($data['wash_order_id'])) {
+            throw ValidationException::withMessages(['lines' => 'Selecciona un lavado o al menos un artículo.']);
+        }
         $hashData = $data;
         if ($legacyPayload) unset($hashData['customer_type']);
         if ($legacyDocument) unset($hashData['document_type']);
@@ -370,7 +410,37 @@ class CompanyPosController extends Controller
             $branch = (int) $data['branch_id'];
             $this->branch($company, $branch);
             $actor = (int) $request->user()->id;
-            $lineRows = []; $subtotal = 0;
+            // La orden se bloquea dentro de la misma transaccion que el inventario y los pagos.
+            $wash = null; $washService = null; $washPriceCents = 0;
+            if (!empty($data['wash_order_id'])) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('pos_sales', 'wash_order_id')) {
+                    throw ValidationException::withMessages(['wash_order_id' => 'La integracion de cobro de lavados no esta migrada.']);
+                }
+                $wash = DB::table('wash_orders')->where('company_id', $company)
+                    ->where('id', (int) $data['wash_order_id'])->lockForUpdate()->first();
+                if (!$wash || (int) $wash->branch_id !== $branch || $wash->status !== 'TERMINADO') {
+                    throw ValidationException::withMessages(['wash_order_id' => 'El lavado no está terminado o pertenece a otra sucursal.']);
+                }
+                if ((int) $wash->version !== (int) $data['wash_expected_version']) {
+                    throw ValidationException::withMessages(['wash_expected_version' => 'La orden cambió; actualiza antes de cobrar.']);
+                }
+                if (DB::table('pos_sales')->where('company_id', $company)->where('wash_order_id', $wash->id)->exists()) {
+                    throw ValidationException::withMessages(['wash_order_id' => 'Este lavado ya se cobró mediante Smart POS.']);
+                }
+                if (DB::table('wash_order_payments')->where('company_id', $company)->where('order_id', $wash->id)->exists()
+                    || DB::table('wash_order_discounts')->where('company_id', $company)->where('order_id', $wash->id)->exists()) {
+                    throw ValidationException::withMessages(['wash_order_id' => 'Hay cobros o descuentos anteriores: revísalos antes de cobrar en conjunto.']);
+                }
+                $owner = DB::table('vehicles')->where('company_id', $company)->where('id', $wash->vehicle_id)->first();
+                if (!$owner || $data['customer_type'] !== 'EXISTING'
+                    || (int) ($data['customer_id'] ?? 0) !== (int) $owner->client_id) {
+                    throw ValidationException::withMessages(['customer_id' => 'El comprador debe ser el propietario registrado del vehículo.']);
+                }
+                $washService = DB::table('wash_services')->where('company_id', $company)
+                    ->where('id', $wash->service_id)->value('name');
+                $washPriceCents = $this->cents($wash->quoted_price, 'quoted_price');
+            }
+            $lineRows = []; $subtotal = $washPriceCents;
             foreach ($data['lines'] as $line) {
                 $item = DB::table('inventory_items')->where('company_id', $company)
                     ->where('id', $line['item_id'])->where('is_active', true)
@@ -497,6 +567,13 @@ class CompanyPosController extends Controller
                 'fiscal_range_end'=>$auth ? ($auth->establishment_code.'-'.$auth->point_code.'-'.$auth->document_code.'-'.str_pad((string)$auth->end_sequence,8,'0',STR_PAD_LEFT)) : null,
                 'fiscal_expires_on'=>$auth?->expires_on,
                 'document_template_revision_id'=>$designRevision,
+                // Los tests POS existentes pueden construir un esquema SQLite minimo sin la migracion 24G.
+                // Ventas normales conservan compatibilidad; una venta con lavado exige la migracion.
+                ...(\Illuminate\Support\Facades\Schema::hasColumn('pos_sales', 'wash_order_id') ? [
+                    'wash_order_id' => $wash?->id,
+                    'wash_service_snapshot' => $wash ? (string) ($washService ?? 'Lavado de vehículo') : null,
+                    'wash_price_snapshot' => $wash ? $this->money($washPriceCents) : null,
+                ] : []),
                 ...$customer,
                 'cash_received' => $cashDue > 0 ? $this->money($tendered) : null,
                 'change_given' => $this->money($tendered - $cashDue),
@@ -506,6 +583,18 @@ class CompanyPosController extends Controller
                 DB::table('pos_fiscal_authorizations')->where('id',$auth->id)
                     ->where('company_id',$company)->update([
                         'next_sequence'=>$auth->next_sequence+1,'updated_at'=>$now]);
+            }
+            if ($wash) {
+                DB::table('wash_orders')->where('company_id', $company)->where('id', $wash->id)->update([
+                    'status' => 'ENTREGADO', 'delivered_at' => $now,
+                    'version' => (int) $wash->version + 1, 'updated_at' => $now,
+                ]);
+                DB::table('wash_order_events')->insert([
+                    'company_id' => $company, 'order_id' => $wash->id,
+                    'from_status' => 'TERMINADO', 'to_status' => 'ENTREGADO',
+                    'reason' => 'Venta unificada Smart POS #'.$saleId,
+                    'actor_user_id' => $actor, 'occurred_at' => $now,
+                ]);
             }
             foreach ($lineRows as $line) {
                 $item = $line['item'];
@@ -549,7 +638,7 @@ class CompanyPosController extends Controller
                         'company_id' => $company, 'session_id' => $p['cash'],
                         'expense_category_id' => null, 'direction' => 'IN',
                         'amount' => $this->money($p['amount']), 'reference' => 'POS-'.$saleId,
-                        'notes' => 'Cobro de artículos en Smart POS', 'actor_user_id' => $actor,
+                        'notes' => $wash ? 'Cobro unificado de lavado y artículos en Smart POS' : 'Cobro de artículos en Smart POS', 'actor_user_id' => $actor,
                         'source_pos_payment_id' => $paymentId,
                         'created_at' => $now, 'updated_at' => $now,
                     ]);
