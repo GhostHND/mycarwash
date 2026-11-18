@@ -1031,16 +1031,13 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
             )
           else ...[
             Center(
-              child: Icon(Icons.inventory_2_outlined, color: _cyan, size: 52),
-            ),
-            const SizedBox(height: 8),
-            Center(
               child: CompanyProductPhotoView24J(
                 client: _client,
                 itemId: int.tryParse('${item['id']}'),
                 size: 78,
               ),
             ),
+            const SizedBox(height: 8),
             Text(
               '${item['name']}',
               maxLines: 2,
