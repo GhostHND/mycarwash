@@ -5,6 +5,10 @@ import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
 import 'company_media_photo_dialog.dart';
+import 'company_clients_cards_24c.dart';
+import 'company_vehicle_cards_24c2.dart';
+import 'company_vehicle_photo_form_24c2.dart';
+import '../core/business_identity.dart';
 
 enum OperationsCatalog { clients, vehicles, employees, services }
 
@@ -164,7 +168,11 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
       final result = await _api.request(
         'GET',
         _path,
-        query: {'q': _search.text.trim(), 'page': '$_page', 'per_page': '10'},
+        query: {
+          'q': _search.text.trim(),
+          'page': '$_page',
+          'per_page': widget.catalog == OperationsCatalog.clients ? '6' : '10',
+        },
       );
       if (!mounted || version != _version) {
         return;
@@ -370,6 +378,8 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
     bool saving = false;
     String? dialogError;
     bool didChange = false;
+    final photoDraft24C2 = CompanyVehiclePhotoDraft24C2();
+    int? persistedVehicleId24C2 = int.tryParse('${existing?['id'] ?? ''}');
 
     try {
       final route = DialogRoute<bool>(
@@ -423,6 +433,14 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                               label: const Text('Seleccionar'),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (widget.catalog == OperationsCatalog.vehicles) ...[
+                        CompanyVehiclePhotoField24C2(
+                          client: _client,
+                          vehicleId: int.tryParse('${existing?['id'] ?? ''}'),
+                          draft: photoDraft24C2,
                         ),
                         const SizedBox(height: 12),
                       ],
@@ -586,13 +604,35 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                           dialogError = null;
                         });
                         try {
-                          await _api.request(
-                            existing == null ? 'POST' : 'PATCH',
-                            existing == null
-                                ? _path
-                                : '$_path/${existing['id']}',
-                            body: payload,
-                          );
+                          // Si se creó el registro pero falló la foto, el reintento
+                          // no debe duplicar el vehículo.
+                          final saved24C2 =
+                              widget.catalog == OperationsCatalog.vehicles &&
+                                  existing == null &&
+                                  persistedVehicleId24C2 != null
+                              ? <String, dynamic>{
+                                  'data': {'id': persistedVehicleId24C2},
+                                }
+                              : await _api.request(
+                                  existing == null ? 'POST' : 'PATCH',
+                                  existing == null
+                                      ? _path
+                                      : '$_path/${existing['id']}',
+                                  body: payload,
+                                );
+                          if (widget.catalog == OperationsCatalog.vehicles) {
+                            final data24C2 = saved24C2['data'];
+                            final savedId24C2 = int.tryParse(
+                              '${data24C2 is Map ? data24C2['id'] : existing?['id']}',
+                            );
+                            if (savedId24C2 == null) {
+                              throw Exception(
+                                'El servidor no devolvió el ID del vehículo.',
+                              );
+                            }
+                            persistedVehicleId24C2 = savedId24C2;
+                            await photoDraft24C2.save(_client, savedId24C2);
+                          }
                           if (dialogContext.mounted) {
                             Navigator.of(dialogContext).pop(true);
                           }
@@ -712,14 +752,58 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          _title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 31,
-            fontWeight: FontWeight.w800,
+        if (widget.catalog == OperationsCatalog.clients ||
+            widget.catalog == OperationsCatalog.vehicles)
+          ValueListenableBuilder<BusinessIdentityData>(
+            valueListenable: BusinessIdentity.current,
+            builder: (context, identity, _) => Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    _title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 31,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Container(width: 1, height: 65, color: _border),
+                const SizedBox(width: 15),
+                SizedBox(
+                  width: 140,
+                  height: 75,
+                  child: identity.logoBytes == null
+                      ? Center(
+                          child: Text(
+                            identity.companyName.isEmpty
+                                ? 'Mi empresa'
+                                : identity.companyName,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        )
+                      : Image.memory(
+                          identity.logoBytes!,
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true,
+                        ),
+                ),
+              ],
+            ),
           ),
-        ),
+        if (widget.catalog != OperationsCatalog.clients &&
+            widget.catalog != OperationsCatalog.vehicles)
+          Text(
+            _title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 31,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         const SizedBox(height: 8),
         const Text(
           'Administración del negocio · Datos vinculados a la empresa activa.',
@@ -786,6 +870,20 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                     ),
                   ),
                 )
+              else if (widget.catalog == OperationsCatalog.clients)
+                CompanyClientsCardGrid24C(
+                  rows: _rows,
+                  accent: Theme.of(context).colorScheme.primary,
+                  onEdit: _edit,
+                  onArchive: _delete,
+                )
+              else if (widget.catalog == OperationsCatalog.vehicles)
+                CompanyVehiclesGrid24C2(
+                  rows: _rows,
+                  client: _client,
+                  onEdit: _edit,
+                  onArchive: _delete,
+                )
               else
                 for (final record in _rows)
                   Padding(
@@ -828,8 +926,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                 ],
                               ),
                             ),
-                            if (widget.catalog == OperationsCatalog.vehicles ||
-                                widget.catalog == OperationsCatalog.employees)
+                            if (widget.catalog == OperationsCatalog.employees)
                               IconButton(
                                 tooltip: 'Fotografía',
                                 icon: const Icon(

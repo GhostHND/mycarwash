@@ -66,6 +66,8 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
   Map<String, dynamic> _data = <String, dynamic>{};
   int _offset = 0;
   int _total = 0;
+  int _queuePage = 0;
+  int _workerRotation = 0;
   bool _editing = false;
   bool _fullscreen = false;
   DateTime _clock = DateTime.now();
@@ -94,6 +96,8 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
         return;
       }
       _offset = _total > 4 ? (_offset + 4) % _total : 0;
+      _queuePage += 3;
+      _workerRotation += 1;
       _refresh();
     });
   }
@@ -435,27 +439,169 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
         const SizedBox(width: 15),
         Container(height: 72, width: 1, color: _color('border_color')),
         const SizedBox(width: 12),
-        SizedBox(
-          width: 113,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.cloud_off_outlined,
-                color: _color('muted_text_color'),
-                size: 31,
-              ),
-              Text(
-                'Clima no disponible',
-                textAlign: TextAlign.center,
-                style: _style(11, color: 'muted_text_color'),
-              ),
-            ],
-          ),
-        ),
+        SizedBox(width: 135, child: _weatherHeader()),
       ],
     ),
   );
+
+  Widget _weatherHeader() {
+    final raw = _data['weather'];
+    final weather = raw is Map ? raw : <String, dynamic>{};
+    final available = weather['available'] == true;
+    final city = (weather['location'] ?? '').toString().trim();
+    final symbol = (weather['symbol'] ?? '').toString();
+    final icon = !available
+        ? Icons.cloud_off_outlined
+        : symbol.contains('rain')
+        ? Icons.water_drop_outlined
+        : symbol.contains('snow')
+        ? Icons.ac_unit
+        : symbol.contains('cloud') || symbol.contains('fog')
+        ? Icons.cloud_outlined
+        : Icons.wb_sunny_outlined;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: _color('primary_color'), size: 29),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                available ? '${weather['temperature_c']} °C' : 'Sin clima',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _style(22, heavy: true),
+              ),
+            ),
+          ],
+        ),
+        Text(
+          city.isEmpty ? 'Ubicación no configurada' : city,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _style(11),
+        ),
+        if (available)
+          Text('MET Norway', style: _style(9, color: 'muted_text_color')),
+      ],
+    );
+  }
+
+  List<Map<String, dynamic>> _workerQueues() {
+    final raw = _data['worker_queues'];
+    if (raw is! List) {
+      return <Map<String, dynamic>>[];
+    }
+    return raw
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList();
+  }
+
+  Widget _personalQueue(Map item) {
+    final rawIds = item['worker_ids'];
+    final ids = rawIds is List
+        ? rawIds.map((id) => id.toString()).toSet()
+        : <String>{};
+    final personal = _workerQueues()
+        .where((q) => ids.contains((q['employee_id'] ?? '').toString()))
+        .toList();
+    final seen = <String>{};
+    final tasks = <Map<String, dynamic>>[];
+    for (final worker in personal) {
+      final orders = worker['orders'];
+      if (orders is! List) {
+        continue;
+      }
+      for (final candidate in orders) {
+        if (candidate is! Map) {
+          continue;
+        }
+        final id = (candidate['id'] ?? '').toString();
+        if (seen.add(id)) {
+          tasks.add(Map<String, dynamic>.from(candidate));
+        }
+      }
+    }
+    final total = tasks.length;
+    final pages = (total + 2) ~/ 3;
+    final start = total == 0 ? 0 : ((_queuePage ~/ 3) % pages) * 3;
+    final visible = tasks.skip(start).take(3).toList();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: _color('sidebar_color'),
+        border: Border.all(color: _color('border_color')),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.format_list_numbered,
+                size: 19,
+                color: _color('primary_color'),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Cola del lavador ($total)',
+                  style: _style(14, heavy: true),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (total > 3)
+                Text(
+                  '${start + 1}–${(start + 3 > total ? total : start + 3)} / $total',
+                  style: _style(10, color: 'muted_text_color'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          if (visible.isEmpty)
+            Text(
+              'Sin lavados pendientes',
+              style: _style(12, color: 'muted_text_color'),
+            ),
+          for (var index = 0; index < visible.length; index++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    child: Text(
+                      '${start + index + 1}.',
+                      style: _style(12, color: 'primary_color'),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '${visible[index]['brand'] ?? ''} ${visible[index]['model'] ?? ''}'
+                          .trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _style(12, heavy: true),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'En espera',
+                    style: _style(10, color: 'muted_text_color'),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _vehiclePhoto(Map item) {
     final id = (item['vehicle_id'] as num?)?.toInt();
@@ -464,13 +610,13 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
         ? null
         : _vehiclePhotos[id];
     return SizedBox(
-      height: 124,
+      height: 145,
       width: double.infinity,
       child: bytes == null
           ? Icon(
               Icons.directions_car_filled,
               color: _color('primary_color'),
-              size: 96,
+              size: 117,
             )
           : Image.memory(bytes, fit: BoxFit.contain, gaplessPlayback: true),
     );
@@ -575,11 +721,11 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
             vehicle.isEmpty ? 'Vehículo sin identificar' : vehicle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _style(21, heavy: true),
+            style: _style(24, heavy: true),
           ),
           Text(
             plate.isEmpty ? 'Placa no registrada' : 'Placa: $plate',
-            style: _style(13),
+            style: _style(15),
           ),
           const SizedBox(height: 10),
           Padding(
@@ -656,58 +802,30 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
             ],
           ),
           const Spacer(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Container(
-              width: double.infinity,
-              height: 62,
-              decoration: BoxDecoration(
-                color: _color('sidebar_color'),
-                border: Border.all(color: _color('border_color')),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.auto_awesome,
-                    color: _color('primary_color'),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Etapa estimada:', style: _style(12)),
-                      Text(
-                        'Sin configurar',
-                        style: _style(17, heavy: true, color: 'primary_color'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _personalQueue(item),
         ],
       ),
     );
   }
 
   Widget _queue() {
-    final next = _data['next'];
+    final queues = _workerQueues()
+        .where((q) => q['orders'] is List && (q['orders'] as List).isNotEmpty)
+        .toList();
+    final current = queues.isEmpty
+        ? null
+        : queues[_workerRotation % queues.length];
+    final orders = current?['orders'];
+    final next = orders is List && orders.isNotEmpty ? orders.first : null;
     final hasNext = next is Map;
-    final names = hasNext && next['washers'] is List
-        ? (next['washers'] as List).map((e) => e.toString()).join(', ')
-        : '';
     final vehicle = hasNext
         ? '${next['brand'] ?? ''} ${next['model'] ?? ''}'.trim()
         : '';
     final plate = hasNext ? (next['plate'] ?? '').toString() : '';
     final service = hasNext ? (next['service'] ?? '').toString() : '';
+    final worker = (current?['worker'] ?? '').toString();
     return Container(
-      height: 92,
+      height: 100,
       padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
         color: _color('queue_color'),
@@ -716,10 +834,10 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
       ),
       child: Row(
         children: [
-          Icon(Icons.more_time, size: 43, color: _color('primary_color')),
+          Icon(Icons.more_time, size: 42, color: _color('primary_color')),
           const SizedBox(width: 12),
           Text('Siguiente en cola', style: _style(21, heavy: true)),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: hasNext
                 ? Row(
@@ -729,7 +847,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
                         color: _color('text_color'),
                         size: 30,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 9),
                       Expanded(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -739,7 +857,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
                               vehicle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: _style(17, heavy: true),
+                              style: _style(16, heavy: true),
                             ),
                             Text(
                               plate.isEmpty ? 'Sin placa' : 'Placa: $plate',
@@ -753,9 +871,9 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Lavador asignado:', style: _style(11)),
+                            Text('Cola de lavador:', style: _style(11)),
                             Text(
-                              names.isEmpty ? 'Pendiente de asignación' : names,
+                              worker,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: _style(15, heavy: true),
@@ -774,7 +892,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
+                          horizontal: 12,
                           vertical: 9,
                         ),
                         decoration: BoxDecoration(
@@ -937,7 +1055,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
   Widget build(BuildContext context) {
     final viewportHeight = MediaQuery.sizeOf(context).height;
     final monitorHeight = (viewportHeight - 100.0)
-        .clamp(760.0, 1040.0)
+        .clamp(800.0, 1100.0)
         .toDouble();
     return SizedBox(
       height: monitorHeight,

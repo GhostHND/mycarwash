@@ -217,11 +217,18 @@ class CompanyWashWorkflowController extends Controller
                 $employee = DB::table('employees')->where('company_id', $company)->where('id', $data['employee_id'])
                     ->whereNull('deleted_at')->where('is_active', true)->whereIn('position', ['washer', 'supervisor'])->exists();
                 if (!$employee) throw ValidationException::withMessages(['employee_id' => 'Selecciona un lavador o supervisor activo de esta empresa.']);
-                $busy = DB::table('wash_assignments as a')->join('wash_orders as o', 'o.id', '=', 'a.order_id')
-                    ->where('a.company_id', $company)->where('a.employee_id', $data['employee_id'])
-                    ->where('a.is_active', true)->where('o.id', '!=', $data['order_id'])
-                    ->whereIn('o.status', ['ASIGNADO', 'EN_PROCESO'])->exists();
-                if ($busy) throw ValidationException::withMessages(['employee_id' => 'Lavador ocupado en otra orden activa.']);
+                // Una asignacion reserva un turno en la cola personal del lavador.
+                // No exige que el trabajador este libre: solo EN_PROCESO ocupa su capacidad.
+                // El estado de la orden continua ASIGNADO hasta que pueda comenzar.
+                DB::table('employees')->where('company_id', $company)
+                    ->where('id', $data['employee_id'])->lockForUpdate()->first();
+                if ($order->status === 'EN_PROCESO' && $this->workerIsBusy(
+                    $company, (int) $data['employee_id'], (int) $data['order_id']
+                )) {
+                    throw ValidationException::withMessages([
+                        'employee_id' => 'El lavador ya esta atendiendo otra orden; puedes asignarlo a una orden en espera.',
+                    ]);
+                }
                 if ($this->scoped('assignments', $company)->where('order_id', $data['order_id'])
                     ->where('employee_id', $data['employee_id'])->where('is_active', true)->exists()) {
                     throw ValidationException::withMessages(['employee_id' => 'Este lavador ya participa en la orden.']);
@@ -354,6 +361,81 @@ class CompanyWashWorkflowController extends Controller
         return response()->json(['message' => match ($resource) { 'bays' => 'Puesto archivado.', 'orders' => 'Orden cancelada.', default => 'Asignación liberada.' }]);
     }
 
+    /** Trabajos simultaneos: a lo sumo uno EN_PROCESO por lavador. */
+    private function workerIsBusy(int $company, int $employeeId, int $exceptOrder = 0): bool
+    {
+        return DB::table('wash_assignments as a')
+            ->join('wash_orders as o', function ($join): void {
+                $join->on('o.id', '=', 'a.order_id')->on('o.company_id', '=', 'a.company_id');
+            })
+            ->where('a.company_id', $company)->where('a.employee_id', $employeeId)
+            ->where('a.is_active', true)->where('o.id', '!=', $exceptOrder)
+            ->where('o.status', 'EN_PROCESO')->exists();
+    }
+
+    private function orderWorkers(int $company, int $orderId): array
+    {
+        return DB::table('wash_assignments')->where('company_id', $company)
+            ->where('order_id', $orderId)->where('is_active', true)
+            ->distinct()->orderBy('employee_id')->pluck('employee_id')
+            ->map(fn ($id): int => (int) $id)->all();
+    }
+
+    /** FIFO por instante de asignacion (desempate por ID), sin mezclar empresas. */
+    private function firstQueuedForWorker(int $company, int $employeeId): ?int
+    {
+        $id = DB::table('wash_assignments as a')
+            ->join('wash_orders as o', function ($join): void {
+                $join->on('o.id', '=', 'a.order_id')->on('o.company_id', '=', 'a.company_id');
+            })
+            ->where('a.company_id', $company)->where('a.employee_id', $employeeId)
+            ->where('a.is_active', true)->where('o.status', 'ASIGNADO')
+            ->orderBy('a.assigned_at')->orderBy('a.id')->value('o.id');
+        return $id === null ? null : (int) $id;
+    }
+
+    /** Una orden compartida inicia solo si TODOS sus lavadores estan libres y les toca el turno. */
+    private function canStartQueued(int $company, object $order): bool
+    {
+        if ($order->status !== 'ASIGNADO') return false;
+        $workers = $this->orderWorkers($company, (int) $order->id);
+        if (!$workers) return false;
+        foreach ($workers as $worker) {
+            if ($this->workerIsBusy($company, $worker, (int) $order->id)) return false;
+            if ($this->firstQueuedForWorker($company, $worker) !== (int) $order->id) return false;
+        }
+        if ($order->bay_id !== null) {
+            $occupied = DB::table('wash_orders')->where('company_id', $company)
+                ->where('branch_id', $order->branch_id)->where('bay_id', $order->bay_id)
+                ->where('status', 'EN_PROCESO')->where('id', '!=', $order->id)->exists();
+            if ($occupied) return false;
+        }
+        return true;
+    }
+
+    /** Al terminar un lavado, activa el siguiente turno elegible de cada participante. */
+    private function advanceWorkerQueues(int $company, array $workers, int $actor): void
+    {
+        $candidateIds = [];
+        foreach ($workers as $worker) {
+            $candidate = $this->firstQueuedForWorker($company, (int) $worker);
+            if ($candidate !== null) $candidateIds[$candidate] = $candidate;
+        }
+        // Orden estable, independiente de cual trabajador se evalua primero.
+        sort($candidateIds, SORT_NUMERIC);
+        foreach ($candidateIds as $candidateId) {
+            $order = $this->scoped('orders', $company)->where('id', $candidateId)
+                ->lockForUpdate()->first();
+            if (!$order || !$this->canStartQueued($company, $order)) continue;
+            $this->scoped('orders', $company)->where('id', $candidateId)->update([
+                'status' => 'EN_PROCESO', 'started_at' => now(),
+                'version' => $order->version + 1, 'updated_at' => now(),
+            ]);
+            $this->event($company, $candidateId, 'ASIGNADO', 'EN_PROCESO',
+                'Inicio automatico por turno del lavador', $actor);
+        }
+    }
+
     public function transition(Request $request, int $company, int $order): JsonResponse
     {
         $this->authorizeCompany($request, $company, 'company.update');
@@ -374,8 +456,19 @@ class CompanyWashWorkflowController extends Controller
                     'payment' => 'Utiliza Cobrar y entregar para registrar el cobro en caja o banco.',
                 ]);
             }
-            if ($next === 'EN_PROCESO' && !$this->scoped('assignments', $company)->where('order_id', $order)->where('is_active', true)->exists()) {
-                return ['conflict' => 'Asigna al menos un lavador activo.'];
+            $workers = $this->orderWorkers($company, $order);
+            if ($next === 'EN_PROCESO') {
+                if (!$workers) return ['conflict' => 'Asigna al menos un lavador activo.'];
+                // Bloquear en orden para reducir carreras entre sesiones.
+                DB::table('employees')->where('company_id', $company)
+                    ->whereIn('id', $workers)->orderBy('id')->lockForUpdate()->get();
+                if (!$this->canStartQueued($company, $current)) {
+                    return ['conflict' => 'La orden sigue en cola: algun lavador esta ocupado, tiene un turno anterior o la bahia esta ocupada.'];
+                }
+            }
+            if ($next === 'TERMINADO' && $workers) {
+                DB::table('employees')->where('company_id', $company)
+                    ->whereIn('id', $workers)->orderBy('id')->lockForUpdate()->get();
             }
             $changes = ['status' => $next, 'version' => $current->version + 1, 'updated_at' => now()];
             if ($next === 'EN_PROCESO') $changes['started_at'] = now();
@@ -383,6 +476,9 @@ class CompanyWashWorkflowController extends Controller
             if ($next === 'ENTREGADO') $changes['delivered_at'] = now();
             $this->scoped('orders', $company)->where('id', $order)->update($changes);
             $this->event($company, $order, $current->status, $next, $input['reason'] ?? null, (int) $request->user()->id);
+            if ($next === 'TERMINADO') {
+                $this->advanceWorkerQueues($company, $workers, (int) $request->user()->id);
+            }
             return ['data' => $this->decorated('orders', $company, $this->row('orders', $company, $order))];
         });
         if (isset($result['conflict'])) return response()->json(['message' => $result['conflict']], 409);
