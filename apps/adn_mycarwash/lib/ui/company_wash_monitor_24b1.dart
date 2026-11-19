@@ -6,6 +6,8 @@ import '../core/mycarwash_session.dart';
 import 'package:flutter/material.dart';
 import '../core/company_visual_theme.dart';
 import '../core/company_monitor_colors_24n27.dart';
+import '../core/monitor_completion_queue_24n5.dart';
+import '../core/monitor_device_weather_24n5.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/business_identity.dart';
@@ -26,6 +28,17 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
   late final bool _ownsClient;
   Timer? _timer;
   Timer? _clockTimer;
+  Timer? _refreshTimer;
+  Timer? _completionExitTimer;
+  Timer? _completionEndTimer;
+  Timer? _completionEnterTimer;
+  Timer? _weatherTimer;
+  final MonitorCompletionQueue24N5 _completionInbox = MonitorCompletionQueue24N5();
+  Map<String, dynamic>? _currentCompletion;
+  bool _completionVisible = false;
+  bool _refreshInFlight = false;
+  Map<String, String>? _deviceLocation;
+
   OverlayEntry? _monitorOverlay;
   final Map<int, Uint8List> _vehiclePhotos = <int, Uint8List>{};
   final Set<int> _photoFailures = <int>{};
@@ -49,6 +62,9 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     // Un solo tema visual por empresa, compartido con todo el administrador.
     CompanyVisualTheme.current.addListener(_onCompanyColorsChanged);
     _refresh();
+    _refreshDeviceWeather();
+    _weatherTimer = Timer.periodic(const Duration(minutes: 10), (_) => _refreshDeviceWeather());
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
         setState(() => _clock = DateTime.now());
@@ -62,13 +78,19 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
       _offset = _total > 4 ? (_offset + 4) % _total : 0;
       _queuePage += 3;
       _workerRotation += 1;
-      _refresh();
+      setState(() {});
+      _monitorOverlay?.markNeedsBuild();
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _refreshTimer?.cancel();
+    _weatherTimer?.cancel();
+    _completionEnterTimer?.cancel();
+    _completionExitTimer?.cancel();
+    _completionEndTimer?.cancel();
     _clockTimer?.cancel();
     _monitorOverlay?.remove();
     _monitorOverlay?.dispose();
@@ -86,13 +108,60 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     _monitorOverlay?.markNeedsBuild();
   }
 
+  Future<void> _refreshDeviceWeather() async {
+    final result = await MonitorDeviceWeather24N5.locate();
+    if (!mounted) return;
+    setState(() => _deviceLocation = result);
+    _refresh();
+    _monitorOverlay?.markNeedsBuild();
+  }
+
+  void _activateNextCompletion() {
+    if (!mounted || _currentCompletion != null) return;
+    final next = _completionInbox.takeNext();
+    if (next == null) return;
+    _completionExitTimer?.cancel();
+    _completionEndTimer?.cancel();
+    _completionEnterTimer?.cancel();
+    setState(() {
+      _currentCompletion = next;
+      _completionVisible = false;
+    });
+    _monitorOverlay?.markNeedsBuild();
+    _loadVehiclePhotos();
+    // A partir de aquí se cuentan EXACTAMENTE diez segundos de presentación.
+    _completionEnterTimer = Timer(const Duration(milliseconds: 30), () {
+      if (!mounted || _currentCompletion == null) return;
+      setState(() => _completionVisible = true);
+      _monitorOverlay?.markNeedsBuild();
+    });
+    _completionExitTimer = Timer(const Duration(milliseconds: 8800), () {
+      if (!mounted) return;
+      setState(() => _completionVisible = false);
+      _monitorOverlay?.markNeedsBuild();
+    });
+    _completionEndTimer = Timer(const Duration(seconds: 10), () {
+      if (!mounted) return;
+      setState(() => _currentCompletion = null);
+      _monitorOverlay?.markNeedsBuild();
+      _activateNextCompletion();
+    });
+  }
+
   Future<void> _refresh() async {
+    if (_refreshInFlight) return;
+    _refreshInFlight = true;
     try {
-      final response = await _api.request('GET', '/dashboard/monitor-24b2');
+      final response = await _api.request('GET', '/dashboard/monitor-24b2',
+        query: _deviceLocation);
       final raw = response['data'];
       if (!mounted || raw is! Map) {
         return;
       }
+      // Registrar sólo nuevas finalizaciones de órdenes completas (eventos
+      // TO_STATUS TERMINADO). El primer sondeo fija el cursor sin reproducir
+      // órdenes terminadas antes de abrir el monitor.
+      _completionInbox.ingest(raw['completion_events']);
       setState(() {
         _data = Map<String, dynamic>.from(raw);
         _total = (raw['active_total'] as num?)?.toInt() ?? 0;
@@ -102,6 +171,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
       });
       _monitorOverlay?.markNeedsBuild();
       _loadVehiclePhotos();
+      _activateNextCompletion();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -109,6 +179,8 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
           _error = 'Datos no disponibles: $e';
         });
       }
+    } finally {
+      _refreshInFlight = false;
     }
   }
 
@@ -140,9 +212,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
 
   Future<void> _loadVehiclePhotos() async {
     final active = _data['active'];
-    if (active is! List) {
-      return;
-    }
+    if (active is! List) return;
     final visible = active.length <= 4
         ? active
         : <dynamic>[
@@ -150,7 +220,14 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
             if (active.length - (_offset % active.length) < 4)
               ...active.take(4 - (active.length - (_offset % active.length))),
           ];
-    for (final item in visible) {
+    final photosToLoad = <dynamic>[
+      ?_currentCompletion,
+      ...(_data['completion_events'] is List
+          ? (_data['completion_events'] as List).reversed.take(5)
+          : <dynamic>[]),
+      ...visible,
+    ];
+    for (final item in photosToLoad) {
       if (item is! Map || item['photo_enabled'] != true) {
         continue;
       }
@@ -260,80 +337,67 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
       gradient: LinearGradient(
         colors: [_color('surface_color'), _color('background_color')],
       ),
-      border: Border(
-        bottom: BorderSide(color: _color('border_color'), width: 2),
-      ),
+      border: Border(bottom: BorderSide(color: _color('border_color'), width: 2)),
     ),
     child: Row(
       children: [
-        Image.asset(
-          'assets/branding/logo_adn_blanco.png',
-          height: 88,
-          width: 170,
-          fit: BoxFit.contain,
-        ),
+        Image.asset('assets/branding/logo_adn_blanco.png',
+          height: 88, width: 170, fit: BoxFit.contain),
+        const SizedBox(width: 24),
         Container(height: 72, width: 1, color: _color('primary_color')),
-        const SizedBox(width: 20),
-        _businessLogo(88),
-        const SizedBox(width: 16),
+        const SizedBox(width: 30),
         Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _name(),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: _style(29, heavy: true),
-              ),
-              Text(
-                'CENTRO DE LAVADO',
-                style: TextStyle(
-                  color: _color('primary_color'),
-                  letterSpacing: 4,
-                  fontSize: 13,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _businessLogo(82),
+                const SizedBox(width: 22),
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_name(), maxLines: 2, overflow: TextOverflow.ellipsis,
+                          style: _style(28, heavy: true)),
+                      if ((_data['slogan'] ?? '').toString().trim().isNotEmpty)
+                        Text((_data['slogan'] ?? '').toString().trim(),
+                          maxLines: 2, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: _color('primary_color'),
+                              letterSpacing: 2.5, fontSize: 12)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 16),
         Container(height: 72, width: 1, color: _color('border_color')),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_month,
-                  color: _color('primary_color'),
-                  size: 22,
-                ),
-                const SizedBox(width: 8),
-                Text(_dateText(), style: _style(13)),
-              ],
-            ),
+            Row(children: [
+              Icon(Icons.calendar_month, color: _color('primary_color'), size: 22),
+              const SizedBox(width: 8),
+              Text(_dateText(), style: _style(13)),
+            ]),
             const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(
-                  Icons.access_time,
-                  color: _color('primary_color'),
-                  size: 28,
-                ),
-                const SizedBox(width: 7),
-                Text(_hourText(), style: _style(24, heavy: true)),
-              ],
-            ),
+            Row(children: [
+              Icon(Icons.access_time, color: _color('primary_color'), size: 28),
+              const SizedBox(width: 7),
+              Text(_hourText(), style: _style(24, heavy: true)),
+            ]),
           ],
         ),
         const SizedBox(width: 15),
         Container(height: 72, width: 1, color: _color('border_color')),
         const SizedBox(width: 12),
-        SizedBox(width: 135, child: _weatherHeader()),
+        SizedBox(width: 142, child: _weatherHeader()),
       ],
     ),
   );
@@ -378,7 +442,10 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
           style: _style(11),
         ),
         if (available)
-          Text('MET Norway', style: _style(9, color: 'muted_text_color')),
+          Text(
+            (weather['attribution'] ?? 'MET Norway').toString(),
+            style: _style(9, color: 'muted_text_color'),
+          ),
       ],
     );
   }
@@ -814,6 +881,136 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     );
   }
 
+  Widget _completionPanel(Map<String, dynamic> event) {
+    final people = event['washers'] is List
+        ? (event['washers'] as List).map((e) => e.toString()).join(', ')
+        : '';
+    final name = '${event['brand'] ?? ''} ${event['model'] ?? ''}'.trim();
+    final plate = (event['plate'] ?? '').toString();
+    final service = (event['service'] ?? '').toString();
+    final bay = (event['bay'] ?? 'Sin puesto').toString();
+    final id = (event['vehicle_id'] as num?)?.toInt();
+    final bytes = id == null || event['photo_on_kiosk'] != true
+        ? null : _vehiclePhotos[id];
+    return AnimatedOpacity(
+      opacity: _completionVisible ? 1.0 : 0.0,
+      duration: Duration(milliseconds: _completionVisible ? 770 : 1200),
+      curve: Curves.easeInOut,
+      child: Container(
+        key: ValueKey('completion-${event['event_id']}'),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: _color('surface_color'),
+          border: Border.all(color: _color('border_color'), width: 1.4),
+          borderRadius: BorderRadius.circular(23),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          Container(
+            height: 70,
+            decoration: BoxDecoration(border: Border(bottom:
+                BorderSide(color: _color('border_color')))),
+            child: Row(children: [
+              const SizedBox(width: 22),
+              Icon(Icons.person, size: 31, color: _color('primary_color')),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(people.contains(',') ? 'Lavadores' : 'Lavador', style: _style(13)),
+                  Text(people.isEmpty ? 'Sin asignar' : people,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: _style(24, heavy: true)),
+                ],
+              )),
+              Container(height: 70,
+                padding: const EdgeInsets.symmetric(horizontal: 23),
+                alignment: Alignment.center,
+                color: _color('primary_color'),
+                child: Text(bay, style: TextStyle(color: _color('background_color'),
+                    fontWeight: FontWeight.w800, fontSize: 24))),
+            ]),
+          ),
+          Expanded(child: LayoutBuilder(builder: (context, constraints) {
+            // En monitores con poca altura, la tarjeta conserva TODA su
+            // informacion y reduce la escala de forma uniforme, sin recortar
+            // la imagen, los textos, ni el progreso. En monitores altos mantiene
+            // el tamano original y utiliza el espacio disponible.
+            final availableHeight = constraints.maxHeight;
+            final designHeight = availableHeight < 500 ? 500.0 : availableHeight;
+            final designWidth = availableHeight > 0
+                ? constraints.maxWidth * designHeight / availableHeight
+                : constraints.maxWidth;
+            final imageHeight =
+                (designHeight * .38).clamp(90.0, 230.0).toDouble();
+            return FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: designWidth,
+                height: designHeight,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+              SizedBox(height: imageHeight,
+                child: bytes == null
+                    ? Icon(Icons.directions_car_filled, size: imageHeight * .7,
+                        color: _color('primary_color'))
+                    : Image.memory(bytes, fit: BoxFit.contain, gaplessPlayback: true)),
+              Text(name.isEmpty ? 'Vehículo sin identificar' : name,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: _style(37, heavy: true), textAlign: TextAlign.center),
+              Text(plate.isEmpty ? 'Placa no registrada' : 'Placa: $plate',
+                style: _style(21), textAlign: TextAlign.center),
+              Container(
+                width: designWidth * .77,
+                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
+                decoration: BoxDecoration(color: _color('sidebar_color'),
+                  border: Border.all(color: _color('border_color')),
+                  borderRadius: BorderRadius.circular(18)),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.local_car_wash, color: _color('primary_color'), size: 26),
+                  const SizedBox(width: 10),
+                  Flexible(child: Text(service.isEmpty ? 'Servicio no disponible' : service,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: _style(22, heavy: true))),
+                ])),
+              Column(children: [
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.check_circle_outline, color: _color('success_color'), size: 51),
+                  const SizedBox(width: 14),
+                  Text('Lavado terminado',
+                      style: TextStyle(fontWeight: FontWeight.w800,
+                        fontSize: 43, color: _color('success_color'))),
+                ]),
+                Text('Trabajo finalizado correctamente', style: _style(19)),
+              ]),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 85), child: Row(children: [
+                Expanded(child: TweenAnimationBuilder<double>(
+                  key: ValueKey('progress-${event['event_id']}'),
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 1800),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) => ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: LinearProgressIndicator(value: value,
+                      minHeight: 16,
+                      color: _color('primary_color'),
+                      backgroundColor: _color('sidebar_color'))))),
+                const SizedBox(width: 16),
+                Text('100 %', style: _style(21, heavy: true)),
+              ])),
+                  ],
+                ),
+              ),
+            );
+          })),
+        ]),
+      ),
+    );
+  }
+
   Widget _monitor() {
     final all = _data['active'] is List ? _data['active'] as List : <dynamic>[];
     final offset = all.isEmpty ? 0 : _offset % all.length;
@@ -831,7 +1028,9 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
           _monitorHeader(),
           const SizedBox(height: 14),
           Expanded(
-            child: LayoutBuilder(
+            child: _currentCompletion != null
+                ? _completionPanel(_currentCompletion!)
+                : LayoutBuilder(
               builder: (context, constraints) {
                 final width = constraints.maxWidth;
                 final count = visible.length;

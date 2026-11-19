@@ -28,7 +28,14 @@ final class CompanyWashMonitor24B2Controller extends Controller
             ->where('ur.company_id', $company)->where('ur.user_id', $uid)
             ->where('p.code', 'company.view')->exists();
         if (!$permitted) abort(403);
-        $validated = $request->validate(['branch_id' => ['sometimes', 'integer', 'min:1']]);
+        $validated = $request->validate([
+            'branch_id' => ['sometimes', 'integer', 'min:1'],
+            'latitude' => ['required_with:longitude', 'numeric', 'between:-90,90'],
+            'longitude' => ['required_with:latitude', 'numeric', 'between:-180,180'],
+        ]);
+        $deviceCoordinates = isset($validated['latitude'], $validated['longitude'])
+            ? ['latitude' => (float) $validated['latitude'],
+               'longitude' => (float) $validated['longitude']] : null;
         $branch = isset($validated['branch_id']) ? (int) $validated['branch_id'] : null;
         if ($branch !== null && !DB::table('branches')->where('company_id', $company)
             ->where('id', $branch)->where('is_active', true)->exists()) abort(422, 'Sucursal no disponible');
@@ -144,7 +151,13 @@ final class CompanyWashMonitor24B2Controller extends Controller
         unset($queue);
         // Se ordena establemente entre actualizaciones del monitor.
         ksort($workerQueues, SORT_NUMERIC);
-        $weather = $this->weatherForBusiness($company, $branch);
+        $weather = $this->weatherForBusiness($company, $branch, $deviceCoordinates);
+        // Un evento inmutable de cambio a TERMINADO (no un progreso 100 %)
+        // dispara las notificaciones del monitor. Alcance empresa y sucursal.
+        $completionEvents = $this->recentCompletions($company, $branch);
+        $slogan = Schema::hasTable('company_profiles')
+            ? trim((string) (DB::table('company_profiles')->where('company_id', $company)->value('slogan') ?? ''))
+            : '';
         $bays = DB::table('wash_bays')->where('company_id', $company)->where('is_active', true)
             ->whereNull('deleted_at');
         if ($branch !== null) $bays->where('branch_id', $branch);
@@ -155,29 +168,107 @@ final class CompanyWashMonitor24B2Controller extends Controller
             'next' => $waitingRows->isEmpty() ? null : $present($waitingRows->first()),
             'bays' => $bays->orderBy('id')->pluck('name')->all(),
             'worker_queues' => array_values($workerQueues),
-            'weather' => $weather,
+            'weather' => $weather, 'slogan' => $slogan,
+            'completion_events' => $completionEvents,
             'timezone' => $tz, 'generated_at' => now('UTC')->toIso8601String(),
             'limited' => $activeRows->count() >= 200,
             'stage_note' => 'Etapas estimadas pendientes de reglas configurables por servicio.',
         ]]);
     }
 
+    /** Eventos recientes e irrepetibles de finalización GLOBAL de órdenes.
+     * Sólo se devuelven eventos de los últimos dos minutos; el cliente
+     * establece su cursor al conectarse para no reproducir el historial.
+     */
+    private function recentCompletions(int $company, ?int $branch): array
+    {
+        $query = DB::table('wash_order_events as ev')
+            ->join('wash_orders as o', function ($join): void {
+                $join->on('o.id', '=', 'ev.order_id')
+                    ->on('o.company_id', '=', 'ev.company_id');
+            })
+            ->join('vehicles as v', function ($join): void {
+                $join->on('v.id', '=', 'o.vehicle_id')
+                    ->on('v.company_id', '=', 'o.company_id');
+            })
+            ->join('wash_services as s', function ($join): void {
+                $join->on('s.id', '=', 'o.service_id')
+                    ->on('s.company_id', '=', 'o.company_id');
+            })
+            ->leftJoin('wash_bays as b', function ($join): void {
+                $join->on('b.id', '=', 'o.bay_id')
+                    ->on('b.company_id', '=', 'o.company_id');
+            })
+            ->where('ev.company_id', $company)
+            ->where('ev.to_status', 'TERMINADO')
+            ->where('ev.occurred_at', '>=', now()->subMinutes(2));
+        if ($branch !== null) $query->where('o.branch_id', $branch);
+        $rows = $query->orderByDesc('ev.id')->limit(30)->get([
+            'ev.id as event_id', 'ev.order_id', 'ev.occurred_at',
+            'o.vehicle_id', 'o.branch_id', 'v.brand', 'v.model', 'v.plate',
+            's.name as service', 'b.name as bay',
+        ])->reverse()->values();
+        if ($rows->isEmpty()) return [];
+
+        $orderIds = $rows->pluck('order_id')->unique()->all();
+        $washers = [];
+        foreach (DB::table('wash_assignments as a')
+            ->join('employees as emp', function ($join): void {
+                $join->on('emp.id', '=', 'a.employee_id')
+                    ->on('emp.company_id', '=', 'a.company_id');
+            })
+            ->where('a.company_id', $company)->whereIn('a.order_id', $orderIds)
+            ->orderBy('a.id')->get(['a.order_id', 'emp.full_name']) as $worker) {
+            $washers[(int) $worker->order_id][] = (string) $worker->full_name;
+        }
+        $publicPhotos = [];
+        if (Schema::hasTable('company_entity_photos')) {
+            foreach (DB::table('company_entity_photos')->where('company_id', $company)
+                ->where('owner_type', 'vehicles')->where('show_on_kiosk', true)
+                ->whereIn('owner_id', $rows->pluck('vehicle_id')->unique()->all())
+                ->pluck('owner_id') as $id) $publicPhotos[(int) $id] = true;
+        }
+        return $rows->map(static function ($row) use ($washers, $publicPhotos): array {
+            return [
+                'event_id' => (int) $row->event_id,
+                'order_id' => (int) $row->order_id,
+                'vehicle_id' => (int) $row->vehicle_id,
+                'branch_id' => (int) $row->branch_id,
+                'occurred_at' => Carbon::parse($row->occurred_at, 'UTC')->toIso8601String(),
+                'brand' => (string) ($row->brand ?? ''),
+                'model' => (string) ($row->model ?? ''),
+                'plate' => (string) ($row->plate ?? ''),
+                'service' => (string) ($row->service ?? ''),
+                'bay' => $row->bay,
+                'washers' => $washers[(int) $row->order_id] ?? [],
+                'photo_enabled' => isset($publicPhotos[(int) $row->vehicle_id]),
+                'photo_on_kiosk' => isset($publicPhotos[(int) $row->vehicle_id]),
+            ];
+        })->all();
+    }
+
     /** Prevision meteorologica actual aproximada para coordenadas registradas.
      * MET Norway requiere identificacion y atribucion. Cachear evita peticiones
      * por cada pantalla y por cada refresco de 15 segundos.
      */
-    private function weatherForBusiness(int $company, ?int $branch): array
+    private function weatherForBusiness(int $company, ?int $branch, ?array $deviceCoordinates = null): array
     {
-        $location = DB::table('company_addresses')->where('company_id', $company)
-            ->whereNotNull('latitude')->whereNotNull('longitude')
-            ->orderByDesc('is_primary')->orderBy('id')->first();
-        if (!$location) {
-            return ['available' => false, 'location' => null,
-                'reason' => 'Configura las coordenadas en Mi empresa > Direcciones'];
+        if ($deviceCoordinates !== null) {
+            $lat = $deviceCoordinates['latitude'];
+            $lon = $deviceCoordinates['longitude'];
+            $city = 'Ubicación actual';
+        } else {
+            $location = DB::table('company_addresses')->where('company_id', $company)
+                ->whereNotNull('latitude')->whereNotNull('longitude')
+                ->orderByDesc('is_primary')->orderBy('id')->first();
+            if (!$location) {
+                return ['available' => false, 'location' => null,
+                    'reason' => 'Configura las coordenadas en Mi empresa > Direcciones'];
+            }
+            $lat = (float) $location->latitude;
+            $lon = (float) $location->longitude;
+            $city = trim((string) ($location->municipality ?? ''));
         }
-        $lat = (float) $location->latitude;
-        $lon = (float) $location->longitude;
-        $city = trim((string) ($location->municipality ?? ''));
         if ($lat < -90 || $lat > 90 || $lon < -180 || $lon > 180) {
             return ['available' => false, 'location' => $city, 'reason' => 'Coordenadas invalidas'];
         }
