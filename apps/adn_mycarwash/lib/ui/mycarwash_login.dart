@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'dart:async';
 import 'dart:convert';
 
@@ -86,7 +87,10 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
             body: jsonEncode({
               'email': email,
               'password': _password.text,
-              'device_name': 'adn-mycarwash-web-local',
+              'device_name': kIsWeb ? 'adn-mycarwash-web-local'
+                  : defaultTargetPlatform == TargetPlatform.iOS ? 'adn-mycarwash-ios'
+                  : defaultTargetPlatform == TargetPlatform.android ? 'adn-mycarwash-android'
+                  : 'adn-mycarwash-desktop',
             }),
           )
           .timeout(const Duration(seconds: 20));
@@ -151,6 +155,12 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
         );
       }
 
+      if (selectedCompany['is_washer'] == true && (kIsWeb ||
+          (defaultTargetPlatform != TargetPlatform.android &&
+          defaultTargetPlatform != TargetPlatform.iOS))) {
+        throw const _LoginError('El lavador solo puede ingresar desde la aplicación Android o iOS.');
+      }
+
       MyCarWashSession.begin(
         accessToken: token,
         companyId: (selectedCompany['id'] as num).toInt(),
@@ -158,6 +168,7 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
         permissions: (selectedCompany['permissions'] as List?)
                 ?.map((value) => value.toString()).toList() ?? const [],
         legacyFullAccess: selectedCompany['legacy_full_access'] == true,
+        isWasher: selectedCompany['is_washer'] == true,
       );
 
       await widget.onEnterDashboard(context);

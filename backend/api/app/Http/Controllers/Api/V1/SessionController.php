@@ -49,6 +49,15 @@ class SessionController extends Controller
             ], 403);
         }
 
+        // Rechazar autenticación web/escritorio a lavadores. El nombre de dispositivo es
+        // un control adicional; la verificación fuerte requiere atestación de aplicación.
+        $washer = DB::table('company_user')->where('user_id',$user->id)->where('status','active')
+            ->pluck('company_id')->contains(fn ($companyId) =>
+                \App\Support\WasherAccess24N3::isWasher((int)$companyId,(int)$user->id));
+        if ($washer && !in_array($data['device_name'], ['adn-mycarwash-android','adn-mycarwash-ios'], true)) {
+            return response()->json(['message' => 'Esta cuenta solo permite acceso desde la aplicación móvil.'],403);
+        }
+
         $token = $user->createToken(
             $data['device_name'],
             ['*'],
@@ -98,9 +107,10 @@ class SessionController extends Controller
                 ->join('permissions as p', 'p.id', '=', 'rp.permission_id')
                 ->whereIn('rp.role_id', $roleIds)->where('p.code', 'like', 'nav.%')
                 ->pluck('p.code')->unique()->values()->all();
+            $company->is_washer = \App\Support\WasherAccess24N3::isWasher((int) $company->id, (int) $user->id);
             $company->legacy_full_access = DB::table('roles')->whereIn('id', $roleIds)
                 ->where('code', 'owner')->where('is_system', true)->exists()
-                || $company->permissions === [];
+                || ($company->permissions === [] && !$company->is_washer);
             return $company;
         });
 

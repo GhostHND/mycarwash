@@ -6,9 +6,12 @@ class MyCarWashSession {
   static int? _companyId;
   static Set<String> _permissions = {};
   static bool _legacyFullAccess = true;
+  static bool _isWasher = false;
+
+  static bool get isWasher => _isWasher;
 
   static bool canNav(String module, String action) =>
-      _legacyFullAccess || _permissions.contains('nav.$module.$action');
+      (!_isWasher && _legacyFullAccess) || _permissions.contains('nav.$module.$action');
 
   static bool get isAuthenticated => _accessToken != null && _companyId != null;
 
@@ -52,6 +55,7 @@ class MyCarWashSession {
     required String apiBaseUrl,
     List<String> permissions = const [],
     bool legacyFullAccess = true,
+    bool isWasher = false,
   }) {
     if (accessToken.isEmpty || companyId <= 0 || apiBaseUrl.isEmpty) {
       throw ArgumentError('Datos de sesion invalidos.');
@@ -61,7 +65,8 @@ class MyCarWashSession {
     _companyId = companyId;
     _apiBaseUrl = apiBaseUrl;
     _permissions = permissions.toSet();
-    _legacyFullAccess = legacyFullAccess;
+    _legacyFullAccess = legacyFullAccess && !isWasher;
+    _isWasher = isWasher;
   }
 
   static void clear() {
@@ -70,5 +75,6 @@ class MyCarWashSession {
     _apiBaseUrl = null;
     _permissions = {};
     _legacyFullAccess = true;
+    _isWasher = false;
   }
 }

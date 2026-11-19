@@ -43,7 +43,9 @@
 					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
-				</dict>
+				    <key>NSCameraUsageDescription</key>
+    <string>ADN MyCarWash utiliza la cámara para registrar asistencia mediante QR.</string>
+</dict>
 			</array>
 		</dict>
 	</dict>

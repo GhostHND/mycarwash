@@ -38,6 +38,24 @@ Route::prefix('v1')->group(function (): void {
             [PreferenceController::class, 'updateTheme']
         );
 
+        // BLOQUE 24N.3: endpoints exclusivos y acotados del lavador.
+        Route::get('/companies/{company}/washer/branding', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'branding'])->whereNumber('company');
+        Route::get('/companies/{company}/washer/summary', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'summary'])->whereNumber('company');
+        Route::get('/companies/{company}/washer/orders', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'orders'])->whereNumber('company');
+        Route::get('/companies/{company}/washer/photo/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'photo'])->whereNumber('company')->where('kind','vehicles|employees')->whereNumber('record');
+        Route::post('/companies/{company}/washer/attendance/scan', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'scanAttendance'])->whereNumber('company');
+        Route::get('/companies/{company}/attendance-points/station', [\App\Http\Controllers\Api\V1\CompanyAttendanceStation24N4Controller::class, 'station'])->whereNumber('company');
+        Route::get('/companies/{company}/washer/agenda', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'agenda'])->whereNumber('company');
+        Route::get('/companies/{company}/washer/me', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'me'])->whereNumber('company');
+        Route::patch('/companies/{company}/washer/me', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'updateMe'])->whereNumber('company');
+        Route::patch('/companies/{company}/washer/password', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'password'])->whereNumber('company');
+        Route::post('/companies/{company}/washer/orders/{order}/start', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'start'])->whereNumber('company')->whereNumber('order')->name('washer.order.start');
+        Route::post('/companies/{company}/washer/orders/{order}/finish', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'finish'])->whereNumber('company')->whereNumber('order')->name('washer.order.finish');
+
+        Route::get('/companies/{company}/washer/attendance', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'attendance'])->whereNumber('company');
+        Route::post('/companies/{company}/washer/attendance/check-in', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'checkIn'])->whereNumber('company');
+        Route::post('/companies/{company}/washer/attendance/check-out', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'checkOut'])->whereNumber('company');
+
         // BLOQUE 24N.2: cuentas de empleados y roles por empresa
         Route::get('/companies/{company}/users', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'index'])->whereNumber('company');
         Route::post('/companies/{company}/users', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'store'])->whereNumber('company');

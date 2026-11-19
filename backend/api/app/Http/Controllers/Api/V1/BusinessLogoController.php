@@ -76,11 +76,13 @@ class BusinessLogoController extends Controller
         Request $request,
         int $company
     ): BinaryFileResponse {
-        $this->authorizeCompany(
-            $request,
-            $company,
-            'company.view'
-        );
+        if (\App\Support\WasherAccess24N3::isWasher($company,(int)$request->user()->id)) {
+            \App\Support\WasherAccess24N3::employeeId($company,(int)$request->user()->id);
+            abort_unless(DB::table('company_user')->where('company_id',$company)
+                ->where('user_id',$request->user()->id)->where('status','active')->exists(),403);
+        } else {
+            $this->authorizeCompany($request,$company,'company.view');
+        }
 
         $path = $this->path($company);
         $disk = Storage::disk('local');

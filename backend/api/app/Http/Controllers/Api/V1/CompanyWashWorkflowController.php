@@ -25,6 +25,12 @@ class CompanyWashWorkflowController extends Controller
             ->where('company_user.company_id', $company)->where('company_user.user_id', $userId)
             ->where('company_user.status', 'active')->where('companies.is_active', true)->exists();
         if (!$member) abort(404, 'Empresa no disponible.');
+        // El portal acotado del lavador reutiliza el motor de transiciones.
+        // No se conceden estos permisos a otras rutas.
+        if ($permission === 'company.update' &&
+            \App\Support\WasherAccess24N3::isWasher($company, (int) $userId) &&
+            $request->routeIs('washer.order.start', 'washer.order.finish')) return;
+
         $allowed = DB::table('user_roles as ur')->join('roles as r', function ($join): void {
             $join->on('r.id', '=', 'ur.role_id')->on('r.company_id', '=', 'ur.company_id');
         })->join('role_permission as rp', 'rp.role_id', '=', 'r.id')
@@ -447,7 +453,35 @@ class CompanyWashWorkflowController extends Controller
         $result = DB::transaction(function () use ($request, $company, $order, $input): array {
             $current = $this->scoped('orders', $company)->where('id', $order)->lockForUpdate()->first();
             if (!$current) abort(404);
+            // Comprobación en la misma transacción: una reasignación concurrente
+            // no autoriza iniciar ni terminar trabajo de otro lavador.
+            if (\App\Support\WasherAccess24N3::isWasher($company, (int) $request->user()->id)) {
+                $employeeId = \App\Support\WasherAccess24N3::employeeId($company, (int) $request->user()->id);
+                $assignment = DB::table('wash_assignments')->where('company_id', $company)
+                    ->where('order_id', $order)->where('employee_id', $employeeId)
+                    ->where('is_active', true)->lockForUpdate()->first();
+                abort_unless($assignment, 403, 'Esta orden ya no está asignada a tu usuario.');
+                abort_unless(in_array($input['to_status'], ['EN_PROCESO','TERMINADO'], true), 403);
+            }
             if ((int) $current->version !== (int) $input['expected_version']) return ['conflict' => 'La orden fue modificada por otra sesión. Actualiza antes de continuar.'];
+            // 24N.4: cada lavador finaliza SU participación. El cierre global
+            // ocurre únicamente cuando todos los asignados activos finalizaron.
+            if (isset($assignment) && $input['to_status'] === 'TERMINADO' && $current->status === 'EN_PROCESO') {
+                if ($assignment->washer_finished_at !== null) {
+                    return ['conflict' => 'Ya finalizaste tu participación en esta orden.'];
+                }
+                DB::table('wash_assignments')->where('id', $assignment->id)->where('company_id',$company)
+                    ->update(['washer_finished_at'=>now(), 'updated_at'=>now()]);
+                $remaining = DB::table('wash_assignments')->where('company_id',$company)
+                    ->where('order_id',$order)->where('is_active',true)->whereNull('washer_finished_at')->count();
+                if ($remaining > 0) {
+                    $this->event($company, $order, 'EN_PROCESO', 'EN_PROCESO',
+                        'Participación finalizada por lavador '.$employeeId, (int)$request->user()->id);
+                    return ['message' => 'Tu trabajo quedó finalizado. La orden continúa activa para el equipo.',
+                        'worker_finished' => true];
+                }
+            }
+
             $next = $input['to_status'];
             $allowed = ['ASIGNADO' => 'EN_PROCESO', 'EN_PROCESO' => 'TERMINADO', 'TERMINADO' => 'ENTREGADO'];
             if (($allowed[$current->status] ?? '') !== $next) return ['conflict' => 'Transición de estado no permitida.'];

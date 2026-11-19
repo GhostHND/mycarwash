@@ -75,7 +75,7 @@ class BusinessIdentity {
     final httpClient = client ?? http.Client();
 
     try {
-      final url = '$baseUrl/companies/$companyId/settings';
+      final url = '$baseUrl/companies/$companyId/${MyCarWashSession.isWasher ? 'washer/branding' : 'settings'}';
 
       final response = await httpClient
           .get(Uri.parse(url), headers: headers)
@@ -125,7 +125,7 @@ class BusinessIdentity {
 
       if (storedPath.isNotEmpty) {
         final logoResponse = await httpClient
-            .get(Uri.parse('$url/logo'), headers: headers)
+            .get(Uri.parse('$baseUrl/companies/$companyId/settings/logo'), headers: headers)
             .timeout(const Duration(seconds: 15));
 
         if (logoResponse.statusCode == 200 &&

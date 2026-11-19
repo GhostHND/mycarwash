@@ -6,6 +6,8 @@ import 'core/business_identity.dart';
 import 'core/company_visual_theme.dart';
 import 'core/mycarwash_session.dart';
 import 'ui/company_users_24n2_page.dart';
+import 'ui/washer_mobile_24n4.dart';
+import 'ui/company_attendance_station_24n4.dart';
 import 'ui/mycarwash_login.dart';
 import 'ui/company_settings_page.dart';
 import 'ui/company_operations_page.dart';
@@ -107,7 +109,9 @@ class MyCarWashApp extends StatelessWidget {
       home: MyCarWashLoginScreen(
         onEnterDashboard: (context) async {
           await Navigator.of(context).push<void>(
-            MaterialPageRoute<void>(builder: (_) => const DashboardPreview()),
+            MaterialPageRoute<void>(builder: (_) => MyCarWashSession.isWasher
+                ? const WasherMobile24N4()
+                : const DashboardPreview()),
           );
         },
       ),
@@ -190,6 +194,7 @@ const _menu = [
   _NavItem('Clientes', Icons.people_outline_rounded),
   _NavItem('Vehículos', Icons.directions_car_outlined),
   _NavItem('Empleados', Icons.badge_outlined),
+  _NavItem('Punto de asistencia QR', Icons.qr_code_2_outlined),
   _NavItem('Servicios', Icons.design_services_outlined),
   _NavItem('Puestos de lavado', Icons.grid_view_outlined),
   _NavItem('Órdenes de lavado', Icons.local_car_wash_outlined),
@@ -260,6 +265,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
   ]),
   _CompactNavGroup('Personal', Icons.badge_outlined, [
     'Empleados',
+    'Punto de asistencia QR',
     'Turnos de trabajo',
     'Asignaciones de turnos',
   ]),
@@ -400,6 +406,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
   String _moduleFor(String destination) {
     if (destination == 'Dashboard') return 'dashboard';
     if (destination == 'Usuarios') return 'users';
+    if (destination == 'Punto de asistencia QR') return 'company';
     if (destination == 'Mi Empresa' || destination == 'Configuración' || destination == 'Sitio web') return 'company';
     if (destination.startsWith('Reporte') || destination == 'Resumen de reportes') return 'reports';
     if (['Clientes', 'Vehículos'].contains(destination)) return 'customers';
@@ -411,7 +418,8 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     return 'washes';
   }
 
-  bool _navAllowed(int index) => MyCarWashSession.canNav(_moduleFor(_menu[index].title), 'view');
+  bool _navAllowed(int index) => MyCarWashSession.canNav(_moduleFor(_menu[index].title),
+      _menu[index].title == 'Punto de asistencia QR' ? 'edit' : 'view');
 
   Widget _buildCompactNavigation() {
     final known = <String>{'Dashboard'};
@@ -649,6 +657,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
           }
         },
       );
+    }
+    if (destination == 'Punto de asistencia QR') {
+      return const CompanyAttendanceStation24N4();
     }
     if (destination == 'Dashboard') {
       return CompanyDashboard24APage(

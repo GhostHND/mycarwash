@@ -24,6 +24,22 @@ class CompanyModuleAccess24N2
         })->where('ur.company_id', $company)->where('ur.user_id', $userId)->get(['r.id', 'r.code', 'r.is_system']);
         abort_if($roleRows->isEmpty(), 403, 'Sin rol para esta empresa.');
         if ($roleRows->contains(fn ($r) => $r->code === 'owner' && (bool) $r->is_system)) return $next($request);
+        // 24N.3: una cuenta de lavador jamás hereda acceso total por roles antiguos.
+        // API cerrada: solamente endpoints propios y lectura del logotipo empresarial.
+        if (\App\Support\WasherAccess24N3::isWasher($company, $userId)) {
+            $path = (string) $request->route()->uri();
+            $path = preg_replace('~^(?:api/)?v1/companies/\{company\}/?~', '', $path);
+            $method = $request->method();
+            $allowed = ($method === 'GET' && preg_match('~^washer/(branding|summary|orders|agenda|me|attendance)$~', $path))
+                || ($method === 'GET' && preg_match('~^washer/photo/\{kind\}/\{record\}$~', $path))
+                || ($method === 'GET' && $path === 'settings/logo')
+                || ($method === 'POST' && preg_match('~^washer/orders/\{order\}/(start|finish)$~', $path))
+                || ($method === 'POST' && $path === 'washer/attendance/scan')
+                || ($method === 'PATCH' && in_array($path, ['washer/me','washer/password'], true));
+            abort_unless($allowed, 403, 'El lavador solo puede gestionar sus propios lavados, agenda y perfil.');
+            return $next($request);
+        }
+
         $ids = $roleRows->pluck('id')->toArray();
         $permissions = DB::table('role_permission as rp')->join('permissions as p', 'p.id', '=', 'rp.permission_id')
             ->whereIn('rp.role_id', $ids)->where('p.code', 'like', 'nav.%')->pluck('p.code')->toArray();
