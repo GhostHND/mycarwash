@@ -199,6 +199,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2:
 Route::middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->prefix('v1')->group(function (): void {
     Route::get('/companies/{company}/workflow/branches', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'branches'])->whereNumber('company');
     Route::get('/companies/{company}/workflow/queue', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'queue'])->whereNumber('company');
+    // 24N.7: reservas visibles, recepción idempotente y avisos de llegada.
+    Route::get('/companies/{company}/workflow/reservations-24n7', [\App\Http\Controllers\Api\V1\CompanyReservationIntake24N7Controller::class, 'index'])->whereNumber('company');
+    Route::get('/companies/{company}/workflow/arrival-reminders-24n7', [\App\Http\Controllers\Api\V1\CompanyReservationIntake24N7Controller::class, 'reminders'])->whereNumber('company');
+    Route::post('/companies/{company}/workflow/reservations-24n7/{booking}/arrival-read', [\App\Http\Controllers\Api\V1\CompanyReservationIntake24N7Controller::class, 'acknowledge'])->whereNumber('company')->whereNumber('booking');
+    Route::post('/companies/{company}/workflow/reservations-24n7/{booking}/receive', [\App\Http\Controllers\Api\V1\CompanyReservationIntake24N7Controller::class, 'receive'])->whereNumber('company')->whereNumber('booking');
     Route::get('/companies/{company}/workflow/orders-board-24e', [\App\Http\Controllers\Api\V1\CompanyWashOrdersBoard24EController::class, 'index'])->whereNumber('company');
     Route::post('/companies/{company}/workflow/orders/{order}/transition', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'transition'])->whereNumber('company')->whereNumber('order');
     Route::get('/companies/{company}/workflow/orders/{order}/history', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'history'])->whereNumber('company')->whereNumber('order');

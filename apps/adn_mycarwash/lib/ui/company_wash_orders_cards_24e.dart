@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../core/mycarwash_session.dart';
 import '../core/company_visual_theme.dart';
 
 typedef OrderAction = void Function(Map<String, dynamic> order);
@@ -26,6 +28,8 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
     required this.onAssign,
     required this.selectedDate,
     required this.onDate,
+    required this.onReceiveReservation,
+    required this.onPreassignReservation,
   });
 
   final List<Map<String, dynamic>> orders;
@@ -49,6 +53,8 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
   final String? selectedDate;
   final ValueChanged<String?> onDate;
 
+  final OrderAction onReceiveReservation;
+  final OrderAction onPreassignReservation;
   static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
   static Color get ink => CompanyVisualTheme.legacy(const Color(0xFF07161B));
   static Color get line => CompanyVisualTheme.legacy(const Color(0xFF26525B));
@@ -105,10 +111,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(fontSize: 12, color: faded),
-                  ),
+                  Text(title, style: TextStyle(fontSize: 12, color: faded)),
                   const SizedBox(height: 6),
                   Text(
                     '$count',
@@ -279,10 +282,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    'Importe',
-                    style: TextStyle(color: faded, fontSize: 11),
-                  ),
+                  Text('Importe', style: TextStyle(color: faded, fontSize: 11)),
                   Text(
                     money == null
                         ? 'Sin importe'
@@ -356,10 +356,319 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
     );
   }
 
+  // 24N.7.2: tarjetas de reservas con la misma reticula que las ordenes.
+  Widget _reservationInfo(IconData icon, String title, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: accent, size: 17),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(color: faded, fontSize: 11)),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                softWrap: true,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _reservationVehiclePhoto(dynamic rawId) {
+    final vehicleId = int.tryParse('${rawId ?? ''}');
+    final placeholder = Center(
+      child: Icon(Icons.directions_car_outlined, color: faded, size: 43),
+    );
+    return Container(
+      width: 116,
+      height: 101,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFF102B32),
+        border: Border.all(color: line.withValues(alpha: 0.75)),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child:
+          vehicleId == null ||
+              vehicleId <= 0 ||
+              !MyCarWashSession.isAuthenticated
+          ? placeholder
+          : Image.network(
+              '${MyCarWashSession.apiBaseUrl}/companies/'
+              '${MyCarWashSession.companyId}/media/vehicles/$vehicleId/file',
+              headers: MyCarWashSession.headers,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              errorBuilder: (context, error, stackTrace) => placeholder,
+            ),
+    );
+  }
+
+  Widget _reservationCard(Map<String, dynamic> row) {
+    final received = row['received'] == true;
+    final date = '${row['local_date'] ?? ''}';
+    final time = '${row['local_time'] ?? ''}';
+    final now = DateTime.now();
+    final todayString =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    final isToday = date == todayString;
+    final code = _value(row['booking_code'], 'Reserva sin código');
+    final vehicle = _value(row['vehicle_label'], 'Vehículo sin identificar');
+    final plate = _value(row['plate'], 'Sin placa');
+    final client = _value(row['client_name'], 'No registrado');
+    final service = _value(row['service_name'], 'Servicio no disponible');
+    final duration = int.tryParse('${row['estimated_minutes'] ?? ''}');
+    final bay = _value(row['bay_name'], 'Sin asignar');
+    final washer = _value(
+      row['proposed_employee_name'],
+      'Pendiente de asignar',
+    );
+    final orderId = int.tryParse('${row['order_id'] ?? ''}');
+    final statusColor = received ? const Color(0xFF35D9A0) : accent;
+    final amount = double.tryParse('${row['quoted_price'] ?? ''}');
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: ink,
+        border: Border.all(color: line),
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: code,
+                  child: Text(
+                    code,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: faded, fontSize: 11),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Text(
+                  received ? 'Recibido' : 'Reservado',
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _reservationVehiclePhoto(row['vehicle_id']),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vehicle,
+                      softWrap: true,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: accent),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.badge_outlined, size: 15, color: accent),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              plate,
+                              softWrap: true,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          Divider(color: line, height: 1),
+          const SizedBox(height: 12),
+          _reservationInfo(
+            Icons.calendar_month_outlined,
+            'Fecha y hora',
+            '$date · $time',
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _reservationInfo(
+                  Icons.person_outline,
+                  'Cliente',
+                  client,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _reservationInfo(
+                  Icons.local_car_wash_outlined,
+                  'Servicio',
+                  duration == null ? service : '$service · $duration min',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _reservationInfo(
+                  Icons.garage_outlined,
+                  'Bahía / Puesto',
+                  bay,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _reservationInfo(
+                  Icons.engineering_outlined,
+                  'Lavador previsto',
+                  washer,
+                ),
+              ),
+            ],
+          ),
+          if (amount != null) ...[
+            const SizedBox(height: 9),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'L ${amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 13),
+          Divider(color: line, height: 1),
+          const SizedBox(height: 12),
+          if (received && orderId != null)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: ValueKey('reserved_view_order_$orderId'),
+                onPressed: () => onDetail({'id': orderId}),
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                label: Text('Ver orden #$orderId'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: accent,
+                  side: BorderSide(color: line),
+                ),
+              ),
+            )
+          else if (received)
+            Text(
+              'Vehículo recibido · Orden vinculada',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: faded, fontSize: 12),
+            )
+          else ...[
+            if (isToday)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: ValueKey('reserved_receive_${row['id']}'),
+                  onPressed: () => onReceiveReservation(row),
+                  icon: const Icon(Icons.car_rental_outlined, size: 18),
+                  label: const Text('Vehículo recibido'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: ink,
+                  ),
+                ),
+              ),
+            if (isToday && row['proposed_employee_id'] == null) ...[
+              const SizedBox(height: 7),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: ValueKey('reserved_assign_${row['id']}'),
+                  onPressed: () => onPreassignReservation(row),
+                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 17),
+                  label: const Text('Asignar lavador previsto'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: accent,
+                    side: BorderSide(color: line),
+                  ),
+                ),
+              ),
+            ],
+            if (!isToday)
+              Text(
+                'La recepción se habilita el día de la cita.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: faded, fontSize: 12),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filters = <String, String>{
       'TODAS': 'Todas',
+      'RESERVADAS': 'Reservadas',
       'EN_ESPERA': 'Nuevas',
       'ASIGNADO': 'En espera',
       'EN_PROCESO': 'En proceso',
@@ -380,7 +689,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
           style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
         ),
         Text(
-          'Control y seguimiento del estado de cada vehículo.',
+          'Órdenes, vehículos recibidos y reservas confirmadas.',
           style: TextStyle(color: faded),
         ),
         const SizedBox(height: 14),
@@ -392,7 +701,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               key: const ValueKey('workflow_create'),
               onPressed: onCreate,
               icon: const Icon(Icons.add),
-              label: const Text('Nueva orden'),
+              label: const Text('Nueva orden / Reserva'),
             ),
             OutlinedButton.icon(
               onPressed: loading ? null : onRefresh,
@@ -550,6 +859,42 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                 child: Text('Sin registros para mostrar.'),
               ),
             ),
+          )
+        else if (filter == 'RESERVADAS')
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 1080
+                  ? 3
+                  : constraints.maxWidth >= 680
+                  ? 2
+                  : 1;
+              const spacing = 12.0;
+              final cardWidth =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Reservas del día seleccionado. Recibir un vehículo crea una sola orden en Nuevas.',
+                      style: TextStyle(color: faded, fontSize: 12),
+                    ),
+                  ),
+                  Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: [
+                      for (final row in orders)
+                        SizedBox(
+                          width: cardWidth,
+                          child: _reservationCard(row),
+                        ),
+                    ],
+                  ),
+                ],
+              );
+            },
           )
         else
           LayoutBuilder(

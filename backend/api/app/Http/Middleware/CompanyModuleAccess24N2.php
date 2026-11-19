@@ -72,6 +72,8 @@ class CompanyModuleAccess24N2
         if ($method === 'POST' && (preg_match('~(?:checkout|transition|receive|cancel|close|open|assign|initialize|transfer|reminder-read)~', $path) || $path === 'pos/sales')) {
             $action = 'execute';
         }
+        // Reconocer un aviso no altera datos operativos; basta permiso de lectura.
+        if ($method === 'POST' && str_ends_with($path, '/arrival-read')) $action = 'view';
         // Los controladores exigen ademas users.manage / roles.manage.
         abort_unless(in_array("nav.$module.$action", $permissions, true), 403,
             'No tienes permiso para esta accion en '.$module.'.');

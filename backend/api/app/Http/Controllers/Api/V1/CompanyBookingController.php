@@ -481,6 +481,10 @@ class CompanyBookingController extends Controller
                 'start_time'=>[$creating?'required':'sometimes','date_format:H:i'],
                 'notes'=>['sometimes','nullable','string','max:1000']]);
             if (!$creating && $old->status!=='CONFIRMED') throw ValidationException::withMessages(['data'=>'Solo pueden editarse reservas confirmadas.']);
+            if (!$creating && DB::table('booking_order_links_24n7')->where('company_id',$company)
+                ->where('booking_id',$record)->exists()) {
+                throw ValidationException::withMessages(['booking'=>'La reserva ya fue recibida y tiene orden operativa.']);
+            }
             if (!$creating && isset($data['branch_id']) && $data['branch_id']!=$old->branch_id)
                 throw ValidationException::withMessages(['branch_id'=>'No es posible mover reservas de sucursal.']);
             $branchId=(int)($old?->branch_id??$data['branch_id']);
@@ -541,6 +545,10 @@ class CompanyBookingController extends Controller
             }
             if ($resource==='roster') $this->ensureNoAffectedBookings($company,$branchId);
             if ($resource==='bookings') {
+                if (DB::table('booking_order_links_24n7')->where('company_id',$company)
+                    ->where('booking_id',$record)->exists()) {
+                    throw ValidationException::withMessages(['booking'=>'No se puede cancelar una reserva con vehículo recibido.']);
+                }
                 DB::table('wash_bookings')->where('id',$record)->where('company_id',$company)
                     ->update(['status'=>'CANCELLED','version'=>$row->version+1,'updated_at'=>now(),'deleted_at'=>now()]);
                 $this->event($company,$record,'CANCELLED',$row->status,'CANCELLED',(int)$request->user()->id);

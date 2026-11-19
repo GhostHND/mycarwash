@@ -10,6 +10,7 @@ import 'company_service_price_label_24f4.dart';
 import 'company_workflow_cards_24f.dart';
 import 'company_wash_orders_cards_24e.dart';
 import 'company_order_detail_24n6.dart';
+import 'company_new_order_reservation_24n7.dart';
 
 enum WashModule { bays, orders, assignments, queue }
 
@@ -103,7 +104,14 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
     });
     try {
       Map<String, dynamic> result;
-      if (widget.module == WashModule.orders) {
+      if (widget.module == WashModule.orders && _ordersFilter24E == 'RESERVADAS') {
+        final now = DateTime.now();
+        final today = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+        result = await _api.request('GET', '/workflow/reservations-24n7', query: {
+          'date': _ordersDate24H ?? today, 'page': '$_page', 'per_page': '20',
+          'q': _search.text.trim(),
+        });
+      } else if (widget.module == WashModule.orders) {
         result = await _api.request(
           'GET',
           '/workflow/orders-board-24e',
@@ -157,7 +165,9 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
         if (widget.module == WashModule.orders) {
           _ordersSummary24E = result['summary'] is Map
               ? Map<String, dynamic>.from(result['summary'] as Map)
-              : <String, dynamic>{};
+              : <String, dynamic>{
+                  'scope': 'Reservas confirmadas · pendientes de recepción: ${result['pending_reception'] ?? 0}',
+                };
         }
         _page = int.tryParse('${result['current_page'] ?? 1}') ?? 1;
         _pages = int.tryParse('${result['last_page'] ?? 1}') ?? 1;
@@ -686,7 +696,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
       });
       _load();
     },
-    onCreate: () => _edit(),
+    onCreate: _newReservation24N7,
     onRefresh: _load,
     onPage: (newPage) {
       _page = newPage;
@@ -697,6 +707,8 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
     onDelete: (order) => _delete(order),
     onAdvance: (order) => _advance(order),
     onAssign: (order) => _quickAssign24H(order),
+    onReceiveReservation: (booking) => _receiveReservation24N7(booking),
+    onPreassignReservation: (booking) => _preassignReservation24N7(booking),
     selectedDate: _ordersDate24H,
     onDate: (date) {
       setState(() {
@@ -706,6 +718,99 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
       _load();
     },
   );
+
+  Future<void> _newReservation24N7() async {
+    final date = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CompanyNewOrderReservation24N7(client: _client),
+    );
+    if (date == null || !mounted) { return; }
+    setState(() {
+      _ordersFilter24E = 'RESERVADAS';
+      _ordersDate24H = date;
+      _page = 1;
+    });
+    _notice('Reserva confirmada. La orden se creará cuando recibas el vehículo.');
+    _load();
+  }
+
+  Future<void> _receiveReservation24N7(Map<String, dynamic> booking) async {
+    final id = int.tryParse('${booking['id'] ?? ''}');
+    if (id == null) { return; }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('Confirmar recepción del vehículo'),
+        content: Text('¿El vehículo ${booking['vehicle_label'] ?? ''}, placa ${booking['plate'] ?? ''}, '
+            'ya se encuentra físicamente en el negocio? Se creará una orden en Nuevas. '
+            'Esta acción no inicia el lavado.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(dialog, true), child: const Text('Sí, recibido')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) { return; }
+    try {
+      final response = await _api.request('POST',
+        '/workflow/reservations-24n7/$id/receive');
+      if (!mounted) { return; }
+      final data = response['data'];
+      _notice('Vehículo recibido. Orden #${data is Map ? data['order_id'] : ''} creada.');
+      setState(() {
+        _ordersFilter24E = 'EN_ESPERA';
+        _ordersDate24H = null;
+        _page = 1;
+      });
+      _load();
+    } catch (error) {
+      _notice('No se pudo recibir el vehículo: $error', error: true);
+      _load();
+    }
+  }
+
+  Future<void> _preassignReservation24N7(Map<String, dynamic> booking) async {
+    final id = int.tryParse('${booking['id'] ?? ''}');
+    if (id == null) { return; }
+    List<Map<String, dynamic>> employees;
+    try {
+      employees = await _lookup('/employees');
+    } catch (e) {
+      _notice('$e', error: true);
+      return;
+    }
+    if (!mounted) { return; }
+    int? selected;
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, update) => AlertDialog(
+        title: const Text('Asignar lavador previsto'),
+        content: SizedBox(width: 420, child: DropdownButtonFormField<int>(
+          isExpanded: true,
+          decoration: _decor('Lavador'),
+          items: employees.where((e) => e['is_active'] != false && e['is_active'] != 0)
+            .map((e) => DropdownMenuItem<int>(value: int.tryParse('${e['id']}'),
+              child: Text('${e['full_name']}', overflow: TextOverflow.ellipsis))).toList(),
+          onChanged: (value) => update(() => selected = value),
+        )),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          FilledButton(onPressed: selected == null ? null : () => Navigator.pop(ctx, selected),
+            child: const Text('Asignar')),
+        ],
+      )),
+    );
+    if (result == null || !mounted) { return; }
+    try {
+      await _api.request('POST', '/schedule/daily-24d2/$id/assign',
+        body: {'employee_id': result});
+      _notice('Lavador previsto registrado. Aún falta confirmar recepción.');
+      _load();
+    } catch (error) {
+      _notice('$error', error: true);
+    }
+  }
 
   Future<void> _quickAssign24H(Map<String, dynamic> order) async {
     final status = '${order['status'] ?? ''}';

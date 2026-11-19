@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,6 +26,9 @@ class _CompanyBookingDaily24D2State extends State<CompanyBookingDaily24D2> {
   bool _dialogOpen = false;
   bool _morningSeen = false;
   bool _reminderSeen = false;
+  bool _receptionSeen = false;
+  Timer? _arrivalPoller;
+  bool _arrivalChecking = false;
   String? _error;
   Map<String, dynamic> _data = {};
 
@@ -33,6 +38,64 @@ class _CompanyBookingDaily24D2State extends State<CompanyBookingDaily24D2> {
   void initState() {
     super.initState();
     _refresh();
+    _arrivalPoller = Timer.periodic(const Duration(seconds: 30), (_) => _checkArrival24N7());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkArrival24N7());
+  }
+
+  @override
+  void dispose() {
+    _arrivalPoller?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkArrival24N7() async {
+    if (!mounted || _dialogOpen || _arrivalChecking) { return; }
+    _arrivalChecking = true;
+    try {
+      final response = await _api.request('GET', '/workflow/arrival-reminders-24n7',
+        query: {'branch_id': widget.branchId});
+      final rows = _items(response['data']);
+      if (!mounted || rows.isEmpty || _dialogOpen) { return; }
+      _dialogOpen = true;
+      try {
+        await showDialog<void>(context: context, barrierDismissible: false,
+          builder: (dialog) => AlertDialog(
+            title: const Text('Reservas próximas · revisar llegada'),
+            content: SizedBox(width: 550, child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Estas citas comienzan dentro de los próximos 10 minutos. '
+                  'Confirma la recepción real del vehículo en Órdenes de lavado → Reservadas.'),
+                const SizedBox(height: 10),
+                for (final row in rows)
+                  ListTile(
+                    leading: const Icon(Icons.notifications_active_outlined),
+                    title: Text('${row['vehicle_label']} · ${row['plate']}'),
+                    subtitle: Text('${row['client_name'] ?? 'Cliente'} · ${row['local_time']} · ${row['service_name']}'),
+                  ),
+              ]),
+            )),
+            actions: [FilledButton(
+              onPressed: () => Navigator.of(dialog).pop(),
+              child: const Text('Entendido · revisar en Reservadas'),
+            )],
+          ),
+        );
+        for (final row in rows) {
+          try {
+            await _api.request('POST',
+              '/workflow/reservations-24n7/${row['id']}/arrival-read');
+          } catch (_) {
+            // Un error de red conserva el aviso pendiente para reintentar.
+          }
+        }
+      } finally {
+        _dialogOpen = false;
+      }
+    } catch (_) {
+      // Fallo de red: la siguiente consulta volverá a intentar.
+    } finally {
+      _arrivalChecking = false;
+    }
   }
 
   List<Map<String, dynamic>> _items(dynamic value) {
@@ -83,11 +146,42 @@ class _CompanyBookingDaily24D2State extends State<CompanyBookingDaily24D2> {
       _openAssignment(pending);
       return;
     }
+    final today = _items(_data['today']);
+    if (today.isNotEmpty && !_receptionSeen) {
+      _receptionSeen = true;
+      _openReceptionReview24N7(today);
+      return;
+    }
     final tomorrow = _items(_data['tomorrow']);
     if (tomorrow.isNotEmpty && !_reminderSeen) {
       _reminderSeen = true;
       _openReminder(tomorrow);
     }
+  }
+
+  Future<void> _openReceptionReview24N7(List<Map<String, dynamic>> today) async {
+    if (!mounted || _dialogOpen) { return; }
+    _dialogOpen = true;
+    await showDialog<void>(context: context, builder: (dialog) => AlertDialog(
+      title: const Text('Vehículos con reserva para hoy'),
+      content: SizedBox(width: 550, child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Comprueba cuáles vehículos han llegado. '
+            'En Órdenes de lavado → Reservadas puedes marcar su recepción; '
+            'después pasarán a Nuevas para la asignación operativa.'),
+          const SizedBox(height: 10),
+          for (final row in today)
+            ListTile(
+              leading: const Icon(Icons.directions_car_outlined),
+              title: Text('${row['brand'] ?? ''} ${row['model'] ?? ''} · ${row['plate'] ?? ''}'),
+              subtitle: Text('${row['local_time']} · ${row['employee_name'] ?? 'Lavador por asignar'}'),
+            ),
+        ]),
+      )),
+      actions: [FilledButton(onPressed: () => Navigator.pop(dialog),
+        child: const Text('Entendido'))],
+    ));
+    _dialogOpen = false;
   }
 
   String _summary(Map<String, dynamic> booking) {

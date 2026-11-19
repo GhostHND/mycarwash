@@ -46,8 +46,11 @@ class CompanyBookingDaily24D2Controller extends Controller
             $j->on('a.booking_id','=','b.id')->on('a.company_id','=','b.company_id')
                 ->on('a.booking_start_utc','=','b.start_at_utc');
         })->leftJoin('employees as e','e.id','=','a.employee_id')
+            ->leftJoin('booking_order_links_24n7 as link', function($j):void {
+                $j->on('link.booking_id','=','b.id')->on('link.company_id','=','b.company_id');
+            })
             ->where('b.company_id',$company)->where('b.branch_id',$branchId)->whereNull('b.deleted_at')
-            ->where('b.status','CONFIRMED')->where('b.start_at_utc','>=',$from)->where('b.start_at_utc','<',$to)
+            ->where('b.status','CONFIRMED')->whereNull('link.order_id')->where('b.start_at_utc','>=',$from)->where('b.start_at_utc','<',$to)
             ->select('b.id','b.booking_code','b.start_at_utc','b.end_at_utc','b.bay_id','b.vehicle_id',
                 'v.brand','v.model','v.plate','c.full_name as client_name','s.name as service_name',
                 'a.employee_id','e.full_name as employee_name')->orderBy('b.start_at_utc')->orderBy('b.id');
