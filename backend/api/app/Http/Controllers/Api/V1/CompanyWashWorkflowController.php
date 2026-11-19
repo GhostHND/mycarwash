@@ -104,6 +104,14 @@ class CompanyWashWorkflowController extends Controller
             $vehicle = DB::table('vehicles')->where('company_id', $company)->where('id', $row->vehicle_id)->first();
             $service = DB::table('wash_services')->where('company_id', $company)->where('id', $row->service_id)->first();
             $data['vehicle_label'] = $vehicle ? trim(implode(' ', array_filter([$vehicle->brand, $vehicle->model, $vehicle->plate]))) : '';
+            // Datos adicionales de solo lectura para el detalle administrativo 24N.6.
+            // Conserva vehicle_label para clientes existentes.
+            $data['vehicle_name'] = $vehicle ? trim(implode(' ', array_filter([$vehicle->brand, $vehicle->model]))) : '';
+            $data['plate'] = $vehicle?->plate;
+            $data['client_name'] = $vehicle ? DB::table('clients')->where('company_id', $company)
+                ->where('id', $vehicle->client_id)->value('full_name') : null;
+            $data['bay_name'] = $row->bay_id ? DB::table('wash_bays')->where('company_id', $company)
+                ->where('id', $row->bay_id)->value('name') : null;
             $data['service_name'] = $service?->name;
             $data['assignments'] = DB::table('wash_assignments as a')
                 ->join('employees as e', 'e.id', '=', 'a.employee_id')
@@ -119,6 +127,8 @@ class CompanyWashWorkflowController extends Controller
             $data['vehicle_photo_enabled'] = DB::table('company_entity_photos')->where('company_id', $company)
                 ->where('owner_type', 'vehicles')->where('owner_id', $row->vehicle_id)
                 ->where('show_on_kiosk', true)->exists();
+            $data['vehicle_photo_exists'] = DB::table('company_entity_photos')->where('company_id', $company)
+                ->where('owner_type', 'vehicles')->where('owner_id', $row->vehicle_id)->exists();
         }
         if ($resource === 'assignments') {
             $data['employee_name'] = DB::table('employees')->where('company_id', $company)->where('id', $row->employee_id)->value('full_name');

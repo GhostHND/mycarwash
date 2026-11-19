@@ -9,6 +9,7 @@ import 'company_sale_checkout_dialog.dart';
 import 'company_service_price_label_24f4.dart';
 import 'company_workflow_cards_24f.dart';
 import 'company_wash_orders_cards_24e.dart';
+import 'company_order_detail_24n6.dart';
 
 enum WashModule { bays, orders, assignments, queue }
 
@@ -870,76 +871,22 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
   }
 
   Future<void> _orderDetail24E(Map<String, dynamic> order) async {
-    final code = '${order['tracking_code'] ?? ''}';
+    final id = int.tryParse('${order['id'] ?? ''}');
+    if (id == null) {
+      _notice('La orden seleccionada no tiene un identificador válido.', error: true);
+      return;
+    }
     await showDialog<void>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text('Orden $code'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Cliente: ${order['client_name'] ?? 'Sin cliente'}'),
-                Text('Vehículo: ${order['vehicle_label'] ?? ''}'),
-                Text('Placa: ${order['plate'] ?? 'Sin placa'}'),
-                Text('Servicio: ${order['service_name'] ?? ''}'),
-                Text('Bahía: ${order['bay_name'] ?? 'Sin bahía'}'),
-                Text('Estado real: ${order['status'] ?? ''}'),
-                Text('Inicio: ${order['started_at'] ?? 'Sin iniciar'}'),
-                Text(
-                  'Finalización: ${order['completed_at'] ?? 'Sin terminar'}',
-                ),
-                Text('Importe cotizado: L ${order['quoted_price'] ?? ''}'),
-                const SizedBox(height: 12),
-                FutureBuilder<Map<String, dynamic>>(
-                  future: _api.request(
-                    'GET',
-                    '/workflow/orders/${order['id']}/history',
-                  ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const LinearProgressIndicator();
-                    }
-                    if (snapshot.hasError) {
-                      return Text('Historial no disponible: ${snapshot.error}');
-                    }
-                    final events = snapshot.data?['data'];
-                    if (events is! List || events.isEmpty) {
-                      return const Text('Sin eventos de historial.');
-                    }
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Historial',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        for (final event in events.whereType<Map>())
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Text(
-                              '${event['from_status'] ?? 'Inicio'} → ${event['to_status']}',
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialog).pop(),
-            child: const Text('Cerrar'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (dialogContext) => CompanyOrderDetail24N6(
+        orderId: id,
+        client: _client,
+        onEdit: (updated) => _edit(updated),
+        onAdvance: (updated) => _advance(updated),
       ),
     );
+    if (mounted) _load();
   }
 
   @override

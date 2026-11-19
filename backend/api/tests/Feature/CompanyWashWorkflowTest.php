@@ -30,7 +30,7 @@ class CompanyWashWorkflowTest extends TestCase
         Schema::create('companies', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->boolean('is_active')->default(true); $t->timestamps(); });
         Schema::create('branches', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('company_id'); $t->string('name'); $t->boolean('is_active')->default(true); $t->string('timezone')->default('America/Tegucigalpa'); $t->unique(['id','company_id']); });
         Schema::create('company_user', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('company_id'); $t->unsignedBigInteger('user_id'); $t->string('status'); $t->timestamps(); });
-        Schema::create('roles', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('company_id'); $t->string('name'); $t->string('code'); $t->timestamps(); });
+        Schema::create('roles', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('company_id'); $t->string('name'); $t->string('code'); $t->boolean('is_system')->default(false); $t->timestamps(); });
         Schema::create('permissions', function (Blueprint $t): void { $t->id(); $t->string('code'); $t->string('module'); $t->timestamps(); });
         Schema::create('role_permission', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('role_id'); $t->unsignedBigInteger('permission_id'); $t->timestamps(); });
         Schema::create('user_roles', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('company_id'); $t->unsignedBigInteger('user_id'); $t->unsignedBigInteger('role_id'); $t->timestamps(); });
@@ -102,6 +102,26 @@ class CompanyWashWorkflowTest extends TestCase
         $this->postJson($this->url('bays'), ['branch_id'=>2,'name'=>'Ajeno','code'=>'A1'])->assertUnprocessable();
         $this->deleteJson($this->url('bays',$id))->assertOk();
         $this->getJson($this->url('bays',$id))->assertNotFound();
+    }
+
+    public function test_detail_24n6_uses_real_vehicle_client_and_assigned_washers(): void
+    {
+        $this->login();
+        $order = $this->order();
+        $id = $order['id'];
+        $this->postJson($this->url('assignments'), [
+            'order_id' => $id, 'employee_id' => 1, 'is_primary' => true,
+        ])->assertCreated();
+        $this->getJson($this->url('orders', $id))
+            ->assertOk()
+            ->assertJsonPath('data.vehicle_name', 'Toyota Corolla')
+            ->assertJsonPath('data.plate', 'TST001')
+            ->assertJsonPath('data.client_name', 'Cliente Uno')
+            ->assertJsonPath('data.service_name', 'Completo')
+            ->assertJsonPath('data.estimated_minutes', 45)
+            ->assertJsonPath('data.assignments.0.full_name', 'Lavador Uno');
+        // La capa de acceso deniega la empresa ajena antes de exponer si la orden existe.
+        $this->getJson($this->url('orders', $id, 2))->assertForbidden();
     }
 
     public function test_order_crud_transition_queue_and_immutable_events(): void
