@@ -204,24 +204,47 @@ class _WasherMobile24N4State extends State<WasherMobile24N4> {
   };
 
   Widget _statusBadge(String state) => _chip(_statusText(state),_statusBg(state),_statusFg(state));
+  // La placa no debe truncarse en teléfonos estrechos.
   Widget _plate(String plate) => Container(
-    padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
-    decoration:BoxDecoration(border:Border.all(color:turquoise),borderRadius:BorderRadius.circular(6)),
-    child:Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.badge_outlined,color:turquoise,size:13),
-      const SizedBox(width:3),Flexible(child:Text(plate,overflow:TextOverflow.ellipsis,
-      style:TextStyle(color:ink,fontWeight:FontWeight.bold,fontSize:11)))]));
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      border: Border.all(color: turquoise),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.badge_outlined, color: turquoise, size: 14),
+      const SizedBox(width: 4),
+      Flexible(child: Text(
+        plate,
+        softWrap: true,
+        style: TextStyle(color: ink, fontWeight: FontWeight.bold, fontSize: 11),
+      )),
+    ]),
+  );
 
+  // BoxFit.contain preserva todo el vehículo sin recortar la fotografía.
   Widget _vehiclePhoto(dynamic id, {double width = 82, double height = 60}) {
     final vehicleId = _int(id);
-    final fallback = Container(width:width,height:height, decoration:BoxDecoration(
-      color:const Color(0xFFF1F5F9), borderRadius:BorderRadius.circular(10)),
-      child:Icon(Icons.directions_car_filled_outlined,color:muted,size:31));
-    if(vehicleId <= 0) return fallback;
-    return ClipRRect(borderRadius:BorderRadius.circular(10),child:Image.network(
-      '${MyCarWashSession.apiBaseUrl}/companies/${MyCarWashSession.companyId}/washer/photo/vehicles/$vehicleId',
-      headers:MyCarWashSession.headers,width:width,height:height,fit:BoxFit.cover,
-      errorBuilder:(context, error, stackTrace) => fallback,
-    ));
+    final placeholder = Center(child: Icon(
+      Icons.directions_car_filled_outlined, color: muted, size: 34));
+    return Container(
+      width: width,
+      height: height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFB),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: vehicleId <= 0
+        ? placeholder
+        : Image.network(
+            '${MyCarWashSession.apiBaseUrl}/companies/${MyCarWashSession.companyId}/washer/photo/vehicles/$vehicleId',
+            headers: MyCarWashSession.headers,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            errorBuilder: (context, error, stackTrace) => placeholder,
+          ),
+    );
   }
 
   Widget _header() => ValueListenableBuilder<BusinessIdentityData>(
@@ -279,33 +302,84 @@ class _WasherMobile24N4State extends State<WasherMobile24N4> {
     return expected < 1 ? 0 : (elapsedSeconds / (expected*60)).clamp(0.0,1.0);
   }
 
-  void _detail(Map<String,dynamic> order) {
-    final state = _read(order,'status');
-    showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,
-      backgroundColor:WasherMobileColors.background,
-      builder:(ctx) => Padding(padding:EdgeInsets.fromLTRB(20,0,20,20+MediaQuery.viewInsetsOf(ctx).bottom),
-        child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-          _heading('${_read(order,'brand')} ${_read(order,'model')}'.trim(),subtitle:'Orden ${_read(order,'tracking_code')}'),
-          _vehiclePhoto(order['vehicle_id'],width:double.infinity,height:164),
-          const SizedBox(height:13), Row(children:[_plate(_read(order,'plate','Sin placa')),const Spacer(),_statusBadge(state)]),
-          const SizedBox(height:9),Text('Servicio: ${_read(order,'service_name','Sin registrar')}',style:TextStyle(color:ink)),
-          Text('Cliente: ${_read(order,'client_name','No registrado')}',style:TextStyle(color:muted)),
-          Text('Bahía: ${_read(order,'bay_name','Sin asignar')}',style:TextStyle(color:muted)),
-          const SizedBox(height:17),
-          if((state == 'ASIGNADO' || state == 'EN_PROCESO')
-              && order['worker_finished'] != true)
-            SizedBox(width:double.infinity,child:FilledButton.icon(
-              style:FilledButton.styleFrom(backgroundColor:turquoise,foregroundColor:Colors.white),
-              onPressed:_busy?null:() {
-                Navigator.pop(ctx);
-                _action('/washer/orders/${order['id']}/${state=='EN_PROCESO'?'finish':'start'}',
-                  {'expected_version':_int(order['version'])});
-              }, icon:Icon(state=='EN_PROCESO'?Icons.check_circle_outline:Icons.play_arrow),
-              label:Text(state=='EN_PROCESO'?'Finalizar mi lavado':'Iniciar lavado'))),
-          if(!['ASIGNADO','EN_PROCESO'].contains(state) || order['worker_finished'] == true)
-            Text(order['worker_finished'] == true ? 'Tu participación ya finalizó; el equipo puede seguir trabajando.' :
-              'Trabajo de solo lectura.',style:TextStyle(color:muted)),
-        ])));
+  // Los detalles deben desplazarse y respetar los controles del sistema Android.
+  void _detail(Map<String, dynamic> order) {
+    final state = _read(order, 'status');
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: WasherMobileColors.background,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: SafeArea(
+          top: false,
+          maintainBottomViewPadding: true,
+          minimum: const EdgeInsets.only(bottom: 20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(ctx).height * 0.83,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              children: [
+                _heading(
+                  '${_read(order,'brand')} ${_read(order,'model')}'.trim(),
+                  subtitle: 'Orden ${_read(order,'tracking_code')}',
+                ),
+                _vehiclePhoto(order['vehicle_id'], width: double.infinity, height: 204),
+                const SizedBox(height: 15),
+                Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  _plate(_read(order, 'plate', 'Sin placa')),
+                  _statusBadge(state),
+                ]),
+                const SizedBox(height: 13),
+                Text('Servicio: ${_read(order,'service_name','Sin registrar')}', style: TextStyle(color: ink)),
+                const SizedBox(height: 5),
+                Text('Cliente: ${_read(order,'client_name','No registrado')}', style: TextStyle(color: muted)),
+                const SizedBox(height: 5),
+                Text('Bahía: ${_read(order,'bay_name','Sin asignar')}', style: TextStyle(color: muted)),
+                const SizedBox(height: 18),
+                if ((state == 'ASIGNADO' || state == 'EN_PROCESO')
+                    && order['worker_finished'] != true)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: turquoise,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                      onPressed: _busy ? null : () {
+                        Navigator.pop(ctx);
+                        _action(
+                          '/washer/orders/${order['id']}/${state == 'EN_PROCESO' ? 'finish' : 'start'}',
+                          {'expected_version': _int(order['version'])},
+                        );
+                      },
+                      icon: Icon(state == 'EN_PROCESO' ? Icons.check_circle_outline : Icons.play_arrow),
+                      label: Text(state == 'EN_PROCESO' ? 'Finalizar mi lavado' : 'Iniciar lavado'),
+                    ),
+                  ),
+                if (!['ASIGNADO', 'EN_PROCESO'].contains(state) || order['worker_finished'] == true)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      order['worker_finished'] == true
+                        ? 'Tu participación ya finalizó; el equipo puede seguir trabajando.'
+                        : 'Trabajo de solo lectura.',
+                      softWrap: true,
+                      style: TextStyle(color: muted),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _home() {
@@ -321,13 +395,14 @@ class _WasherMobile24N4State extends State<WasherMobile24N4> {
         if(current==null) Padding(padding:const EdgeInsets.symmetric(vertical:18),
           child:Text('No tienes lavados activos.',style:TextStyle(color:muted)))
         else ...[
-          Row(children:[_vehiclePhoto(current['vehicle_id'],width:119,height:76),const SizedBox(width:10),
+          Row(children:[_vehiclePhoto(current['vehicle_id'],width:114,height:94),const SizedBox(width:10),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text('${_read(current,'brand')} ${_read(current,'model')}',maxLines:2,
                 style:TextStyle(color:ink,fontSize:17,fontWeight:FontWeight.w800)),
               const SizedBox(height:5),_plate(_read(current,'plate','Sin placa')),
-              const SizedBox(height:4),Text('Orden ${_read(current,'tracking_code')} · ${_read(current,'service_name')}',
-                maxLines:2,style:TextStyle(color:muted,fontSize:11)),
+              const SizedBox(height:4),Text('Orden ${_read(current,'tracking_code')}',
+                softWrap:true,style:TextStyle(color:muted,fontSize:11)),
+              Text(_read(current,'service_name'),softWrap:true,style:TextStyle(color:muted,fontSize:11)),
             ]))]),const SizedBox(height:12),
           Row(children:[Text('Tiempo transcurrido',style:TextStyle(color:muted)),const Spacer(),
             Text(_elapsed(current),style:TextStyle(color:ink,fontWeight:FontWeight.w800,fontSize:16))]),
@@ -397,27 +472,14 @@ class _WasherMobile24N4State extends State<WasherMobile24N4> {
             style:TextButton.styleFrom(foregroundColor:active?Colors.white:ink,
               backgroundColor:active?turquoise:Colors.transparent),child:Text(labels[i],style:const TextStyle(fontSize:11))));
         }))),const SizedBox(height:10),
-      if(_orders.isEmpty) _surface(Text('No tienes órdenes para estos filtros.',style:TextStyle(color:muted)))
-      else ..._orders.map((order)=>Padding(padding:const EdgeInsets.only(bottom:9),
-        child:InkWell(onTap:()=>_detail(order),child:_surface(Row(children:[
-          Column(children:[Text(_read(order,'tracking_code'),style:TextStyle(color:ink,fontSize:10,fontWeight:FontWeight.w800)),
-            const SizedBox(height:6),_vehiclePhoto(order['vehicle_id'],width:80,height:53)]),
-          const SizedBox(width:9),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text('${_read(order,'brand')} ${_read(order,'model')}',maxLines:1,overflow:TextOverflow.ellipsis,
-              style:TextStyle(color:ink,fontWeight:FontWeight.w800,fontSize:12)),
-            const SizedBox(height:5),_plate(_read(order,'plate','Sin placa')),
-            const SizedBox(height:3),Text('Cliente: ${_read(order,'client_name','No registrado')}',
-              maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:10)),
-            Text('Servicio: ${_read(order,'service_name','Lavado')}',maxLines:1,
-              overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:10)),
-          ])),const SizedBox(width:7),
-          Column(crossAxisAlignment:CrossAxisAlignment.end,children:[_statusBadge(_read(order,'status')),
-            const SizedBox(height:6),Text('Bahía: ${_read(order,'bay_name','Sin asignar')}',
-              style:TextStyle(color:muted,fontSize:9)),
-            if(_read(order,'quoted_price').isNotEmpty)Text('L ${_read(order,'quoted_price')}',
-              style:TextStyle(color:ink,fontSize:10,fontWeight:FontWeight.w700)),
-            Icon(Icons.chevron_right,color:ink,size:18),
-          ])]),padding:const EdgeInsets.all(9))))),
+      if (_orders.isEmpty)
+        _surface(Text('No tienes órdenes para estos filtros.', style: TextStyle(color: muted)))
+      else
+        ..._orders.map((order) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _orderCard(order),
+        )),
+
       const SizedBox(height:9),Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
         TextButton(onPressed:_page<=1?null:(){_page--;_refresh();},child:const Text('Anterior')),
         Text('Página $_page de $_lastPage',style:TextStyle(fontSize:11,color:ink)),
@@ -425,6 +487,66 @@ class _WasherMobile24N4State extends State<WasherMobile24N4> {
       ])
     ]);
   }
+  // Diseño adaptativo: código y estado arriba, foto y datos al centro,
+  // bahía e importe abajo. Ninguna columna estrecha debe recortar placas o servicios.
+  Widget _orderCard(Map<String, dynamic> order) => InkWell(
+    onTap: () => _detail(order),
+    borderRadius: BorderRadius.circular(15),
+    child: _surface(Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Text(
+            _read(order, 'tracking_code'),
+            softWrap: true,
+            style: TextStyle(color: ink, fontSize: 11, fontWeight: FontWeight.w800),
+          )),
+          const SizedBox(width: 8),
+          _statusBadge(_read(order, 'status')),
+        ]),
+        const SizedBox(height: 10),
+        LayoutBuilder(builder: (context, constraints) {
+          final photoWidth = (constraints.maxWidth * 0.34).clamp(88.0, 130.0).toDouble();
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _vehiclePhoto(order['vehicle_id'], width: photoWidth, height: 102),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_read(order,'brand')} ${_read(order,'model')}'.trim(),
+                  softWrap: true,
+                  style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 6),
+                _plate(_read(order, 'plate', 'Sin placa')),
+                const SizedBox(height: 7),
+                Text('Cliente: ${_read(order,'client_name','No registrado')}',
+                  softWrap: true, style: TextStyle(color: muted, fontSize: 11)),
+                Text('Servicio: ${_read(order,'service_name','Lavado')}',
+                  softWrap: true, style: TextStyle(color: muted, fontSize: 11)),
+              ],
+            )),
+          ]);
+        }),
+        const SizedBox(height: 10),
+        Divider(height: 1, color: outline),
+        const SizedBox(height: 9),
+        Row(children: [
+          Expanded(child: Text('Bahía: ${_read(order,'bay_name','Sin asignar')}',
+            softWrap: true, style: TextStyle(color: muted, fontSize: 11))),
+          if (_read(order, 'quoted_price').isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Text('L ${_read(order,'quoted_price')}',
+              style: TextStyle(color: ink, fontSize: 12, fontWeight: FontWeight.w800)),
+          ],
+          const SizedBox(width: 6),
+          Icon(Icons.chevron_right, color: ink, size: 20),
+        ]),
+      ],
+    ), padding: const EdgeInsets.all(12)),
+  );
+
   Widget _smallStat(String label,dynamic count,Color color) => Expanded(child:Container(
     margin:const EdgeInsets.only(right:4),padding:const EdgeInsets.symmetric(vertical:9,horizontal:2),
     decoration:BoxDecoration(color:color,borderRadius:BorderRadius.circular(10)),
@@ -540,17 +662,40 @@ class _WasherMobile24N4State extends State<WasherMobile24N4> {
         ]),padding:const EdgeInsets.all(9)))))
     ]);
   }
-  void _bookingDetail(Map<String,dynamic> booking) => showModalBottomSheet<void>(
-    context:context,showDragHandle:true,backgroundColor:WasherMobileColors.background,
-    builder:(ctx)=>Padding(padding:const EdgeInsets.all(20),child:Column(
-      mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-      _heading('Reserva ${_read(booking,'booking_code')}',subtitle:'Información de solo lectura'),
-      _vehiclePhoto(booking['vehicle_id'],width:double.infinity,height:140),
-      const SizedBox(height:12),Text('${_read(booking,'vehicle')} · ${_read(booking,'plate')}',style:TextStyle(color:ink,fontWeight:FontWeight.bold)),
-      Text('Fecha: ${_read(booking,'date')}  Hora: ${_read(booking,'time')}',style:TextStyle(color:muted)),
-      Text('Servicio: ${_read(booking,'service')}',style:TextStyle(color:muted)),
-      Text('Sucursal: ${_read(booking,'branch')}',style:TextStyle(color:muted)),
-    ])));
+  // El detalle de la reserva también respeta el área segura y el desplazamiento.
+  void _bookingDetail(Map<String, dynamic> booking) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    backgroundColor: WasherMobileColors.background,
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+      child: SafeArea(
+        top: false,
+        maintainBottomViewPadding: true,
+        minimum: const EdgeInsets.only(bottom: 20),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.80),
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+            children: [
+              _heading('Reserva ${_read(booking,'booking_code')}', subtitle: 'Información de solo lectura'),
+              _vehiclePhoto(booking['vehicle_id'], width: double.infinity, height: 180),
+              const SizedBox(height: 12),
+              Text('${_read(booking,'vehicle')} · ${_read(booking,'plate')}',
+                softWrap: true, style: TextStyle(color: ink, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text('Fecha: ${_read(booking,'date')}  Hora: ${_read(booking,'time')}', style: TextStyle(color: muted)),
+              Text('Servicio: ${_read(booking,'service')}', style: TextStyle(color: muted)),
+              Text('Sucursal: ${_read(booking,'branch')}', style: TextStyle(color: muted)),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _profileView() => Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     _heading('Mi perfil',subtitle:'Consulta y gestiona tu información personal.'),
