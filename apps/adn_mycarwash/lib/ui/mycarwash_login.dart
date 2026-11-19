@@ -1,4 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -7,6 +9,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/mycarwash_session.dart';
 import '../core/business_identity.dart';
+import 'master_console_24n8.dart';
 
 typedef DashboardCallback = Future<void> Function(BuildContext context);
 
@@ -87,9 +90,12 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
             body: jsonEncode({
               'email': email,
               'password': _password.text,
-              'device_name': kIsWeb ? 'adn-mycarwash-web-local'
-                  : defaultTargetPlatform == TargetPlatform.iOS ? 'adn-mycarwash-ios'
-                  : defaultTargetPlatform == TargetPlatform.android ? 'adn-mycarwash-android'
+              'device_name': kIsWeb
+                  ? 'adn-mycarwash-web-local'
+                  : defaultTargetPlatform == TargetPlatform.iOS
+                  ? 'adn-mycarwash-ios'
+                  : defaultTargetPlatform == TargetPlatform.android
+                  ? 'adn-mycarwash-android'
                   : 'adn-mycarwash-desktop',
             }),
           )
@@ -155,18 +161,24 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
         );
       }
 
-      if (selectedCompany['is_washer'] == true && (kIsWeb ||
-          (defaultTargetPlatform != TargetPlatform.android &&
-          defaultTargetPlatform != TargetPlatform.iOS))) {
-        throw const _LoginError('El lavador solo puede ingresar desde la aplicación Android o iOS.');
+      if (selectedCompany['is_washer'] == true &&
+          (kIsWeb ||
+              (defaultTargetPlatform != TargetPlatform.android &&
+                  defaultTargetPlatform != TargetPlatform.iOS))) {
+        throw const _LoginError(
+          'El lavador solo puede ingresar desde la aplicación Android o iOS.',
+        );
       }
 
       MyCarWashSession.begin(
         accessToken: token,
         companyId: (selectedCompany['id'] as num).toInt(),
         apiBaseUrl: _api,
-        permissions: (selectedCompany['permissions'] as List?)
-                ?.map((value) => value.toString()).toList() ?? const [],
+        permissions:
+            (selectedCompany['permissions'] as List?)
+                ?.map((value) => value.toString())
+                .toList() ??
+            const [],
         legacyFullAccess: selectedCompany['legacy_full_access'] == true,
         isWasher: selectedCompany['is_washer'] == true,
       );
@@ -551,10 +563,28 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
                     ),
             ),
           ),
-          const SizedBox(height: 30),
+          if (kIsWeb ||
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux ||
+              defaultTargetPlatform == TargetPlatform.macOS) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MasterConsole24N8(),
+                  ),
+                ),
+                icon: const Icon(Icons.admin_panel_settings_outlined, size: 17),
+                label: const Text('Acceso maestro · ADN Publicidad'),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
           const Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
+
               children: [
                 Icon(Icons.verified_user_outlined, size: 15, color: _turquoise),
                 SizedBox(width: 8),

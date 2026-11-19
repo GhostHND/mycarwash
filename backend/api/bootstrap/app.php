@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->appendToGroup('api', \App\Http\Middleware\CompanyBillingGate24N8::class);
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {

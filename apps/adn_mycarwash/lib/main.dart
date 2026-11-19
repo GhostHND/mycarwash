@@ -9,6 +9,7 @@ import 'ui/company_users_24n2_page.dart';
 import 'ui/washer_mobile_24n4.dart';
 import 'ui/company_attendance_station_24n4.dart';
 import 'ui/mycarwash_login.dart';
+import 'ui/company_billing_alerts_24n8.dart';
 import 'ui/company_settings_page.dart';
 import 'ui/company_operations_page.dart';
 import 'ui/company_wash_workflow_page.dart';
@@ -56,66 +57,65 @@ class MyCarWashApp extends StatelessWidget {
     return ValueListenableBuilder<CompanyPalette>(
       valueListenable: CompanyVisualTheme.current,
       builder: (context, palette, child) => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'ADN MyCarWash',
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AdnColors.night,
-        colorScheme: ColorScheme.dark(
-          primary: AdnColors.turquoise,
-          secondary: AdnColors.coral,
-          surface: AdnColors.panel,
-          onSurface: AdnColors.white,
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AdnColors.panelLight,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 17,
+        debugShowCheckedModeBanner: false,
+        title: 'ADN MyCarWash',
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: AdnColors.night,
+          colorScheme: ColorScheme.dark(
+            primary: AdnColors.turquoise,
+            secondary: AdnColors.coral,
+            surface: AdnColors.panel,
+            onSurface: AdnColors.white,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AdnColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AdnColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: AdnColors.turquoise,
-              width: 1.5,
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: AdnColors.panelLight,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 17,
             ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AdnColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AdnColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AdnColors.turquoise, width: 1.5),
+            ),
+            labelStyle: TextStyle(color: AdnColors.muted),
           ),
-          labelStyle: TextStyle(color: AdnColors.muted),
         ),
-      ),
-      builder: (context, child) {
-        final currentTheme = Theme.of(context);
+        builder: (context, child) {
+          final currentTheme = Theme.of(context);
 
-        return Theme(
-          data: currentTheme.copyWith(
-            textTheme: GoogleFonts.interTextTheme(currentTheme.textTheme),
-            primaryTextTheme: GoogleFonts.interTextTheme(
-              currentTheme.primaryTextTheme,
+          return Theme(
+            data: currentTheme.copyWith(
+              textTheme: GoogleFonts.interTextTheme(currentTheme.textTheme),
+              primaryTextTheme: GoogleFonts.interTextTheme(
+                currentTheme.primaryTextTheme,
+              ),
             ),
-          ),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
-      home: MyCarWashLoginScreen(
-        onEnterDashboard: (context) async {
-          await Navigator.of(context).push<void>(
-            MaterialPageRoute<void>(builder: (_) => MyCarWashSession.isWasher
-                ? const WasherMobile24N4()
-                : const DashboardPreview()),
+            child: child ?? const SizedBox.shrink(),
           );
         },
+        home: MyCarWashLoginScreen(
+          onEnterDashboard: (context) async {
+            await Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => MyCarWashSession.isWasher
+                    ? const WasherMobile24N4()
+                    : const DashboardPreview(),
+              ),
+            );
+          },
+        ),
       ),
-    ),
     );
   }
 }
@@ -309,12 +309,8 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
     'Mi Empresa',
     'Configuración',
   ]),
-  _CompactNavGroup('Usuarios', Icons.manage_accounts_outlined, [
-    'Usuarios',
-  ]),
-  _CompactNavGroup('Sitio web', Icons.language_outlined, [
-    'Sitio web',
-  ]),
+  _CompactNavGroup('Usuarios', Icons.manage_accounts_outlined, ['Usuarios']),
+  _CompactNavGroup('Sitio web', Icons.language_outlined, ['Sitio web']),
 ];
 
 class DashboardPreview extends StatefulWidget {
@@ -330,8 +326,10 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     super.initState();
     unawaited(BusinessIdentity.refresh());
     if (!_navAllowed(selected)) {
-      final allowed = List<int>.generate(_menu.length, (i) => i)
-          .where(_navAllowed).toList();
+      final allowed = List<int>.generate(
+        _menu.length,
+        (i) => i,
+      ).where(_navAllowed).toList();
       if (allowed.isNotEmpty) selected = allowed.first;
     }
   }
@@ -390,6 +388,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const CompanyBillingAlerts24N8(),
                   if (MyCarWashSession.canNav('schedule', 'view'))
                     const CompanyBookingDailyStartup24D2(),
                   _mainContent(),
@@ -404,22 +403,74 @@ class _DashboardPreviewState extends State<DashboardPreview> {
 
   // Navegacion compacta, un grupo desplegado a la vez y submodulos originales.
   String _moduleFor(String destination) {
-    if (destination == 'Dashboard') return 'dashboard';
-    if (destination == 'Usuarios') return 'users';
-    if (destination == 'Punto de asistencia QR') return 'company';
-    if (destination == 'Mi Empresa' || destination == 'Configuración' || destination == 'Sitio web') return 'company';
-    if (destination.startsWith('Reporte') || destination == 'Resumen de reportes') return 'reports';
-    if (['Clientes', 'Vehículos'].contains(destination)) return 'customers';
-    if (['Empleados', 'Turnos de trabajo', 'Asignaciones de turnos'].contains(destination)) return 'staff';
-    if (['Inventario', 'Categorías de inventario', 'Proveedores', 'Compras y recepciones', 'Movimientos de inventario'].contains(destination)) return 'inventory';
-    if (['Reservas', 'Bloqueos de agenda'].contains(destination)) return 'schedule';
-    if (['Caja y ventas', 'Sesiones de caja', 'Categorías de egresos', 'Movimientos de caja', 'Cuentas bancarias', 'Cuadres y arqueos', 'Cajas registradoras'].contains(destination)) return 'cash';
-    if (['Smart POS', 'Historial de ventas', 'Cobros de lavados', 'Medios de pago', 'Descuentos de lavados', 'Diseñar comprobantes'].contains(destination)) return 'sales';
+    if (destination == 'Dashboard') {
+      return 'dashboard';
+    }
+    if (destination == 'Usuarios') {
+      return 'users';
+    }
+    if (destination == 'Punto de asistencia QR') {
+      return 'company';
+    }
+    if (destination == 'Mi Empresa' ||
+        destination == 'Configuración' ||
+        destination == 'Sitio web') {
+      return 'company';
+    }
+    if (destination.startsWith('Reporte') ||
+        destination == 'Resumen de reportes') {
+      return 'reports';
+    }
+    if (['Clientes', 'Vehículos'].contains(destination)) {
+      return 'customers';
+    }
+    if ([
+      'Empleados',
+      'Turnos de trabajo',
+      'Asignaciones de turnos',
+    ].contains(destination)) {
+      return 'staff';
+    }
+    if ([
+      'Inventario',
+      'Categorías de inventario',
+      'Proveedores',
+      'Compras y recepciones',
+      'Movimientos de inventario',
+    ].contains(destination)) {
+      return 'inventory';
+    }
+    if (['Reservas', 'Bloqueos de agenda'].contains(destination)) {
+      return 'schedule';
+    }
+    if ([
+      'Caja y ventas',
+      'Sesiones de caja',
+      'Categorías de egresos',
+      'Movimientos de caja',
+      'Cuentas bancarias',
+      'Cuadres y arqueos',
+      'Cajas registradoras',
+    ].contains(destination)) {
+      return 'cash';
+    }
+    if ([
+      'Smart POS',
+      'Historial de ventas',
+      'Cobros de lavados',
+      'Medios de pago',
+      'Descuentos de lavados',
+      'Diseñar comprobantes',
+    ].contains(destination)) {
+      return 'sales';
+    }
     return 'washes';
   }
 
-  bool _navAllowed(int index) => MyCarWashSession.canNav(_moduleFor(_menu[index].title),
-      _menu[index].title == 'Punto de asistencia QR' ? 'edit' : 'view');
+  bool _navAllowed(int index) => MyCarWashSession.canNav(
+    _moduleFor(_menu[index].title),
+    _menu[index].title == 'Punto de asistencia QR' ? 'edit' : 'view',
+  );
 
   Widget _buildCompactNavigation() {
     final known = <String>{'Dashboard'};
@@ -728,7 +779,10 @@ class _DashboardPreviewState extends State<DashboardPreview> {
       return const CompanySettingsPage();
     }
     if (destination == 'Configuración') {
-      return const CompanySettingsPage(configurationOnly: true, initialSection: 2);
+      return const CompanySettingsPage(
+        configurationOnly: true,
+        initialSection: 2,
+      );
     }
     if (destination == 'Usuarios') {
       return const CompanyUsers24N2Page();

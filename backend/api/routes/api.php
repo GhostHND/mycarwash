@@ -314,3 +314,6 @@ Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyMod
     Route::get('/companies/{company}/dashboard/analytics', [\App\Http\Controllers\Api\V1\CompanyDashboardAnalyticsController::class, 'overview'])->whereNumber('company');
     Route::get('/companies/{company}/dashboard/active-washes', [\App\Http\Controllers\Api\V1\CompanyDashboardAnalyticsController::class, 'activeWashes'])->whereNumber('company');
 });
+
+// 24N.8 - Administracion propia de MyCarWash
+require __DIR__.'/master_24n8.php';

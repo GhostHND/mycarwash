@@ -43,7 +43,13 @@ class SessionController extends Controller
             ->where('companies.is_active', true)
             ->exists();
 
-        if (!$authorized) {
+        // Acceso de usuarios bloqueado si el periodo de gracia ya vencio.
+        $eligibleIds = DB::table('company_user')->where('user_id', $user->id)
+            ->where('status', 'active')->pluck('company_id');
+        $billingAllowed = $eligibleIds->contains(fn ($id) =>
+            \App\Support\MasterBilling24N8::allowed((int) $id));
+        if (!$authorized || !$billingAllowed) {
+
             return response()->json([
                 'message' => 'No tienes acceso a una empresa activa.',
             ], 403);
@@ -100,7 +106,11 @@ class SessionController extends Controller
             ->orderBy('companies.name')
             ->get();
 
+        $companies = $companies->filter(fn ($company) =>
+            \App\Support\MasterBilling24N8::allowed((int) $company->id))->values();
+
         $companies = $companies->map(function ($company) use ($user) {
+
             $roleIds = DB::table('user_roles')->where('company_id', $company->id)
                 ->where('user_id', $user->id)->pluck('role_id');
             $company->permissions = DB::table('role_permission as rp')
