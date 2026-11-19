@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -29,10 +30,10 @@ class CompanyWashWorkflowPage extends StatefulWidget {
 }
 
 class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
-  static const _turquoise = Color(0xFF0FA7B4);
-  static const _muted = Color(0xFF9BAEB6);
-  static const _surface = Color(0xFF0A1519);
-  static const _border = Color(0xFF20343C);
+  static Color get _turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get _border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
 
   late final http.Client _client;
   late final bool _ownsClient;
@@ -190,8 +191,8 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
       ),
     );
   }
@@ -199,7 +200,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
   InputDecoration _decor(String text) => InputDecoration(
     labelText: text,
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
   );
 
@@ -282,7 +283,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                     future: lookup,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(
+                        return Center(
                           child: Padding(
                             padding: EdgeInsets.all(30),
                             child: CircularProgressIndicator(color: _turquoise),
@@ -954,8 +955,8 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
               children: [
                 Text(
                   _title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: CompanyVisualTheme.text,
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                   ),
@@ -991,7 +992,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: _loading
-                  ? const Center(
+                  ? Center(
                       child: Padding(
                         padding: EdgeInsets.all(28),
                         child: CircularProgressIndicator(color: _turquoise),
@@ -1020,7 +1021,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                       children: [
                         for (final row in _rows) ...[
                           ListTile(
-                            leading: const Icon(
+                            leading: Icon(
                               Icons.local_car_wash_outlined,
                               color: _turquoise,
                             ),
@@ -1032,7 +1033,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                             ),
                             subtitle: Text(
                               _detail(row),
-                              style: const TextStyle(color: _muted),
+                              style: TextStyle(color: _muted),
                             ),
                             trailing: widget.module == WashModule.queue
                                 ? null
@@ -1050,7 +1051,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                                               ? 'Cobrar y entregar'
                                               : 'Avanzar estado',
                                           onPressed: () => _advance(row),
-                                          icon: const Icon(
+                                          icon: Icon(
                                             Icons.play_circle_outline,
                                             color: _turquoise,
                                           ),
@@ -1058,7 +1059,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                                       IconButton(
                                         tooltip: 'Editar',
                                         onPressed: () => _edit(row),
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.edit_outlined,
                                           color: _turquoise,
                                         ),
@@ -1077,7 +1078,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
                                     ],
                                   ),
                           ),
-                          const Divider(color: _border),
+                          Divider(color: _border),
                         ],
                         if (widget.module != WashModule.queue)
                           Row(

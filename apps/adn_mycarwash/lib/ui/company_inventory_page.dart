@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -35,10 +36,10 @@ class CompanyInventoryPage extends StatefulWidget {
 }
 
 class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
-  static const Color _turquoise = Color(0xFF0FA7B4);
-  static const Color _muted = Color(0xFF9BAEB6);
-  static const Color _border = Color(0xFF20343C);
-  static const Color _surface = Color(0xFF0A1519);
+  static Color get _turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
+  static Color get _border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
 
   late final http.Client _client;
   late final bool _ownsClient;
@@ -215,8 +216,8 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -224,15 +225,15 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
 
   InputDecoration _decoration(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: _muted),
+    labelStyle: TextStyle(color: _muted),
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _border),
+      borderSide: BorderSide(color: _border),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _turquoise),
+      borderSide: BorderSide(color: _turquoise),
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -332,7 +333,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
           backgroundColor: _surface,
           title: Text(
             existing == null ? 'Nuevo $_single' : 'Editar $_single',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
           ),
           content: SizedBox(
             width: 560,
@@ -396,7 +397,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
                                   )
                                 : TextInputType.text,
                             maxLines: field.multiline ? 3 : 1,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                             decoration: _decoration(field.name),
                             validator: (value) {
                               final v = (value ?? '').trim();
@@ -443,7 +444,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
                     if (dialogError != null)
                       Text(
                         dialogError!,
-                        style: const TextStyle(color: Color(0xFFFF8995)),
+                        style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                       ),
                   ],
                 ),
@@ -699,7 +700,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
         spacing: 5,
         runSpacing: 2,
         children: [
-          Text('$label:', style: const TextStyle(fontSize: 12, color: _muted)),
+          Text('$label:', style: TextStyle(fontSize: 12, color: _muted)),
           Text(
             value,
             style: TextStyle(fontSize: 13, color: valueColor ?? Colors.white),
@@ -787,7 +788,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF112229),
+        color: CompanyVisualTheme.legacy(const Color(0xFF112229)),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _turquoise.withValues(alpha: 0.65)),
       ),
@@ -804,10 +805,10 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
                   title.isEmpty ? 'Registro ${row['id']}' : title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                   ),
                 ),
               ),
@@ -816,7 +817,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
                   active ? 'Activo' : 'Inactivo',
                   style: TextStyle(
                     fontSize: 11,
-                    color: active ? const Color(0xFF52D5A0) : _muted,
+                    color: active ? CompanyVisualTheme.legacy(const Color(0xFF52D5A0)) : _muted,
                   ),
                 ),
             ],
@@ -824,11 +825,11 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
           const SizedBox(height: 4),
           Text(
             'ID ${row['id']}',
-            style: const TextStyle(fontSize: 11, color: _muted),
+            style: TextStyle(fontSize: 11, color: _muted),
           ),
           ...details,
           const SizedBox(height: 10),
-          const Divider(color: _border, height: 1),
+          Divider(color: _border, height: 1),
           const SizedBox(height: 4),
           Wrap(
             spacing: 2,
@@ -838,24 +839,24 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
                 IconButton(
                   tooltip: 'Historial',
                   onPressed: () => _history(row),
-                  icon: const Icon(Icons.history, color: _muted),
+                  icon: Icon(Icons.history, color: _muted),
                 ),
               IconButton(
                 tooltip: 'Consultar',
                 onPressed: () => _details(row),
-                icon: const Icon(Icons.visibility_outlined, color: _muted),
+                icon: Icon(Icons.visibility_outlined, color: _muted),
               ),
               IconButton(
                 tooltip: 'Editar',
                 onPressed: () => _edit(row),
-                icon: const Icon(Icons.edit_outlined, color: _turquoise),
+                icon: Icon(Icons.edit_outlined, color: _turquoise),
               ),
               IconButton(
                 tooltip: 'Eliminar',
                 onPressed: () => _delete(row),
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_outline,
-                  color: Color(0xFFE84657),
+                  color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                 ),
               ),
             ],
@@ -915,14 +916,14 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
               children: [
                 Text(
                   _title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 23,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(_description, style: const TextStyle(color: _muted)),
+                Text(_description, style: TextStyle(color: _muted)),
               ],
             ),
             FilledButton.icon(
@@ -939,11 +940,11 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
           onChanged: _searchChanged,
           decoration: _decoration(
             'Buscar registros',
-          ).copyWith(prefixIcon: const Icon(Icons.search, color: _turquoise)),
+          ).copyWith(prefixIcon: Icon(Icons.search, color: _turquoise)),
         ),
         const SizedBox(height: 16),
         if (_loading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator(color: _turquoise)),
           )
@@ -951,12 +952,12 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
+              Text(_error!, style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
               OutlinedButton(onPressed: _load, child: const Text('Reintentar')),
             ],
           )
         else if (_rows.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text('No hay registros.', style: TextStyle(color: _muted)),
@@ -980,7 +981,7 @@ class _CompanyInventoryPageState extends State<CompanyInventoryPage> {
             ),
             Text(
               'Página $_page de $_pages',
-              style: const TextStyle(color: _muted),
+              style: TextStyle(color: _muted),
             ),
             IconButton(
               tooltip: 'Página siguiente',

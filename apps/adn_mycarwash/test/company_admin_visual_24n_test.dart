@@ -17,7 +17,7 @@ void main() {
   });
   tearDown(MyCarWashSession.clear);
 
-  testWidgets('Configuracion muestra ocho areas y conserva informacion', (
+  testWidgets('Mi Empresa muestra seis areas y conserva informacion', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 980));
@@ -55,9 +55,11 @@ void main() {
     expect(find.text('Mi Empresa'), findsOneWidget);
     expect(find.text('Auto Servicios de QA'), findsWidgets);
     expect(find.text('Información general'), findsOneWidget);
-    for (var i = 0; i < 8; i++) {
+    for (final i in [0, 1, 3, 4, 5, 6]) {
       expect(find.byKey(ValueKey('admin_tab_24n_$i')), findsOneWidget);
     }
+    expect(find.byKey(const ValueKey('admin_tab_24n_2')), findsNothing);
+    expect(find.byKey(const ValueKey('admin_tab_24n_7')), findsNothing);
     await tester.ensureVisible(find.byKey(const ValueKey('admin_tab_24n_1')));
     await tester.tap(find.text('Contactos').first);
     await tester.pumpAndSettle();

@@ -16,7 +16,7 @@ Route::prefix('v1')->group(function (): void {
         [SessionController::class, 'token']
     )->middleware('throttle:5,1');
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
 
         Route::get(
             '/me',
@@ -37,6 +37,14 @@ Route::prefix('v1')->group(function (): void {
             '/preferences/theme',
             [PreferenceController::class, 'updateTheme']
         );
+
+        // BLOQUE 24N.2: cuentas de empleados y roles por empresa
+        Route::get('/companies/{company}/users', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'index'])->whereNumber('company');
+        Route::post('/companies/{company}/users', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'store'])->whereNumber('company');
+        Route::patch('/companies/{company}/users/{user}', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'update'])->whereNumber('company')->whereNumber('user');
+        Route::post('/companies/{company}/roles', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'storeRole'])->whereNumber('company');
+        Route::patch('/companies/{company}/roles/{role}', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'updateRole'])->whereNumber('company')->whereNumber('role');
+        Route::delete('/companies/{company}/roles/{role}', [\App\Http\Controllers\Api\V1\CompanyUsers24N2Controller::class, 'deleteRole'])->whereNumber('company')->whereNumber('role');
 
         // MI EMPRESA
 
@@ -153,7 +161,7 @@ Route::prefix('v1')->group(function (): void {
 });
 
 // BLOQUE 15 - CATALOGOS OPERATIVOS (4 CRUD)
-Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
+Route::middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->prefix('v1')->group(function (): void {
     Route::get('/companies/{company}/services/vehicle-types', [\App\Http\Controllers\Api\V1\CompanyServiceVehiclePrices24FController::class, 'vehicleTypes'])->whereNumber('company');
     Route::get('/companies/{company}/services/{service}/vehicle-prices', [\App\Http\Controllers\Api\V1\CompanyServiceVehiclePrices24FController::class, 'index'])->whereNumber('company')->whereNumber('service');
     Route::patch('/companies/{company}/services/{service}/vehicle-prices', [\App\Http\Controllers\Api\V1\CompanyServiceVehiclePrices24FController::class, 'replace'])->whereNumber('company')->whereNumber('service');
@@ -170,7 +178,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
 });
 
 // BLOQUE 16 - puestos, ordenes, asignaciones y fotos de vehiculos/lavadores.
-Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
+Route::middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->prefix('v1')->group(function (): void {
     Route::get('/companies/{company}/workflow/branches', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'branches'])->whereNumber('company');
     Route::get('/companies/{company}/workflow/queue', [\App\Http\Controllers\Api\V1\CompanyWashWorkflowController::class, 'queue'])->whereNumber('company');
     Route::get('/companies/{company}/workflow/orders-board-24e', [\App\Http\Controllers\Api\V1\CompanyWashOrdersBoard24EController::class, 'index'])->whereNumber('company');
@@ -189,7 +197,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
 });
 
 // BLOQUE 17 - Agenda administrativa: reservas, bloqueos, turnos y plantilla de personal.
-Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
     Route::get('/companies/{company}/schedule/agenda-24d', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'agenda24D'])->whereNumber('company');
     Route::get('/companies/{company}/schedule/availability-24d', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'availability24D'])->whereNumber('company');
     // Bloque 24D.2: avisos diarios y asignacion previa, sin iniciar lavados.
@@ -206,7 +214,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
 });
 
 // BLOQUE 18 - Inventario por empresa/sucursal: categorias, proveedores, productos, movimientos.
-Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
     Route::get('/companies/{company}/inventory/options', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/inventory/stock', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'stock'])->whereNumber('company');
     Route::get('/companies/{company}/inventory/movements/{movement}/history', [\App\Http\Controllers\Api\V1\CompanyInventoryController::class, 'history'])->whereNumber('company')->whereNumber('movement');
@@ -218,7 +226,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
 });
 
 // BLOQUE 19 - Caja manual: cajas, sesiones, categorias de egresos y movimientos.
-Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
     // 24K - tarjetas, movimientos auditados y conciliaciones bancarias.
         Route::post('/companies/{company}/finance/transfers', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'internalTransfer'])->whereNumber('company');
     Route::get('/companies/{company}/finance/transfers', [\App\Http\Controllers\Api\V1\CompanyFinance24KController::class, 'internalTransfers'])->whereNumber('company');
@@ -238,7 +246,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
 });
 
 // BLOQUE 20 - Venta y cobro al entregar: cuentas, medios, descuentos y cobros.
-Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
     Route::get('/companies/{company}/sales/options', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/sales/quote/{order}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'quote'])->whereNumber('company')->whereNumber('order');
     Route::post('/companies/{company}/sales/checkout/{order}', [\App\Http\Controllers\Api\V1\CompanySalesController::class, 'checkout'])->whereNumber('company')->whereNumber('order');
@@ -250,7 +258,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
 });
 
 // BLOQUE 21A - Smart POS artículos y accesorios (comprobante no fiscal).
-Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
     Route::get('/companies/{company}/pos/options', [\App\Http\Controllers\Api\V1\CompanyPosController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/pos/document-designs', [\App\Http\Controllers\Api\V1\CompanyPosDocumentTemplateController::class, 'show'])->whereNumber('company');
     Route::post('/companies/{company}/pos/document-designs', [\App\Http\Controllers\Api\V1\CompanyPosDocumentTemplateController::class, 'save'])->whereNumber('company');
@@ -267,7 +275,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
 });
 
 // BLOQUE 23A - Compras reales y recepciones parciales auditadas.
-Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
     Route::get('/companies/{company}/purchasing/options', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/purchasing/orders', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'index'])->whereNumber('company');
     Route::post('/companies/{company}/purchasing/orders', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'store'])->whereNumber('company');
@@ -276,7 +284,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::post('/companies/{company}/purchasing/orders/{order}/cancel', [\App\Http\Controllers\Api\V1\CompanyPurchasingController::class, 'cancel'])->whereNumber('company')->whereNumber('order');
 });
 // BLOQUE 24A.1 - Dashboard ejecutivo: lectura autenticada, sin migraciones.
-Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
+Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])->group(function (): void {
     Route::get('/companies/{company}/dashboard/overview', [\App\Http\Controllers\Api\V1\CompanyDashboardController::class, 'overview'])->whereNumber('company');
     Route::get('/companies/{company}/dashboard/visual-24a3', [\App\Http\Controllers\Api\V1\CompanyDashboardVisual24A3Controller::class, 'show'])->whereNumber('company');
     Route::get('/companies/{company}/dashboard/search-24a3', [\App\Http\Controllers\Api\V1\CompanyDashboardVisual24A3Controller::class, 'search'])->whereNumber('company');

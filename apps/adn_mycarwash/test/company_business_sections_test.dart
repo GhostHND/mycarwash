@@ -102,7 +102,7 @@ void main() {
     client.close();
   });
 
-  testWidgets('Mi Empresa conserva las tres pestañas originales y suma dos', (
+  testWidgets('Mi Empresa muestra exclusivamente seis áreas empresariales', (
     tester,
   ) async {
     bool requestedFiscal = false;
@@ -134,16 +134,20 @@ void main() {
     for (final title in [
       'Información',
       'Contactos',
-      'Identidad visual',
       'Datos fiscales',
-      'Direcciones',
+      'Dirección',
+      'Horarios',
+      'Redes sociales',
     ]) {
       expect(find.text(title), findsWidgets);
     }
+    expect(find.text('Identidad visual'), findsNothing);
+    expect(find.text('Preferencias de sistema'), findsNothing);
+    expect(find.text('6 áreas de empresa'), findsOneWidget);
     await tester.tap(find.text('Datos fiscales').first);
     await tester.pumpAndSettle();
     expect(requestedFiscal, isTrue);
-    await tester.tap(find.text('Direcciones').first);
+    await tester.tap(find.text('Dirección').first);
     await tester.pumpAndSettle();
     expect(requestedAddresses, isTrue);
     client.close();

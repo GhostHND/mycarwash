@@ -142,6 +142,13 @@ class CompanySettingsController extends Controller
             'success_color',
             'warning_color',
             'danger_color',
+            'card_color',
+            'border_color',
+            'field_color',
+            'icon_color',
+            'heading_color',
+            'hover_color',
+            'selected_color',
         ] as $field) {
             $rules[$field] = $colorRules;
         }
@@ -172,6 +179,8 @@ class CompanySettingsController extends Controller
                 'message' => 'No se recibieron cambios de apariencia.',
             ], 422);
         }
+
+        $data['visual_theme_version'] = 3;
 
         // Los logos oficiales ADN no son configurables
         // desde esta API.

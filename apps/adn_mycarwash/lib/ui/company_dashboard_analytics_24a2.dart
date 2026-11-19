@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -21,9 +22,9 @@ class CompanyDashboardAnalytics24A2 extends StatefulWidget {
 
 class _CompanyDashboardAnalytics24A2State
     extends State<CompanyDashboardAnalytics24A2> {
-  static const _accent = Color(0xFF0FA7B4);
-  static const _panel = Color(0xFF0D2229);
-  static const _muted = Color(0xFFA6BAC2);
+  static Color get _accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _panel => CompanyVisualTheme.legacy(const Color(0xFF0D2229));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFFA6BAC2));
   int _days = 7;
   int _serial = 0;
   bool _loading = true;
@@ -97,10 +98,10 @@ class _CompanyDashboardAnalytics24A2State
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: CompanyVisualTheme.text,
           ),
         ),
         const SizedBox(height: 14),
@@ -111,7 +112,7 @@ class _CompanyDashboardAnalytics24A2State
 
   Widget _sales(Map<String, dynamic> data) {
     if (data['pos_available'] != true || data['pos_daily'] is! List) {
-      return const Text(
+      return Text(
         'Fuente de ventas no disponible.',
         style: TextStyle(color: _muted),
       );
@@ -126,10 +127,10 @@ class _CompanyDashboardAnalytics24A2State
       children: [
         Text(
           'Total del período: L ${data['pos_total']}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: CompanyVisualTheme.text,
           ),
         ),
         const SizedBox(height: 12),
@@ -174,7 +175,7 @@ class _CompanyDashboardAnalytics24A2State
                                         .toString()
                                         .split('-')
                                         .last,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 9,
                                       color: _muted,
                                     ),
@@ -194,7 +195,7 @@ class _CompanyDashboardAnalytics24A2State
         const SizedBox(height: 9),
         Text(
           (data['sales_note'] ?? '').toString(),
-          style: const TextStyle(fontSize: 11, color: _muted),
+          style: TextStyle(fontSize: 11, color: _muted),
         ),
       ],
     );
@@ -202,7 +203,7 @@ class _CompanyDashboardAnalytics24A2State
 
   Widget _washes(Map<String, dynamic> data) {
     if (data['wash_available'] != true || data['wash_statuses'] is! List) {
-      return const Text(
+      return Text(
         'Fuente de lavados no disponible.',
         style: TextStyle(color: _muted),
       );
@@ -212,7 +213,7 @@ class _CompanyDashboardAnalytics24A2State
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (rows.isEmpty)
-          const Text(
+          Text(
             'No hay órdenes de lavado registradas.',
             style: TextStyle(color: _muted),
           ),
@@ -225,7 +226,7 @@ class _CompanyDashboardAnalytics24A2State
                 constraints: const BoxConstraints(minWidth: 125),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF122F37),
+                  color: CompanyVisualTheme.legacy(const Color(0xFF122F37)),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: _accent.withValues(alpha: .3)),
                 ),
@@ -234,13 +235,13 @@ class _CompanyDashboardAnalytics24A2State
                   children: [
                     Text(
                       (row['status']).toString(),
-                      style: const TextStyle(color: _muted, fontSize: 11),
+                      style: TextStyle(color: _muted, fontSize: 11),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       (row['count']).toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: CompanyVisualTheme.text,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
@@ -253,7 +254,7 @@ class _CompanyDashboardAnalytics24A2State
         const SizedBox(height: 12),
         Text(
           (data['wash_note'] ?? '').toString(),
-          style: const TextStyle(fontSize: 11, color: _muted),
+          style: TextStyle(fontSize: 11, color: _muted),
         ),
       ],
     );
@@ -270,10 +271,10 @@ class _CompanyDashboardAnalytics24A2State
           spacing: 12,
           runSpacing: 10,
           children: [
-            const Text(
+            Text(
               'Analítica operativa',
               style: TextStyle(
-                color: Colors.white,
+                color: CompanyVisualTheme.text,
                 fontSize: 21,
                 fontWeight: FontWeight.w800,
               ),
@@ -302,7 +303,7 @@ class _CompanyDashboardAnalytics24A2State
           ],
         ),
         if (_loading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
             child: LinearProgressIndicator(color: _accent),
           ),
@@ -311,7 +312,7 @@ class _CompanyDashboardAnalytics24A2State
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               'No se pudo cargar la analítica: $_error',
-              style: const TextStyle(color: Color(0xFFECA7A7)),
+              style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFECA7A7))),
             ),
           ),
         if (_data != null) ...[
@@ -347,7 +348,7 @@ class _CompanyDashboardAnalytics24A2State
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 (_data!['warnings'] as List).join(' • '),
-                style: const TextStyle(color: _muted, fontSize: 11),
+                style: TextStyle(color: _muted, fontSize: 11),
               ),
             ),
         ],

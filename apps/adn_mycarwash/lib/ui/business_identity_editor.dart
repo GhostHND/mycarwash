@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -18,9 +19,9 @@ class BusinessIdentityEditor extends StatefulWidget {
 }
 
 class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
-  static const turquoise = Color(0xFF0FA7B4);
-  static const muted = Color(0xFF9BAEB6);
-  static const border = Color(0xFF20343C);
+  static Color get turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
+  static Color get border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
   // Fondo del editor definido mediante el degradado 24N.
 
   bool _busy = false;
@@ -171,7 +172,7 @@ class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
           'Eliminar logotipo del negocio',
           style: TextStyle(color: Colors.white),
         ),
-        content: const Text(
+        content: Text(
           'Se eliminará el logo de esta empresa. '
           'El logotipo oficial de ADN Publicidad no cambiará.',
           style: TextStyle(color: muted),
@@ -224,7 +225,7 @@ class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(color: border),
+            Divider(color: border),
             const SizedBox(height: 17),
             const Text(
               'Logotipo del negocio',
@@ -235,7 +236,7 @@ class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Este logotipo pertenece al autolavado y se mostrará '
               'junto a la identidad oficial de ADN MyCarWash.',
               style: TextStyle(color: muted),
@@ -297,7 +298,7 @@ class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'PNG, JPG o WebP · Máximo 2 MB',
                         style: TextStyle(color: muted, fontSize: 12),
                       ),
@@ -334,7 +335,7 @@ class _BusinessIdentityEditorState extends State<BusinessIdentityEditor> {
               ),
             ),
             const SizedBox(height: 13),
-            const Text(
+            Text(
               'El logotipo oficial de ADN Publicidad permanece '
               'independiente y no puede ser reemplazado.',
               style: TextStyle(color: muted, fontSize: 12),

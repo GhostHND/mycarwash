@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -23,9 +24,9 @@ class _PurchaseDraftLine {
 }
 
 class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
-  static const accent = Color(0xFF0FA7B4);
-  static const panel = Color(0xFF102229);
-  static const muted = Color(0xFFA7B8BF);
+  static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get panel => CompanyVisualTheme.legacy(const Color(0xFF102229));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFFA7B8BF));
   late final http.Client client;
   late final bool ownsClient;
   CompanyBusinessApi get api => CompanyBusinessApi(client);
@@ -393,7 +394,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Registra solo lo que realmente llegó. Cero = no recibido.',
                       style: TextStyle(color: muted),
                     ),
@@ -423,7 +424,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                       ),
                     ),
                     const SizedBox(height: 7),
-                    const Text(
+                    Text(
                       'Al confirmar, el inventario aumentará inmediatamente. '
                       'No registres una entrada manual adicional.',
                       style: TextStyle(color: muted),
@@ -513,7 +514,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
     decoration: BoxDecoration(
       color: panel,
       borderRadius: BorderRadius.circular(13),
-      border: Border.all(color: const Color(0xFF29444C)),
+      border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF29444C))),
     ),
     child: child,
   );
@@ -528,27 +529,27 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Compras y recepciones',
               style: TextStyle(
                 fontSize: 26,
-                color: Colors.white,
+                color: CompanyVisualTheme.text,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 5),
-            const Text(
+            Text(
               'Órdenes por sucursal · proveedores existentes · entradas auditadas',
               style: TextStyle(color: muted),
             ),
             const SizedBox(height: 16),
-            if (loading) const LinearProgressIndicator(color: accent),
+            if (loading) LinearProgressIndicator(color: accent),
             if (error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Text(
                   error!,
-                  style: const TextStyle(color: Color(0xFFFF9BA7)),
+                  style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF9BA7))),
                 ),
               ),
             if (!loading) ...[
@@ -709,7 +710,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                         ),
                         const SizedBox(height: 11),
                         if (orders.isEmpty)
-                          const Text(
+                          Text(
                             'Aún no hay compras registradas.',
                             style: TextStyle(color: muted),
                           ),
@@ -728,9 +729,9 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                               ),
                               subtitle: Text(
                                 '${order['status']} · ${order['created_at']}',
-                                style: const TextStyle(color: muted),
+                                style: TextStyle(color: muted),
                               ),
-                              trailing: const Icon(
+                              trailing: Icon(
                                 Icons.chevron_right,
                                 color: accent,
                               ),
@@ -742,7 +743,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                   );
                   final current = box(
                     selected == null
-                        ? const Column(
+                        ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
@@ -772,7 +773,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                               const SizedBox(height: 5),
                               Text(
                                 'Estado: ${((selected['order'] as Map)['status'])}',
-                                style: const TextStyle(color: muted),
+                                style: TextStyle(color: muted),
                               ),
                               const Divider(height: 24),
                               for (final line in asList(selected['lines']))
@@ -790,7 +791,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                                       ),
                                       Text(
                                         'Pedido ${line['ordered_quantity']} · recibido ${line['received_quantity']} · ${money(line['line_total'])}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: muted,
                                           fontSize: 13,
                                         ),
@@ -800,7 +801,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                                 ),
                               Text(
                                 'Recepciones registradas: ${asList(selected['receipts']).length}',
-                                style: const TextStyle(color: muted),
+                                style: TextStyle(color: muted),
                               ),
                               const SizedBox(height: 12),
                               Wrap(
@@ -847,7 +848,7 @@ class _CompanyPurchasingPageState extends State<CompanyPurchasingPage> {
                 },
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Las órdenes no afectan caja ni existencias hasta confirmar una recepción. '
                 'Las devoluciones, pagos a proveedores y correcciones requieren un procedimiento separado.',
                 style: TextStyle(color: muted, fontSize: 12),

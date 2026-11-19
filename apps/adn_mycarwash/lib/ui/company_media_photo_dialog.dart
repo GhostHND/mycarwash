@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -30,8 +31,8 @@ class CompanyMediaPhotoDialog extends StatefulWidget {
 }
 
 class _CompanyMediaPhotoDialogState extends State<CompanyMediaPhotoDialog> {
-  static const _turquoise = Color(0xFF0FA7B4);
-  static const _surface = Color(0xFF0A1519);
+  static Color get _turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
   bool _loading = true;
   bool _busy = false;
   bool _exists = false;
@@ -58,8 +59,8 @@ class _CompanyMediaPhotoDialogState extends State<CompanyMediaPhotoDialog> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
       ),
     );
   }
@@ -260,7 +261,7 @@ class _CompanyMediaPhotoDialogState extends State<CompanyMediaPhotoDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_loading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(32),
               child: CircularProgressIndicator(color: _turquoise),
             )
@@ -271,7 +272,7 @@ class _CompanyMediaPhotoDialogState extends State<CompanyMediaPhotoDialog> {
               height: 220,
               width: double.infinity,
               alignment: Alignment.center,
-              color: const Color(0xFF17282D),
+              color: CompanyVisualTheme.legacy(const Color(0xFF17282D)),
               child: _imageBytes != null
                   ? Image.memory(
                       Uint8List.fromList(_imageBytes!),

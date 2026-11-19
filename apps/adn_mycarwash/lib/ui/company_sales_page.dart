@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -34,10 +35,10 @@ class CompanySalesPage extends StatefulWidget {
 }
 
 class _CompanySalesPageState extends State<CompanySalesPage> {
-  static const accent = Color(0xFF0FA7B4);
-  static const surface = Color(0xFF0A1519);
-  static const muted = Color(0xFF9BAEB6);
-  static const border = Color(0xFF20343C);
+  static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
+  static Color get border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
 
   late final http.Client _client;
   late final bool _owned;
@@ -161,7 +162,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
   InputDecoration _decor(String label) => InputDecoration(
     labelText: label,
     filled: true,
-    fillColor: const Color(0xFF112127),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF112127)),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
   );
 
@@ -173,8 +174,8 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
       SnackBar(
         content: Text(text),
         backgroundColor: error
-            ? const Color(0xFF993F49)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF993F49))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
       ),
     );
   }
@@ -594,7 +595,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
               text,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: muted, fontSize: 12),
+              style: TextStyle(color: muted, fontSize: 12),
             ),
           ),
         ],
@@ -644,7 +645,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
       ),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFF102127),
+        color: CompanyVisualTheme.legacy(const Color(0xFF102127)),
         borderRadius: BorderRadius.circular(13),
         border: Border.all(color: border),
       ),
@@ -670,7 +671,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: muted,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -685,14 +686,14 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: (positiveState ? const Color(0xFF17AD91) : muted)
+                    color: (positiveState ? CompanyVisualTheme.legacy(const Color(0xFF17AD91)) : muted)
                         .withValues(alpha: .13),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     stateLabel,
                     style: TextStyle(
-                      color: positiveState ? const Color(0xFF66E0C7) : muted,
+                      color: positiveState ? CompanyVisualTheme.legacy(const Color(0xFF66E0C7)) : muted,
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                     ),
@@ -705,8 +706,8 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
             name,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: CompanyVisualTheme.text,
               fontSize: 15,
               fontWeight: FontWeight.w800,
             ),
@@ -715,7 +716,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
             const SizedBox(height: 4),
             Text(
               'L ${row['amount'] ?? '—'}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: accent,
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
@@ -748,13 +749,13 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
             ),
           ],
           const SizedBox(height: 9),
-          const Divider(height: 1, color: border),
+          Divider(height: 1, color: border),
           const SizedBox(height: 4),
           Row(
             children: [
               Text(
                 '#${row['id'] ?? '—'}',
-                style: const TextStyle(color: muted, fontSize: 11),
+                style: TextStyle(color: muted, fontSize: 11),
               ),
               const Spacer(),
               IconButton(
@@ -762,7 +763,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
                 padding: EdgeInsets.zero,
                 tooltip: 'Consultar',
                 onPressed: () => _details(row),
-                icon: const Icon(
+                icon: Icon(
                   Icons.visibility_outlined,
                   color: muted,
                   size: 19,
@@ -773,7 +774,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
                 padding: EdgeInsets.zero,
                 tooltip: 'Editar',
                 onPressed: locked ? null : () => _edit(row),
-                icon: const Icon(Icons.edit_outlined, color: accent, size: 19),
+                icon: Icon(Icons.edit_outlined, color: accent, size: 19),
               ),
               IconButton(
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -815,14 +816,14 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
               children: [
                 Text(
                   _title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: CompanyVisualTheme.text,
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(_help, style: const TextStyle(color: muted)),
+                Text(_help, style: TextStyle(color: muted)),
               ],
             ),
             FilledButton.icon(
@@ -847,7 +848,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
         ),
         const SizedBox(height: 14),
         if (_loading)
-          const Center(
+          Center(
             child: Padding(
               padding: EdgeInsets.all(24),
               child: CircularProgressIndicator(color: accent),
@@ -894,7 +895,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.payments_outlined, color: accent),
+                  Icon(Icons.payments_outlined, color: accent),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -905,7 +906,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
                   IconButton(
                     tooltip: 'Consultar',
                     onPressed: () => _details(row),
-                    icon: const Icon(Icons.visibility_outlined, color: muted),
+                    icon: Icon(Icons.visibility_outlined, color: muted),
                   ),
                   IconButton(
                     tooltip: 'Editar',
@@ -914,7 +915,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
                             row['status'] == 'POSTED'
                         ? null
                         : () => _edit(row),
-                    icon: const Icon(Icons.edit_outlined, color: accent),
+                    icon: Icon(Icons.edit_outlined, color: accent),
                   ),
                   IconButton(
                     tooltip: 'Eliminar',
@@ -946,7 +947,7 @@ class _CompanySalesPageState extends State<CompanySalesPage> {
             ),
             Text(
               'Página $_page de $_pages',
-              style: const TextStyle(color: muted),
+              style: TextStyle(color: muted),
             ),
             IconButton(
               tooltip: 'Siguiente',

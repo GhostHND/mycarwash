@@ -155,6 +155,9 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
         accessToken: token,
         companyId: (selectedCompany['id'] as num).toInt(),
         apiBaseUrl: _api,
+        permissions: (selectedCompany['permissions'] as List?)
+                ?.map((value) => value.toString()).toList() ?? const [],
+        legacyFullAccess: selectedCompany['legacy_full_access'] == true,
       );
 
       await widget.onEnterDashboard(context);

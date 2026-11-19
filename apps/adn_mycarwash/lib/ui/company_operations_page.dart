@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -43,10 +44,10 @@ class CompanyOperationsPage extends StatefulWidget {
 }
 
 class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
-  static const _turquoise = Color(0xFF0FA7B4);
-  static const _surface = Color(0xFF0A1519);
-  static const _border = Color(0xFF20343C);
-  static const _muted = Color(0xFF9BAEB6);
+  static Color get _turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get _border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
 
   late final http.Client _client;
   late final bool _ownsClient;
@@ -228,27 +229,27 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
         content: Text(text),
         behavior: SnackBarBehavior.floating,
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
       ),
     );
   }
 
   InputDecoration _decoration(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: _muted),
+    labelStyle: TextStyle(color: _muted),
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _border),
+      borderSide: BorderSide(color: _border),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _turquoise),
+      borderSide: BorderSide(color: _turquoise),
       borderRadius: BorderRadius.circular(10),
     ),
     errorBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: Color(0xFFE84657)),
+      borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -264,9 +265,9 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
           backgroundColor: _surface,
-          title: const Text(
+          title: Text(
             'Seleccionar cliente',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
           ),
           content: SizedBox(
             width: 510,
@@ -275,7 +276,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
               children: [
                 TextField(
                   key: const ValueKey('operations_client_search'),
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: CompanyVisualTheme.text),
                   decoration: _decoration(
                     'Buscar cliente por nombre o documento',
                   ),
@@ -295,7 +296,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                     future: pending,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(
+                        return Center(
                           child: CircularProgressIndicator(color: _turquoise),
                         );
                       }
@@ -310,7 +311,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                           ? records.whereType<Map>().toList()
                           : <Map>[];
                       if (items.isEmpty) {
-                        return const Center(
+                        return Center(
                           child: Text(
                             'No se encontraron clientes.',
                             style: TextStyle(color: _muted),
@@ -330,11 +331,11 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                           return ListTile(
                             title: Text(
                               '${client['full_name'] ?? ''}',
-                              style: const TextStyle(color: Colors.white),
+                              style: TextStyle(color: CompanyVisualTheme.text),
                             ),
                             subtitle: Text(
                               '${client['identity_document'] ?? ''}',
-                              style: const TextStyle(color: _muted),
+                              style: TextStyle(color: _muted),
                             ),
                             onTap: () =>
                                 Navigator.of(dialogContext).pop(client),
@@ -461,7 +462,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
             backgroundColor: _surface,
             title: Text(
               existing == null ? 'Nuevo $_singular' : 'Editar $_singular',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: CompanyVisualTheme.text),
             ),
             content: SizedBox(
               width: 550,
@@ -479,7 +480,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                 clientId == null
                                     ? 'Cliente: pendiente de seleccionar'
                                     : 'Cliente: $clientName (ID $clientId)',
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(color: CompanyVisualTheme.text),
                               ),
                             ),
                             TextButton.icon(
@@ -536,7 +537,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                             dropdownColor: Theme.of(context)
                                 .colorScheme
                                 .surface,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                             decoration: _decoration(
                               'Tipo de vehículo (tarifas de Servicios)',
                             ),
@@ -580,7 +581,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                     decimal: true,
                                   )
                                 : TextInputType.text,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                             decoration: _decoration(field.label),
                             validator: (text) {
                               final value = (text ?? '').trim();
@@ -633,7 +634,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                           initialValue: position,
                           isExpanded: true,
                           dropdownColor: _surface,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: CompanyVisualTheme.text),
                           decoration: _decoration('Cargo'),
                           items: positions.entries
                               .map(
@@ -663,9 +664,9 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                         color: Colors.transparent,
                         child: SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text(
+                          title: Text(
                             'Activo',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                           ),
                           value: active,
                           activeThumbColor: _turquoise,
@@ -852,9 +853,9 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
         backgroundColor: _surface,
         title: Text(
           'Archivar $_singular',
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: CompanyVisualTheme.text),
         ),
-        content: const Text(
+        content: Text(
           'El registro se archivará y dejará de aparecer en el listado. Esta acción no elimina su historial.',
           style: TextStyle(color: _muted),
         ),
@@ -920,7 +921,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'ADN PUBLICIDAD · SOFTWARE',
           style: TextStyle(
             color: _turquoise,
@@ -940,8 +941,8 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                 Expanded(
                   child: Text(
                     _title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: CompanyVisualTheme.text,
                       fontSize: 31,
                       fontWeight: FontWeight.w800,
                     ),
@@ -960,7 +961,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                 : identity.companyName,
                             maxLines: 2,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                           ),
                         )
                       : Image.memory(
@@ -977,14 +978,14 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
             widget.catalog != OperationsCatalog.employees)
           Text(
             _title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: CompanyVisualTheme.text,
               fontSize: 31,
               fontWeight: FontWeight.w800,
             ),
           ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Administración del negocio · Datos vinculados a la empresa activa.',
           style: TextStyle(color: _muted),
         ),
@@ -1017,21 +1018,21 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                 key: const ValueKey('operations_search'),
                 controller: _search,
                 onChanged: _onSearch,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: CompanyVisualTheme.text),
                 decoration: _decoration('Buscar en $_title').copyWith(
-                  prefixIcon: const Icon(Icons.search, color: _turquoise),
+                  prefixIcon: Icon(Icons.search, color: _turquoise),
                   suffixIcon: IconButton(
                     onPressed: () {
                       _search.clear();
                       _onSearch('');
                     },
-                    icon: const Icon(Icons.close, color: _muted),
+                    icon: Icon(Icons.close, color: _muted),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               if (_loading)
-                const Center(
+                Center(
                   child: Padding(
                     padding: EdgeInsets.all(25),
                     child: CircularProgressIndicator(color: _turquoise),
@@ -1045,7 +1046,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                   child: Center(
                     child: Text(
                       'No hay $_title registrados.',
-                      style: const TextStyle(color: _muted),
+                      style: TextStyle(color: _muted),
                     ),
                   ),
                 )
@@ -1081,7 +1082,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Material(
-                      color: const Color(0xFF111F25),
+                      color: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -1095,22 +1096,22 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                 children: [
                                   Text(
                                     _rowTitle(record),
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: CompanyVisualTheme.text,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                   const SizedBox(height: 5),
                                   Text(
                                     _rowDetail(record),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: _muted,
                                       fontSize: 12,
                                     ),
                                   ),
                                   Text(
                                     'ID ${record['id']} · ${record['is_active'] == false || record['is_active'] == 0 ? 'Inactivo' : 'Activo'}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: _muted,
                                       fontSize: 11,
                                     ),
@@ -1121,7 +1122,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                             if (widget.catalog == OperationsCatalog.employees)
                               IconButton(
                                 tooltip: 'Fotografía',
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.photo_camera_outlined,
                                   color: _turquoise,
                                 ),
@@ -1144,7 +1145,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                               ),
                             IconButton(
                               tooltip: 'Editar',
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.edit_outlined,
                                 color: _turquoise,
                               ),
@@ -1152,9 +1153,9 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                             ),
                             IconButton(
                               tooltip: 'Archivar',
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.archive_outlined,
-                                color: Color(0xFFE84657),
+                                color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                               ),
                               onPressed: () => _delete(record),
                             ),
@@ -1179,7 +1180,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                   ),
                   Text(
                     'Página $_page de $_pages',
-                    style: const TextStyle(color: _muted),
+                    style: TextStyle(color: _muted),
                   ),
                   IconButton(
                     tooltip: 'Página siguiente',

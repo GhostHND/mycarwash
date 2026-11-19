@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'core/business_identity.dart';
+import 'core/company_visual_theme.dart';
+import 'core/mycarwash_session.dart';
+import 'ui/company_users_24n2_page.dart';
 import 'ui/mycarwash_login.dart';
 import 'ui/company_settings_page.dart';
 import 'ui/company_operations_page.dart';
@@ -29,18 +32,18 @@ void main() {
 }
 
 class AdnColors {
-  static const night = Color(0xFF05090B);
-  static const sidebar = Color(0xFF061115);
-  static const panel = Color(0xFF0A1317);
-  static const panelLight = Color(0xFF102027);
-  static const border = Color(0xFF21333B);
-  static const turquoise = Color(0xFF0FA7B4);
-  static const turquoiseLight = Color(0xFF22C6D2);
-  static const coral = Color(0xFFE84657);
-  static const orange = Color(0xFFED7E24);
-  static const yellow = Color(0xFFF5C000);
-  static const white = Color(0xFFF5FAFC);
-  static const muted = Color(0xFF9AAFB7);
+  static Color get night => CompanyVisualTheme.background;
+  static Color get sidebar => CompanyVisualTheme.sidebar;
+  static Color get panel => CompanyVisualTheme.surface;
+  static Color get panelLight => CompanyVisualTheme.card;
+  static Color get border => CompanyVisualTheme.border;
+  static Color get turquoise => CompanyVisualTheme.primary;
+  static Color get turquoiseLight => CompanyVisualTheme.icon;
+  static Color get coral => CompanyVisualTheme.danger;
+  static Color get orange => CompanyVisualTheme.accent;
+  static Color get yellow => CompanyVisualTheme.warning;
+  static Color get white => CompanyVisualTheme.text;
+  static Color get muted => CompanyVisualTheme.muted;
 }
 
 class MyCarWashApp extends StatelessWidget {
@@ -48,14 +51,16 @@ class MyCarWashApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ValueListenableBuilder<CompanyPalette>(
+      valueListenable: CompanyVisualTheme.current,
+      builder: (context, palette, child) => MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'ADN MyCarWash',
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AdnColors.night,
-        colorScheme: const ColorScheme.dark(
+        colorScheme: ColorScheme.dark(
           primary: AdnColors.turquoise,
           secondary: AdnColors.coral,
           surface: AdnColors.panel,
@@ -70,20 +75,20 @@ class MyCarWashApp extends StatelessWidget {
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AdnColors.border),
+            borderSide: BorderSide(color: AdnColors.border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AdnColors.border),
+            borderSide: BorderSide(color: AdnColors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
+            borderSide: BorderSide(
               color: AdnColors.turquoise,
               width: 1.5,
             ),
           ),
-          labelStyle: const TextStyle(color: AdnColors.muted),
+          labelStyle: TextStyle(color: AdnColors.muted),
         ),
       ),
       builder: (context, child) {
@@ -106,6 +111,7 @@ class MyCarWashApp extends StatelessWidget {
           );
         },
       ),
+    ),
     );
   }
 }
@@ -147,7 +153,7 @@ class _Eyebrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: const TextStyle(
+    style: TextStyle(
       fontSize: 11,
       fontWeight: FontWeight.w800,
       letterSpacing: 1.9,
@@ -211,6 +217,7 @@ const _menu = [
   _NavItem('Sitio web', Icons.language_outlined),
   _NavItem('Mi Empresa', Icons.business_outlined),
   _NavItem('Configuración', Icons.settings_outlined),
+  _NavItem('Usuarios', Icons.manage_accounts_outlined),
   _NavItem('Smart POS', Icons.point_of_sale_outlined),
   _NavItem('Historial de ventas', Icons.receipt_long_outlined),
   _NavItem('Resumen de reportes', Icons.dashboard_outlined),
@@ -278,6 +285,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
     'Cobros de lavados',
     'Medios de pago',
     'Descuentos de lavados',
+    'Diseñar comprobantes',
   ]),
   _CompactNavGroup('Reportes', Icons.insights_outlined, [
     'Resumen de reportes',
@@ -293,9 +301,13 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
   ]),
   _CompactNavGroup('Mi empresa', Icons.business_outlined, [
     'Mi Empresa',
-    'Sitio web',
-    'Diseñar comprobantes',
     'Configuración',
+  ]),
+  _CompactNavGroup('Usuarios', Icons.manage_accounts_outlined, [
+    'Usuarios',
+  ]),
+  _CompactNavGroup('Sitio web', Icons.language_outlined, [
+    'Sitio web',
   ]),
 ];
 
@@ -311,6 +323,11 @@ class _DashboardPreviewState extends State<DashboardPreview> {
   void initState() {
     super.initState();
     unawaited(BusinessIdentity.refresh());
+    if (!_navAllowed(selected)) {
+      final allowed = List<int>.generate(_menu.length, (i) => i)
+          .where(_navAllowed).toList();
+      if (allowed.isNotEmpty) selected = allowed.first;
+    }
   }
 
   int selected = 0;
@@ -339,7 +356,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
           ? AppBar(
               backgroundColor: AdnColors.sidebar,
               title: Text(_menu[selected].title),
-              actions: const [
+              actions: [
                 Padding(
                   padding: EdgeInsets.only(right: 16),
                   child: Icon(
@@ -367,7 +384,8 @@ class _DashboardPreviewState extends State<DashboardPreview> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const CompanyBookingDailyStartup24D2(),
+                  if (MyCarWashSession.canNav('schedule', 'view'))
+                    const CompanyBookingDailyStartup24D2(),
                   _mainContent(),
                 ],
               ),
@@ -379,6 +397,22 @@ class _DashboardPreviewState extends State<DashboardPreview> {
   }
 
   // Navegacion compacta, un grupo desplegado a la vez y submodulos originales.
+  String _moduleFor(String destination) {
+    if (destination == 'Dashboard') return 'dashboard';
+    if (destination == 'Usuarios') return 'users';
+    if (destination == 'Mi Empresa' || destination == 'Configuración' || destination == 'Sitio web') return 'company';
+    if (destination.startsWith('Reporte') || destination == 'Resumen de reportes') return 'reports';
+    if (['Clientes', 'Vehículos'].contains(destination)) return 'customers';
+    if (['Empleados', 'Turnos de trabajo', 'Asignaciones de turnos'].contains(destination)) return 'staff';
+    if (['Inventario', 'Categorías de inventario', 'Proveedores', 'Compras y recepciones', 'Movimientos de inventario'].contains(destination)) return 'inventory';
+    if (['Reservas', 'Bloqueos de agenda'].contains(destination)) return 'schedule';
+    if (['Caja y ventas', 'Sesiones de caja', 'Categorías de egresos', 'Movimientos de caja', 'Cuentas bancarias', 'Cuadres y arqueos', 'Cajas registradoras'].contains(destination)) return 'cash';
+    if (['Smart POS', 'Historial de ventas', 'Cobros de lavados', 'Medios de pago', 'Descuentos de lavados', 'Diseñar comprobantes'].contains(destination)) return 'sales';
+    return 'washes';
+  }
+
+  bool _navAllowed(int index) => MyCarWashSession.canNav(_moduleFor(_menu[index].title), 'view');
+
   Widget _buildCompactNavigation() {
     final known = <String>{'Dashboard'};
     for (final group in _compactNavGroups20_1) {
@@ -386,12 +420,12 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     }
     final extra = <int>[
       for (var index = 1; index < _menu.length; index++)
-        if (!known.contains(_menu[index].title)) index,
+        if (!known.contains(_menu[index].title) && _navAllowed(index)) index,
     ];
     return ListView(
       padding: const EdgeInsets.fromLTRB(9, 4, 9, 10),
       children: [
-        _compactNavEntry(0),
+        if (_navAllowed(0)) _compactNavEntry(0),
         const SizedBox(height: 8),
         for (final group in _compactNavGroups20_1) _compactNavSection(group),
         for (final index in extra) _compactNavEntry(index),
@@ -403,7 +437,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     final indices = <int>[
       for (final title in group.entries)
         _menu.indexWhere((item) => item.title == title),
-    ].where((index) => index >= 0).toList();
+    ].where((index) => index >= 0 && _navAllowed(index)).toList();
     if (indices.isEmpty) return const SizedBox.shrink();
     final expanded = _expandedNavGroup == group.label;
     final containsActive = indices.contains(selected);
@@ -510,7 +544,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
               border: active
-                  ? const Border(
+                  ? Border(
                       left: BorderSide(color: AdnColors.turquoise, width: 2),
                     )
                   : null,
@@ -557,7 +591,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
               children: [
                 const BrandLogo(size: 52),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -575,16 +609,16 @@ class _DashboardPreviewState extends State<DashboardPreview> {
               ],
             ),
           ),
-          const Divider(color: AdnColors.border, height: 1),
+          Divider(color: AdnColors.border, height: 1),
           const SizedBox(height: 16),
           Expanded(child: _buildCompactNavigation()),
-          const Divider(color: AdnColors.border, height: 1),
+          Divider(color: AdnColors.border, height: 1),
           TextButton.icon(
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.arrow_back_rounded),
             label: const Text('Cerrar sesión'),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(15, 0, 15, 16),
             child: Text(
               'PANEL ADMINISTRATIVO',
@@ -683,7 +717,10 @@ class _DashboardPreviewState extends State<DashboardPreview> {
       return const CompanySettingsPage();
     }
     if (destination == 'Configuración') {
-      return const CompanySettingsPage(initialSection: 7);
+      return const CompanySettingsPage(configurationOnly: true, initialSection: 2);
+    }
+    if (destination == 'Usuarios') {
+      return const CompanyUsers24N2Page();
     }
     final catalog = switch (_menu[selected].title) {
       'Clientes' => OperationsCatalog.clients,
@@ -759,9 +796,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
         Row(
           children: [
             const Expanded(child: _Eyebrow(text: 'ADN PUBLICIDAD · SOFTWARE')),
-            const Icon(Icons.shield_outlined, color: AdnColors.turquoise),
+            Icon(Icons.shield_outlined, color: AdnColors.turquoise),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Vista previa',
               style: TextStyle(fontSize: 12, color: AdnColors.muted),
             ),
@@ -770,7 +807,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
         const SizedBox(height: 18),
         Text(
           isHome ? 'Resumen general' : _menu[selected].title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 31,
             fontWeight: FontWeight.w800,
             color: AdnColors.white,
@@ -778,7 +815,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Interfaz en construcción. La conexión real a MySQL se realizará después.',
           style: TextStyle(color: AdnColors.muted),
         ),
@@ -850,7 +887,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Conectaremos estos datos al crear la API y MySQL.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: AdnColors.muted),
@@ -865,7 +902,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
           ),
         ] else
           _Panel(
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.all(30),
               child: Row(
                 children: [
@@ -914,7 +951,7 @@ class _StatCard extends StatelessWidget {
               style: TextStyle(fontSize: 31, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(color: AdnColors.muted)),
+            Text(label, style: TextStyle(color: AdnColors.muted)),
           ],
         ),
       ),

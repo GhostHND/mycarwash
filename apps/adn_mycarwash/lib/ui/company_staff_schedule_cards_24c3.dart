@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import 'company_employee_cards_24c3.dart';
@@ -88,8 +89,8 @@ class CompanyStaffScheduleGrid24C3 extends StatelessWidget {
                       : _value(row['name']),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: CompanyVisualTheme.text,
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                   ),
@@ -99,7 +100,7 @@ class CompanyStaffScheduleGrid24C3 extends StatelessWidget {
                 active ? 'Activo' : 'Inactivo',
                 style: TextStyle(
                   fontSize: 11,
-                  color: active ? const Color(0xFF27CC9D) : scheme.error,
+                  color: active ? CompanyVisualTheme.legacy(const Color(0xFF27CC9D)) : scheme.error,
                 ),
               ),
             ],

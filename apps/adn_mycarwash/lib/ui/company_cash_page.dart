@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -34,10 +35,10 @@ class CompanyCashPage extends StatefulWidget {
 }
 
 class _CompanyCashPageState extends State<CompanyCashPage> {
-  static const Color _turquoise = Color(0xFF0FA7B4);
-  static const Color _muted = Color(0xFF9BAEB6);
-  static const Color _border = Color(0xFF20343C);
-  static const Color _surface = Color(0xFF0A1519);
+  static Color get _turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
+  static Color get _border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
 
   late final http.Client _client;
   late final bool _ownsClient;
@@ -227,8 +228,8 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -236,15 +237,15 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
 
   InputDecoration _decoration(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: _muted),
+    labelStyle: TextStyle(color: _muted),
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _border),
+      borderSide: BorderSide(color: _border),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _turquoise),
+      borderSide: BorderSide(color: _turquoise),
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -333,7 +334,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
           backgroundColor: _surface,
           title: Text(
             existing == null ? 'Nuevo $_single' : 'Editar $_single',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
           ),
           content: SizedBox(
             width: 560,
@@ -399,7 +400,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
                                   )
                                 : TextInputType.text,
                             maxLines: field.multiline ? 3 : 1,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                             decoration: _decoration(field.name),
                             validator: (value) {
                               final v = (value ?? '').trim();
@@ -441,7 +442,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
                     if (dialogError != null)
                       Text(
                         dialogError!,
-                        style: const TextStyle(color: Color(0xFFFF8995)),
+                        style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                       ),
                   ],
                 ),
@@ -712,7 +713,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'El cierre es definitivo y no se puede editar.',
                     style: TextStyle(color: _muted),
                   ),
@@ -797,7 +798,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
   Widget _financeCard24K(Map<String, dynamic> row) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: const Color(0xFF0D2025),
+      color: CompanyVisualTheme.legacy(const Color(0xFF0D2025)),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: _border),
     ),
@@ -808,16 +809,16 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.payments_outlined, color: _turquoise, size: 21),
+            Icon(Icons.payments_outlined, color: _turquoise, size: 21),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 _summary(row),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: CompanyVisualTheme.text,
                   fontSize: 14,
                 ),
               ),
@@ -827,10 +828,10 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
         const SizedBox(height: 8),
         Text(
           'ID ${row['id']}',
-          style: const TextStyle(color: _muted, fontSize: 11),
+          style: TextStyle(color: _muted, fontSize: 11),
         ),
         const SizedBox(height: 10),
-        const Divider(color: _border, height: 1),
+        Divider(color: _border, height: 1),
         const SizedBox(height: 5),
         Wrap(
           spacing: 6,
@@ -849,12 +850,12 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
               IconButton(
                 tooltip: 'Historial',
                 onPressed: () => _history(row),
-                icon: const Icon(Icons.history, color: _muted),
+                icon: Icon(Icons.history, color: _muted),
               ),
             IconButton(
               tooltip: 'Consultar',
               onPressed: () => _details(row),
-              icon: const Icon(Icons.visibility_outlined, color: _muted),
+              icon: Icon(Icons.visibility_outlined, color: _muted),
             ),
             IconButton(
               tooltip: 'Editar',
@@ -863,7 +864,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
                       row['status'] == 'CLOSED'
                   ? null
                   : () => _edit(row),
-              icon: const Icon(Icons.edit_outlined, color: _turquoise),
+              icon: Icon(Icons.edit_outlined, color: _turquoise),
             ),
             IconButton(
               tooltip: 'Eliminar',
@@ -872,7 +873,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
                       row['status'] == 'CLOSED'
                   ? null
                   : () => _delete(row),
-              icon: const Icon(Icons.delete_outline, color: Color(0xFFE84657)),
+              icon: Icon(Icons.delete_outline, color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
             ),
           ],
         ),
@@ -902,14 +903,14 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
               children: [
                 Text(
                   _title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 23,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(_description, style: const TextStyle(color: _muted)),
+                Text(_description, style: TextStyle(color: _muted)),
               ],
             ),
             FilledButton.icon(
@@ -926,11 +927,11 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
           onChanged: _searchChanged,
           decoration: _decoration(
             'Buscar registros',
-          ).copyWith(prefixIcon: const Icon(Icons.search, color: _turquoise)),
+          ).copyWith(prefixIcon: Icon(Icons.search, color: _turquoise)),
         ),
         const SizedBox(height: 16),
         if (_loading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator(color: _turquoise)),
           )
@@ -938,12 +939,12 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
+              Text(_error!, style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
               OutlinedButton(onPressed: _load, child: const Text('Reintentar')),
             ],
           )
         else if (_rows.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text('No hay registros.', style: TextStyle(color: _muted)),
@@ -984,7 +985,7 @@ class _CompanyCashPageState extends State<CompanyCashPage> {
             ),
             Text(
               'Página $_page de $_pages',
-              style: const TextStyle(color: _muted),
+              style: TextStyle(color: _muted),
             ),
             IconButton(
               tooltip: 'Página siguiente',

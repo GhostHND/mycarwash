@@ -91,6 +91,19 @@ class SessionController extends Controller
             ->orderBy('companies.name')
             ->get();
 
+        $companies = $companies->map(function ($company) use ($user) {
+            $roleIds = DB::table('user_roles')->where('company_id', $company->id)
+                ->where('user_id', $user->id)->pluck('role_id');
+            $company->permissions = DB::table('role_permission as rp')
+                ->join('permissions as p', 'p.id', '=', 'rp.permission_id')
+                ->whereIn('rp.role_id', $roleIds)->where('p.code', 'like', 'nav.%')
+                ->pluck('p.code')->unique()->values()->all();
+            $company->legacy_full_access = DB::table('roles')->whereIn('id', $roleIds)
+                ->where('code', 'owner')->where('is_system', true)->exists()
+                || $company->permissions === [];
+            return $company;
+        });
+
         return response()->json([
             'user' => [
                 'id' => $user->id,

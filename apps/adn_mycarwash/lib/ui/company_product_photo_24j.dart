@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -156,11 +157,11 @@ class _CompanyProductPhotoField24JState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'Fotografía del producto',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: CompanyVisualTheme.text, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 8),
@@ -169,7 +170,7 @@ class _CompanyProductPhotoField24JState
           width: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: const Color(0xFF182A30),
+            color: CompanyVisualTheme.legacy(const Color(0xFF182A30)),
             borderRadius: BorderRadius.circular(10),
           ),
           child: loading
@@ -283,7 +284,7 @@ class _CompanyProductPhotoView24JState
           return Icon(
             widget.icon,
             size: widget.size * .57,
-            color: const Color(0xFF0FA7B4),
+            color: CompanyVisualTheme.legacy(const Color(0xFF0FA7B4)),
           );
         }
         return ClipRRect(

@@ -12,22 +12,24 @@ import 'company_addresses_section.dart';
 import 'company_schedule_section.dart';
 import 'company_social_links_section.dart';
 import 'company_preferences_section.dart';
+import '../core/company_visual_theme.dart';
 
 class CompanySettingsPage extends StatefulWidget {
-  const CompanySettingsPage({super.key, this.client, this.initialSection = 0});
+  const CompanySettingsPage({super.key, this.client, this.initialSection = 0, this.configurationOnly = false});
 
   final http.Client? client;
   final int initialSection;
+  final bool configurationOnly;
 
   @override
   State<CompanySettingsPage> createState() => _CompanySettingsPageState();
 }
 
 class _CompanySettingsPageState extends State<CompanySettingsPage> {
-  static const turquoise = Color(0xFF0FA7B4);
-  static const surface = Color(0xFF0A1519);
-  static const border = Color(0xFF20343C);
-  static const muted = Color(0xFF9BAEB6);
+  static Color get turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
 
   static const profileLabels = <String, String>{
     'commercial_name': 'Nombre comercial',
@@ -54,6 +56,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     'accent_color': 'Acento',
     'background_color': 'Fondo',
     'surface_color': 'Superficies',
+    'card_color': 'Tarjetas de todas las pantallas',
+    'border_color': 'Contornos y divisiones',
+    'field_color': 'Campos y formularios',
+    'icon_color': 'Iconos',
+    'heading_color': 'Encabezados',
+    'hover_color': 'Al pasar el cursor',
+    'selected_color': 'Elementos seleccionados',
     'text_color': 'Texto',
     'muted_text_color': 'Texto secundario',
     'sidebar_color': 'Menú lateral',
@@ -63,20 +72,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     'danger_color': 'Error',
   };
 
-  static const defaultColors = <String, String>{
-    'primary_color': '#0FA7B4',
-    'secondary_color': '#1D1D1B',
-    'accent_color': '#ED7E24',
-    'background_color': '#FFFFFF',
-    'surface_color': '#F5F7F8',
-    'text_color': '#1D1D1B',
-    'muted_text_color': '#64748B',
-    'sidebar_color': '#1D1D1B',
-    'button_color': '#0FA7B4',
-    'success_color': '#16A34A',
-    'warning_color': '#F59E0B',
-    'danger_color': '#DC2626',
-  };
+  static const defaultColors = CompanyVisualTheme.defaults;
 
   late final http.Client _client;
   late final bool _ownsClient;
@@ -116,9 +112,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
 
     _ownsClient = widget.client == null;
     _client = widget.client ?? http.Client();
-    _section = widget.initialSection >= 0 && widget.initialSection <= 7
-        ? widget.initialSection
-        : 0;
+    _section = widget.configurationOnly ? 2 : 0;
 
     for (final key in profileLabels.keys) {
       _profile[key] = TextEditingController();
@@ -254,8 +248,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -286,9 +280,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             : '';
       }
 
+      final normalizedBranding = CompanyVisualTheme.normalize(branding is Map ? branding : null);
       for (final entry in _colors.entries) {
-        entry.value.text = branding is Map
-            ? (branding[entry.key] ?? defaultColors[entry.key]).toString()
+        entry.value.text = normalizedBranding is Map
+            ? (normalizedBranding[entry.key] ?? defaultColors[entry.key]).toString()
             : defaultColors[entry.key]!;
       }
 
@@ -381,10 +376,75 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     try {
       await _request('PATCH', '/settings/branding', body: payload);
 
+      final saved = await _request('GET', '/settings');
+      final freshBrand = saved['branding'];
+      CompanyVisualTheme.load(freshBrand is Map ? freshBrand : payload);
       await BusinessIdentity.refresh(client: _client);
-      _notify('Identidad visual empresarial guardada en MySQL.');
+      _notify('Identidad visual aplicada y guardada para todas las pantallas conectadas al tema.');
     } catch (error) {
       _notify(error.toString(), error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Restaura SOLO la paleta de colores, sin modificar otros ajustes de empresa.
+  /// Se almacena inmediatamente en MySQL mediante la API autorizada.
+  Future<void> _restoreDefaultColors() async {
+    if (_saving) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF071B20),
+        title: const Text(
+          'Restaurar colores por defecto',
+          style: TextStyle(color: Color(0xFFF4F7F8)),
+        ),
+        content: const Text(
+          'Se restaurarán los 19 colores azul oscuro y turquesa. '
+          'No se modificarán el logotipo, los usuarios ni otras preferencias.',
+          style: TextStyle(color: Color(0xFFA5B6BB)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const ValueKey('admin_confirm_default_palette'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF00DCE5),
+              foregroundColor: const Color(0xFF051318),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Restaurar colores'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      // La misma API de identidad visual valida permisos y persiste los 19 HEX.
+      await _request(
+        'PATCH',
+        '/settings/branding',
+        body: Map<String, dynamic>.from(CompanyVisualTheme.defaults),
+      );
+      final data = await _request('GET', '/settings');
+      final branding = data['branding'];
+      CompanyVisualTheme.load(branding is Map ? branding : CompanyVisualTheme.defaults);
+      for (final entry in _colors.entries) {
+        entry.value.text = CompanyVisualTheme.defaults[entry.key]!;
+      }
+      await BusinessIdentity.refresh(client: _client);
+      if (mounted) {
+        setState(() {});
+        _notify('Paleta azul oscuro y turquesa restaurada y guardada.');
+      }
+    } catch (error) {
+      _notify('No se pudieron restaurar los colores: $error', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -492,7 +552,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               backgroundColor: surface,
               title: Text(
                 existing == null ? 'Nuevo contacto' : 'Editar contacto',
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: CompanyVisualTheme.text),
               ),
               content: SizedBox(
                 width: 470,
@@ -505,7 +565,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                         DropdownButtonFormField<String>(
                           initialValue: type,
                           dropdownColor: surface,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: CompanyVisualTheme.text),
                           decoration: _inputDecoration('Tipo de contacto'),
                           items: const [
                             DropdownMenuItem(
@@ -536,7 +596,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: value,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: CompanyVisualTheme.text),
                           decoration: _inputDecoration('Número, correo o dato'),
                           validator: (text) {
                             if (text == null || text.trim().isEmpty) {
@@ -548,26 +608,26 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: label,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: CompanyVisualTheme.text),
                           decoration: _inputDecoration('Etiqueta'),
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: person,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: CompanyVisualTheme.text),
                           decoration: _inputDecoration('Persona de contacto'),
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: department,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: CompanyVisualTheme.text),
                           decoration: _inputDecoration('Departamento'),
                         ),
                         const SizedBox(height: 8),
                         SwitchListTile(
-                          title: const Text(
+                          title: Text(
                             'Contacto principal',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                           ),
                           value: isPrimary,
                           activeThumbColor: turquoise,
@@ -577,9 +637,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                                     updateDialog(() => isPrimary = value),
                         ),
                         SwitchListTile(
-                          title: const Text(
+                          title: Text(
                             'Visible públicamente',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                           ),
                           value: isPublic,
                           activeThumbColor: turquoise,
@@ -592,7 +652,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
                               dialogError!,
-                              style: const TextStyle(color: Color(0xFFFF8995)),
+                              style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                             ),
                           ),
                       ],
@@ -682,13 +742,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: surface,
-          title: const Text(
+          title: Text(
             'Eliminar contacto',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
           ),
           content: Text(
             '¿Eliminar "${contact['value']}"? Esta acción no se puede deshacer.',
-            style: const TextStyle(color: muted),
+            style: TextStyle(color: muted),
           ),
           actions: [
             TextButton(
@@ -698,7 +758,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFB63D4A),
+                backgroundColor: CompanyVisualTheme.legacy(const Color(0xFFB63D4A)),
               ),
               child: const Text('Eliminar'),
             ),
@@ -721,23 +781,23 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: muted),
+      labelStyle: TextStyle(color: muted),
       filled: true,
-      fillColor: const Color(0xFF111F25),
+      fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
       enabledBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: border),
+        borderSide: BorderSide(color: border),
         borderRadius: BorderRadius.circular(10),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: turquoise),
+        borderSide: BorderSide(color: turquoise),
         borderRadius: BorderRadius.circular(10),
       ),
       errorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFFE84657)),
+        borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
         borderRadius: BorderRadius.circular(10),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFFE84657)),
+        borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
         borderRadius: BorderRadius.circular(10),
       ),
     );
@@ -748,16 +808,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF102129), Color(0xFF0B181E)],
+        gradient: LinearGradient(
+          colors: [CompanyVisualTheme.legacy(const Color(0xFF102129)), CompanyVisualTheme.legacy(const Color(0xFF0B181E))],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: const Color(0xFF2A414A)),
-        boxShadow: const [
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x18000000),
+            color: CompanyVisualTheme.legacy(const Color(0x18000000)),
             blurRadius: 18,
             offset: Offset(0, 7),
           ),
@@ -780,7 +840,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     return TextField(
       controller: _profile[key],
       maxLines: longText ? 3 : 1,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: CompanyVisualTheme.text),
       decoration: _inputDecoration(label),
     );
   }
@@ -795,9 +855,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: const Color(0xFF12242C),
+        color: CompanyVisualTheme.legacy(const Color(0xFF12242C)),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFF2A414A)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -819,8 +879,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: CompanyVisualTheme.text,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -828,7 +888,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                     const SizedBox(height: 3),
                     Text(
                       description,
-                      style: const TextStyle(color: muted, fontSize: 12),
+                      style: TextStyle(color: muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -864,16 +924,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Información general',
             style: TextStyle(
-              color: Colors.white,
+              color: CompanyVisualTheme.text,
               fontSize: 20,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 7),
-          const Text(
+          Text(
             'Organiza los datos comerciales, los canales de contacto y la presentación del negocio.',
             style: TextStyle(color: muted),
           ),
@@ -931,19 +991,19 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     return FilledButton.icon(
       onPressed: _saving ? null : onPressed,
       icon: _saving
-          ? const SizedBox(
+          ? SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: CompanyVisualTheme.text,
               ),
             )
           : const Icon(Icons.save_outlined),
       label: Text(_saving ? 'Guardando...' : label),
       style: FilledButton.styleFrom(
         backgroundColor: turquoise,
-        foregroundColor: Colors.white,
+        foregroundColor: const Color(0xFF051318),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17),
       ),
     );
@@ -959,13 +1019,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             runSpacing: 12,
             alignment: WrapAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Contactos',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: CompanyVisualTheme.text,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
@@ -989,17 +1049,17 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
           TextField(
             controller: _search,
             onChanged: _onSearch,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
             decoration:
                 _inputDecoration(
                   'Buscar por ID, nombre, teléfono, correo o departamento',
                 ).copyWith(
-                  prefixIcon: const Icon(Icons.search, color: turquoise),
+                  prefixIcon: Icon(Icons.search, color: turquoise),
                   suffixIcon: _search.text.isEmpty
                       ? null
                       : IconButton(
                           tooltip: 'Limpiar búsqueda',
-                          icon: const Icon(Icons.close, color: muted),
+                          icon: Icon(Icons.close, color: muted),
                           onPressed: () {
                             _search.clear();
                             setState(() {});
@@ -1010,7 +1070,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
           ),
           const SizedBox(height: 18),
           if (_contactsLoading)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.all(22),
                 child: CircularProgressIndicator(color: turquoise),
@@ -1019,10 +1079,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
           else if (_contactsError != null)
             Text(
               _contactsError!,
-              style: const TextStyle(color: Color(0xFFFF8995)),
+              style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
             )
           else if (_contacts.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 32),
               child: Center(
                 child: Text(
@@ -1037,13 +1097,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF12242C),
+                  color: CompanyVisualTheme.legacy(const Color(0xFF12242C)),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF2A414A)),
+                  border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.contact_phone_outlined, color: turquoise),
+                    Icon(Icons.contact_phone_outlined, color: turquoise),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1054,22 +1114,22 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                                     contact['label'] ??
                                     'Contacto')
                                 .toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: CompanyVisualTheme.text,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 5),
                           Text(
                             '${contact['value']} · ${contact['type']} · ID ${contact['id']}',
-                            style: const TextStyle(color: muted, fontSize: 12),
+                            style: TextStyle(color: muted, fontSize: 12),
                           ),
                           if ((contact['department'] ?? '')
                               .toString()
                               .isNotEmpty)
                             Text(
                               contact['department'].toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: muted,
                                 fontSize: 11,
                               ),
@@ -1080,14 +1140,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                     IconButton(
                       tooltip: 'Editar',
                       onPressed: () => _editContact(contact),
-                      icon: const Icon(Icons.edit_outlined, color: turquoise),
+                      icon: Icon(Icons.edit_outlined, color: turquoise),
                     ),
                     IconButton(
                       tooltip: 'Eliminar',
                       onPressed: () => _deleteContact(contact),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline,
-                        color: Color(0xFFE84657),
+                        color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                       ),
                     ),
                   ],
@@ -1109,7 +1169,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               ),
               Text(
                 'Página $_contactPage de $_lastPage',
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: muted),
               ),
               IconButton(
                 tooltip: 'Página siguiente',
@@ -1128,28 +1188,62 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
     );
   }
 
+  Future<void> _chooseColor(String key) async {
+    var hsv = HSVColor.fromColor(_parseColor(_colors[key]!.text, turquoise));
+    final selected = await showDialog<Color>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, change) => AlertDialog(
+          title: Text('Color: ${colorLabels[key]}'),
+          content: SizedBox(
+            width: 370,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(height: 65, decoration: BoxDecoration(
+                color: hsv.toColor(), borderRadius: BorderRadius.circular(13),
+              )),
+              const SizedBox(height: 12),
+              const Text('Tono'),
+              Slider(value: hsv.hue, max: 360, onChanged: (v) => change(() => hsv = hsv.withHue(v))),
+              const Text('Saturación'),
+              Slider(value: hsv.saturation, onChanged: (v) => change(() => hsv = hsv.withSaturation(v))),
+              const Text('Brillo'),
+              Slider(value: hsv.value, onChanged: (v) => change(() => hsv = hsv.withValue(v))),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, hsv.toColor()), child: const Text('Usar color')),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    final hex = selected.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase();
+    setState(() => _colors[key]!.text = '#$hex');
+  }
+
   Widget _brandingSection() {
     final primary = _parseColor(_colors['primary_color']!.text, turquoise);
 
     final sidebar = _parseColor(
       _colors['sidebar_color']!.text,
-      const Color(0xFF1D1D1B),
+      CompanyVisualTheme.legacy(const Color(0xFF1D1D1B)),
     );
 
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Identidad visual de tu negocio',
+          Text(
+            'Identidad visual de todo el sistema',
             style: TextStyle(
-              color: Colors.white,
+              color: CompanyVisualTheme.text,
               fontSize: 20,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Personaliza los colores del negocio. La identidad oficial ADN no se modifica.',
             style: TextStyle(color: muted),
           ),
@@ -1168,7 +1262,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                   height: 55,
                   padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Image.asset(
@@ -1177,14 +1271,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'ADN MyCarWash',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: CompanyVisualTheme.text,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1207,8 +1301,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Vista previa de marca. El cambio global del tema se integrará después.',
+          Text(
+            'Previsualización de los colores en tarjetas, botones y superficies. Guarda para aplicar el tema.',
             style: TextStyle(color: muted, fontSize: 12),
           ),
           const SizedBox(height: 22),
@@ -1239,11 +1333,17 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Elegir color para ${entry.value}',
+                            onPressed: () => _chooseColor(entry.key),
+                            icon: Icon(Icons.colorize_outlined, color: turquoise),
+                          ),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: TextField(
                               controller: _colors[entry.key],
-                              style: const TextStyle(color: Colors.white),
+                              style: TextStyle(color: CompanyVisualTheme.text),
                               decoration: _inputDecoration(entry.value),
                               onChanged: (_) => setState(() {}),
                             ),
@@ -1265,7 +1365,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               DropdownButton<String>(
                 value: _buttonStyle,
                 dropdownColor: surface,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: CompanyVisualTheme.text),
                 items: const [
                   DropdownMenuItem(
                     value: 'rounded',
@@ -1287,7 +1387,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               DropdownButton<String>(
                 value: _sidebarStyle,
                 dropdownColor: surface,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: CompanyVisualTheme.text),
                 items: const [
                   DropdownMenuItem(
                     value: 'expanded',
@@ -1305,27 +1405,45 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             ],
           ),
           SwitchListTile(
-            title: const Text(
+            title: Text(
               'Interfaz compacta',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: CompanyVisualTheme.text),
             ),
             value: _compactMode,
             activeThumbColor: turquoise,
             onChanged: (value) => setState(() => _compactMode = value),
           ),
           SwitchListTile(
-            title: const Text(
+            title: Text(
               'Mostrar nombre comercial',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: CompanyVisualTheme.text),
             ),
             value: _showBusinessName,
             activeThumbColor: turquoise,
             onChanged: (value) => setState(() => _showBusinessName = value),
           ),
           const SizedBox(height: 14),
-          _saveButton(
-            label: 'Guardar identidad visual',
-            onPressed: _saveBranding,
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _saveButton(
+                label: 'Guardar identidad visual',
+                onPressed: _saveBranding,
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('admin_reset_palette_default'),
+                onPressed: _saving ? null : _restoreDefaultColors,
+                icon: const Icon(Icons.restart_alt_rounded),
+                label: const Text('Restaurar colores por defecto'),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: const Color(0xFF061115),
+                  foregroundColor: const Color(0xFF00DCE5),
+                  side: const BorderSide(color: Color(0xFF00DCE5)),
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1356,13 +1474,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                 colors: active
                     ? [
                         turquoise.withValues(alpha: 0.22),
-                        const Color(0xFF142D34),
+                        CompanyVisualTheme.legacy(const Color(0xFF142D34)),
                       ]
-                    : [const Color(0xFF12232B), const Color(0xFF0E1B22)],
+                    : [CompanyVisualTheme.legacy(const Color(0xFF12232B)), CompanyVisualTheme.legacy(const Color(0xFF0E1B22))],
               ),
               borderRadius: BorderRadius.circular(15),
               border: Border.all(
-                color: active ? turquoise : const Color(0xFF2A414A),
+                color: active ? turquoise : CompanyVisualTheme.legacy(const Color(0xFF2A414A)),
                 width: active ? 1.5 : 1,
               ),
             ),
@@ -1373,7 +1491,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                   decoration: BoxDecoration(
                     color: active
                         ? turquoise.withValues(alpha: 0.23)
-                        : const Color(0xFF21343D),
+                        : CompanyVisualTheme.legacy(const Color(0xFF21343D)),
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
@@ -1393,7 +1511,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: CompanyVisualTheme.text,
                           fontSize: 13,
                           fontWeight: active
                               ? FontWeight.w800
@@ -1405,13 +1523,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                         description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: muted, fontSize: 11),
+                        style: TextStyle(color: muted, fontSize: 11),
                       ),
                     ],
                   ),
                 ),
                 if (active)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(left: 4),
                     child: Icon(Icons.check_circle, size: 15, color: turquoise),
                   ),
@@ -1429,12 +1547,12 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF11313A), Color(0xFF10232B), Color(0xFF0B181E)],
+        gradient: LinearGradient(
+          colors: [CompanyVisualTheme.legacy(const Color(0xFF11313A)), CompanyVisualTheme.legacy(const Color(0xFF10232B)), CompanyVisualTheme.legacy(const Color(0xFF0B181E))],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: const Color(0xFF27616A)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF27616A))),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Wrap(
@@ -1449,7 +1567,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'ADN PUBLICIDAD · SOFTWARE',
                   style: TextStyle(
                     color: turquoise,
@@ -1459,10 +1577,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Mi Empresa',
+                Text(
+                  widget.configurationOnly ? 'Configuración' : 'Mi Empresa',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                     fontSize: 29,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1472,15 +1590,15 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
                   _companyName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFFD8EAEC),
+                  style: TextStyle(
+                    color: CompanyVisualTheme.legacy(const Color(0xFFD8EAEC)),
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 9),
-                const Text(
-                  'Configuración del negocio',
+                Text(
+                  widget.configurationOnly ? 'Personalización y preferencias' : 'Información del negocio',
                   style: TextStyle(color: muted, fontSize: 12),
                 ),
               ],
@@ -1493,15 +1611,15 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: turquoise.withValues(alpha: 0.32)),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.tune_outlined, size: 18, color: turquoise),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
-                  '8 áreas de configuración',
+                  widget.configurationOnly ? '2 áreas de configuración' : '6 áreas de empresa',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -1515,82 +1633,32 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
   }
 
   Widget _navigation24N() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final available = constraints.maxWidth;
-        final columns = available >= 1060
-            ? 4
-            : available >= 700
-            ? 3
-            : available >= 430
-            ? 2
-            : 1;
-        final width = (available - (columns - 1) * 12) / columns;
-        return Wrap(
-          key: const ValueKey('admin_sections_24n'),
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _tab(
-              'Información',
-              'Datos comerciales',
-              Icons.business_outlined,
-              0,
-              width,
-            ),
-            _tab(
-              'Contactos',
-              'Teléfonos y correos',
-              Icons.contacts_outlined,
-              1,
-              width,
-            ),
-            _tab(
-              'Identidad visual',
-              'Colores y logotipo',
-              Icons.palette_outlined,
-              2,
-              width,
-            ),
-            _tab(
-              'Datos fiscales',
-              'Información tributaria',
-              Icons.receipt_long_outlined,
-              3,
-              width,
-            ),
-            _tab(
-              'Direcciones',
-              'Sucursales y ubicación',
-              Icons.place_outlined,
-              4,
-              width,
-            ),
-            _tab(
-              'Horarios',
-              'Apertura y excepciones',
-              Icons.schedule_outlined,
-              5,
-              width,
-            ),
-            _tab(
-              'Redes sociales',
-              'Presencia digital',
-              Icons.public_outlined,
-              6,
-              width,
-            ),
-            _tab(
-              'Preferencias',
-              'Moneda e impresión',
-              Icons.tune_outlined,
-              7,
-              width,
-            ),
-          ],
-        );
-      },
-    );
+    final choices = widget.configurationOnly
+        ? <(String, String, IconData, int)>[
+            ('Identidad visual', 'Colores, tarjetas y logotipo', Icons.palette_outlined, 2),
+            ('Preferencias de sistema', 'Idioma, moneda, formatos e impresión', Icons.tune_outlined, 7),
+          ]
+        : <(String, String, IconData, int)>[
+            ('Información', 'Datos comerciales', Icons.business_outlined, 0),
+            ('Contactos', 'Teléfonos y correos', Icons.contacts_outlined, 1),
+            ('Datos fiscales', 'Información tributaria', Icons.receipt_long_outlined, 3),
+            ('Dirección', 'Sucursales y ubicación', Icons.place_outlined, 4),
+            ('Horarios', 'Apertura y excepciones', Icons.schedule_outlined, 5),
+            ('Redes sociales', 'Presencia digital', Icons.public_outlined, 6),
+          ];
+    return LayoutBuilder(builder: (context, constraints) {
+      final available = constraints.maxWidth;
+      final columns = available >= 1060 ? 3 : available >= 700 ? 2 : 1;
+      final width = (available - (columns - 1) * 12) / columns;
+      return Wrap(
+        key: const ValueKey('admin_sections_24n'),
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          for (final item in choices) _tab(item.$1, item.$2, item.$3, item.$4, width),
+        ],
+      );
+    });
   }
 
   @override
@@ -1601,7 +1669,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
         _hero24N(),
         const SizedBox(height: 20),
         if (_loading)
-          const Center(
+          Center(
             child: Padding(
               padding: EdgeInsets.all(48),
               child: CircularProgressIndicator(color: turquoise),
@@ -1612,7 +1680,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
+                Text(_error!, style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
                 const SizedBox(height: 15),
                 OutlinedButton(
                   onPressed: _loadSettings,
@@ -1622,7 +1690,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
             ),
           )
         else ...[
-          const Text(
+          Text(
             'ADMINISTRACIÓN DEL NEGOCIO',
             style: TextStyle(
               color: turquoise,
@@ -1636,17 +1704,17 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
           const SizedBox(height: 17),
           Row(
             children: [
-              const Icon(Icons.edit_outlined, size: 17, color: turquoise),
+              Icon(Icons.edit_outlined, size: 17, color: turquoise),
               const SizedBox(width: 7),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Edita cada área por separado y utiliza su botón Guardar para confirmar los cambios.',
                   style: TextStyle(color: muted, fontSize: 12),
                 ),
               ),
               Text(
-                '${_section + 1} / 8',
-                style: const TextStyle(
+                '${widget.configurationOnly ? (_section == 2 ? 1 : 2) : ([0,1,3,4,5,6].indexOf(_section) + 1)} / ${widget.configurationOnly ? 2 : 6}',
+                style: TextStyle(
                   color: turquoise,
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -1668,7 +1736,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage> {
               companyName: _companyName,
             ),
           const SizedBox(height: 18),
-          const Row(
+          Row(
             children: [
               Icon(Icons.lock_outline, color: muted, size: 16),
               SizedBox(width: 8),

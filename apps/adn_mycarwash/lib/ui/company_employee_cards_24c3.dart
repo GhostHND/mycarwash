@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/mycarwash_session.dart';
@@ -134,7 +135,7 @@ class CompanyEmployeesGrid24C3 extends StatelessWidget {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: CompanyVisualTheme.text, fontSize: 14),
                 ),
               ),
             ),
@@ -176,8 +177,8 @@ class CompanyEmployeesGrid24C3 extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: CompanyVisualTheme.text,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
@@ -188,7 +189,7 @@ class CompanyEmployeesGrid24C3 extends StatelessWidget {
               Text(
                 inactive ? 'Inactivo' : 'Activo',
                 style: TextStyle(
-                  color: inactive ? scheme.error : const Color(0xFF27CC9D),
+                  color: inactive ? scheme.error : CompanyVisualTheme.legacy(const Color(0xFF27CC9D)),
                   fontSize: 14,
                 ),
               ),

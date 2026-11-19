@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
@@ -49,10 +50,10 @@ class _DaySchedule {
 }
 
 class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
-  static const turquoise = Color(0xFF0FA7B4);
-  static const surface = Color(0xFF0A1519);
-  static const border = Color(0xFF20343C);
-  static const muted = Color(0xFF9BAEB6);
+  static Color get turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
   static const daysOfWeek = <String>[
     'Domingo',
     'Lunes',
@@ -103,31 +104,31 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
         backgroundColor: isError
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
       ),
     );
   }
 
   InputDecoration _decor(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: muted),
+    labelStyle: TextStyle(color: muted),
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: border),
+      borderSide: BorderSide(color: border),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: turquoise),
+      borderSide: BorderSide(color: turquoise),
       borderRadius: BorderRadius.circular(10),
     ),
     errorBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: Color(0xFFE84657)),
+      borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedErrorBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: Color(0xFFE84657)),
+      borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -136,13 +137,13 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
     width: double.infinity,
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+      gradient: LinearGradient(
+        colors: [CompanyVisualTheme.legacy(const Color(0xFF11242C)), CompanyVisualTheme.legacy(const Color(0xFF0A171D))],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
       borderRadius: BorderRadius.circular(19),
-      border: Border.all(color: const Color(0xFF2A414A)),
+      border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
     ),
     child: child,
   );
@@ -284,9 +285,9 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
       controller: value,
       readOnly: true,
       onTap: () => _pickTime(value),
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: CompanyVisualTheme.text),
       decoration: _decor(label).copyWith(
-        suffixIcon: const Icon(Icons.access_time, color: turquoise, size: 18),
+        suffixIcon: Icon(Icons.access_time, color: turquoise, size: 18),
       ),
     ),
   );
@@ -295,24 +296,24 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Horario semanal',
           style: TextStyle(
-            color: Colors.white,
+            color: CompanyVisualTheme.text,
             fontWeight: FontWeight.w800,
             fontSize: 20,
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'Domingo a sábado. Los horarios deben estar dentro del mismo día.',
           style: TextStyle(color: muted),
         ),
         const SizedBox(height: 20),
         if (_loadingWeek)
-          const Center(child: CircularProgressIndicator(color: turquoise))
+          Center(child: CircularProgressIndicator(color: turquoise))
         else if (_weekError != null) ...[
-          Text(_weekError!, style: const TextStyle(color: Color(0xFFFF8995))),
+          Text(_weekError!, style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
           TextButton(
             onPressed: _loadWeek,
             child: const Text('Reintentar horario'),
@@ -324,8 +325,8 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: _days[i].closed
-                    ? const Color(0xFF17232A)
-                    : const Color(0xFF122C33),
+                    ? CompanyVisualTheme.legacy(const Color(0xFF17232A))
+                    : CompanyVisualTheme.legacy(const Color(0xFF122C33)),
                 border: Border.all(
                   color: _days[i].closed
                       ? border
@@ -341,13 +342,13 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                       Expanded(
                         child: Text(
                           daysOfWeek[i],
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: CompanyVisualTheme.text,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      const Text('Cerrado', style: TextStyle(color: muted)),
+                      Text('Cerrado', style: TextStyle(color: muted)),
                       Switch(
                         key: ValueKey('weekly_closed_$i'),
                         value: _days[i].closed,
@@ -376,7 +377,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                   TextField(
                     controller: _days[i].notes,
                     maxLength: 255,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: CompanyVisualTheme.text),
                     decoration: _decor('Observaciones (opcional)'),
                   ),
                 ],
@@ -464,7 +465,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
           backgroundColor: surface,
           title: Text(
             existing == null ? 'Nueva fecha especial' : 'Editar fecha especial',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
           ),
           content: SizedBox(
             width: 490,
@@ -482,7 +483,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
                         LengthLimitingTextInputFormatter(10),
                       ],
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: CompanyVisualTheme.text),
                       decoration: _decor('Fecha (AAAA-MM-DD)'),
                       onChanged: (v) => date = v.trim(),
                       validator: (v) {
@@ -497,16 +498,16 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                       initialValue: reason,
                       enabled: !saving,
                       maxLength: 190,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: CompanyVisualTheme.text),
                       decoration: _decor('Motivo'),
                       onChanged: (v) => reason = v,
                     ),
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Negocio cerrado ese día',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                           ),
                         ),
                         Switch(
@@ -523,7 +524,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                       TextFormField(
                         initialValue: opens,
                         enabled: !saving,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: CompanyVisualTheme.text),
                         decoration: _decor('Abre (HH:mm)'),
                         onChanged: (v) => opens = v.trim(),
                         validator: (v) => _validTime((v ?? '').trim())
@@ -534,7 +535,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                       TextFormField(
                         initialValue: closes,
                         enabled: !saving,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: CompanyVisualTheme.text),
                         decoration: _decor('Cierra (HH:mm)'),
                         onChanged: (v) => closes = v.trim(),
                         validator: (v) => _validTime((v ?? '').trim())
@@ -548,7 +549,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                       enabled: !saving,
                       maxLines: 3,
                       maxLength: 5000,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: CompanyVisualTheme.text),
                       decoration: _decor('Notas (opcional)'),
                       onChanged: (v) => notes = v,
                     ),
@@ -556,7 +557,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                       const SizedBox(height: 8),
                       Text(
                         error!,
-                        style: const TextStyle(color: Color(0xFFFF8995)),
+                        style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                       ),
                     ],
                   ],
@@ -636,13 +637,13 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: surface,
-        title: const Text(
+        title: Text(
           'Eliminar fecha especial',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: CompanyVisualTheme.text),
         ),
         content: Text(
           '¿Eliminar ${item['special_date']}? Esta acción no se puede deshacer.',
-          style: const TextStyle(color: muted),
+          style: TextStyle(color: muted),
         ),
         actions: [
           TextButton(
@@ -678,11 +679,11 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
           runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Text(
+            Text(
               'Fechas especiales',
               style: TextStyle(
                 fontSize: 20,
-                color: Colors.white,
+                color: CompanyVisualTheme.text,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -695,7 +696,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
           ],
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Feriados, cierres y horarios excepcionales por fecha.',
           style: TextStyle(color: muted),
         ),
@@ -703,24 +704,24 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
         TextField(
           controller: _search,
           onChanged: _onSpecialSearch,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: CompanyVisualTheme.text),
           decoration: _decor('Buscar por fecha, motivo o nota')
-              .copyWith(prefixIcon: const Icon(Icons.search, color: turquoise)),
+              .copyWith(prefixIcon: Icon(Icons.search, color: turquoise)),
         ),
         const SizedBox(height: 14),
         if (_loadingSpecial)
-          const Center(child: CircularProgressIndicator(color: turquoise))
+          Center(child: CircularProgressIndicator(color: turquoise))
         else if (_specialError != null) ...[
           Text(
             _specialError!,
-            style: const TextStyle(color: Color(0xFFFF8995)),
+            style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
           ),
           TextButton(
             onPressed: _loadSpecial,
             child: const Text('Reintentar fechas'),
           ),
         ] else if (_specials.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Text(
               'No hay fechas especiales registradas.',
@@ -733,13 +734,13 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF12242C),
-                border: Border.all(color: const Color(0xFF2A414A)),
+                color: CompanyVisualTheme.legacy(const Color(0xFF12242C)),
+                border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
                 borderRadius: BorderRadius.circular(13),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.event, color: turquoise),
+                  Icon(Icons.event, color: turquoise),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -747,8 +748,8 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                       children: [
                         Text(
                           '${item['special_date']} · ${item['reason'] ?? 'Sin motivo'}',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: CompanyVisualTheme.text,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -757,7 +758,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                           item['is_closed'] == 1 || item['is_closed'] == true
                               ? 'Cerrado'
                               : '${_DaySchedule._shortTime(item['opens_at'])} – ${_DaySchedule._shortTime(item['closes_at'])}',
-                          style: const TextStyle(color: muted),
+                          style: TextStyle(color: muted),
                         ),
                       ],
                     ),
@@ -765,14 +766,14 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
                   IconButton(
                     tooltip: 'Editar fecha especial',
                     onPressed: () => _editSpecial(item),
-                    icon: const Icon(Icons.edit_outlined, color: turquoise),
+                    icon: Icon(Icons.edit_outlined, color: turquoise),
                   ),
                   IconButton(
                     tooltip: 'Eliminar fecha especial',
                     onPressed: () => _deleteSpecial(item),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline,
-                      color: Color(0xFFE84657),
+                      color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                     ),
                   ),
                 ],
@@ -794,7 +795,7 @@ class _CompanyScheduleSectionState extends State<CompanyScheduleSection> {
             ),
             Text(
               'Página $_page de $_lastPage',
-              style: const TextStyle(color: muted),
+              style: TextStyle(color: muted),
             ),
             IconButton(
               tooltip: 'Página siguiente de fechas',

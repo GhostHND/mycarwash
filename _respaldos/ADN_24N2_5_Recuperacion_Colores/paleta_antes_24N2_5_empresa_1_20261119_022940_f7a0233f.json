@@ -1,0 +1,28 @@
+{
+    "generator": "ADN_24N2_5_RESCUE",
+    "company_id": 1,
+    "had_branding_record": true,
+    "visual_theme_version": 2,
+    "previous_colors": {
+        "primary_color": "#8476FF",
+        "secondary_color": "#074819",
+        "accent_color": "#696B62",
+        "background_color": "#FF1A11",
+        "surface_color": "#7E0000",
+        "card_color": "#102027",
+        "border_color": "#5160FF",
+        "field_color": "#15262D",
+        "text_color": "#FFFFFF",
+        "muted_text_color": "#000000",
+        "sidebar_color": "#460017",
+        "button_color": "#FF1515",
+        "icon_color": "#FF0000",
+        "heading_color": "#102027",
+        "hover_color": "#B46BFF",
+        "selected_color": "#17454D",
+        "success_color": "#FF7CAF",
+        "warning_color": "#9452FF",
+        "danger_color": "#74D8FF"
+    },
+    "generated_at": "2026-11-19T02:29:40+00:00"
+}

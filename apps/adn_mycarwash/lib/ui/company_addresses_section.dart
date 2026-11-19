@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -16,10 +17,10 @@ class CompanyAddressesSection extends StatefulWidget {
 }
 
 class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
-  static const turquoise = Color(0xFF0FA7B4);
-  static const surface = Color(0xFF0A1519);
-  static const border = Color(0xFF20343C);
-  static const muted = Color(0xFF9BAEB6);
+  static Color get turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
 
   static const fields = <String, String>{
     'type': 'Tipo de dirección',
@@ -115,8 +116,8 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -124,19 +125,19 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
 
   InputDecoration _decoration(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: muted),
+    labelStyle: TextStyle(color: muted),
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: border),
+      borderSide: BorderSide(color: border),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: turquoise),
+      borderSide: BorderSide(color: turquoise),
       borderRadius: BorderRadius.circular(10),
     ),
     errorBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: Color(0xFFE84657)),
+      borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -171,7 +172,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
             backgroundColor: surface,
             title: Text(
               existing == null ? 'Nueva dirección' : 'Editar dirección',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: CompanyVisualTheme.text),
             ),
             content: SizedBox(
               width: 540,
@@ -202,7 +203,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
                                   decimal: true,
                                 )
                               : TextInputType.text,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: CompanyVisualTheme.text),
                           decoration: _decoration(field.value),
                           validator: (value) {
                             final text = (value ?? '').trim();
@@ -244,15 +245,15 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
                         color: Colors.transparent,
                         child: SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text(
+                          title: Text(
                             'Dirección principal',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                           ),
                           subtitle: Text(
                             wasPrimary
                                 ? 'Para cambiar la principal, marca otra dirección.'
                                 : 'Solo una dirección puede ser principal.',
-                            style: const TextStyle(color: muted),
+                            style: TextStyle(color: muted),
                           ),
                           activeThumbColor: turquoise,
                           value: primary,
@@ -266,7 +267,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             dialogError!,
-                            style: const TextStyle(color: Color(0xFFFF8995)),
+                            style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                           ),
                         ),
                     ],
@@ -375,13 +376,13 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: surface,
-        title: const Text(
+        title: Text(
           'Eliminar dirección',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: CompanyVisualTheme.text),
         ),
         content: Text(
           '¿Eliminar la dirección ${item['id']}? Esta acción no se puede deshacer.',
-          style: const TextStyle(color: muted),
+          style: TextStyle(color: muted),
         ),
         actions: [
           TextButton(
@@ -391,7 +392,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFB63D4A),
+              backgroundColor: CompanyVisualTheme.legacy(const Color(0xFFB63D4A)),
             ),
             child: const Text('Eliminar'),
           ),
@@ -433,12 +434,12 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+        gradient: LinearGradient(
+          colors: [CompanyVisualTheme.legacy(const Color(0xFF11242C)), CompanyVisualTheme.legacy(const Color(0xFF0A171D))],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: const Color(0xFF2A414A)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
         borderRadius: BorderRadius.circular(19),
       ),
       child: Column(
@@ -450,13 +451,13 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Direcciones del negocio',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: CompanyVisualTheme.text,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
@@ -480,15 +481,15 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
           TextField(
             controller: _search,
             onChanged: _onSearch,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
             decoration:
                 _decoration(
                   'Buscar por municipio, colonia, calle, dirección o ID',
                 ).copyWith(
-                  prefixIcon: const Icon(Icons.search, color: turquoise),
+                  prefixIcon: Icon(Icons.search, color: turquoise),
                   suffixIcon: IconButton(
                     tooltip: 'Limpiar búsqueda',
-                    icon: const Icon(Icons.close, color: muted),
+                    icon: Icon(Icons.close, color: muted),
                     onPressed: () {
                       _search.clear();
                       _onSearch('');
@@ -498,7 +499,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
           ),
           const SizedBox(height: 18),
           if (_loading)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: CircularProgressIndicator(color: turquoise),
@@ -508,7 +509,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
+                Text(_error!, style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
                 const SizedBox(height: 10),
                 OutlinedButton(
                   onPressed: _load,
@@ -517,7 +518,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
               ],
             )
           else if (_addresses.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 30),
               child: Center(
                 child: Text(
@@ -532,13 +533,13 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
                 margin: const EdgeInsets.only(bottom: 11),
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF12242C),
-                  border: Border.all(color: const Color(0xFF2A414A)),
+                  color: CompanyVisualTheme.legacy(const Color(0xFF12242C)),
+                  border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.place_outlined, color: turquoise),
+                    Icon(Icons.place_outlined, color: turquoise),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -547,20 +548,20 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
                           Text(
                             '${item['type'] ?? 'Dirección'}'
                             '${item['is_primary'] == true || item['is_primary'] == 1 ? ' · Principal' : ''}',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: CompanyVisualTheme.text,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             _description(item),
-                            style: const TextStyle(color: muted),
+                            style: TextStyle(color: muted),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'ID ${item['id']}',
-                            style: const TextStyle(color: muted, fontSize: 11),
+                            style: TextStyle(color: muted, fontSize: 11),
                           ),
                         ],
                       ),
@@ -568,14 +569,14 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
                     IconButton(
                       tooltip: 'Editar dirección',
                       onPressed: () => _edit(item),
-                      icon: const Icon(Icons.edit_outlined, color: turquoise),
+                      icon: Icon(Icons.edit_outlined, color: turquoise),
                     ),
                     IconButton(
                       tooltip: 'Eliminar dirección',
                       onPressed: () => _delete(item),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline,
-                        color: Color(0xFFE84657),
+                        color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                       ),
                     ),
                   ],
@@ -597,7 +598,7 @@ class _CompanyAddressesSectionState extends State<CompanyAddressesSection> {
               ),
               Text(
                 'Página $_page de $_lastPage',
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: muted),
               ),
               IconButton(
                 tooltip: 'Página siguiente',

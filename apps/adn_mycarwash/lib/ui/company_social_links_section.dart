@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -16,10 +17,10 @@ class CompanySocialLinksSection extends StatefulWidget {
 }
 
 class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
-  static const turquoise = Color(0xFF0FA7B4);
-  static const surface = Color(0xFF0A1519);
-  static const border = Color(0xFF20343C);
-  static const muted = Color(0xFF9BAEB6);
+  static Color get turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
 
   final _search = TextEditingController();
   Timer? _debounce;
@@ -48,23 +49,23 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
 
   InputDecoration _decor(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: muted),
+    labelStyle: TextStyle(color: muted),
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: border),
+      borderSide: BorderSide(color: border),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: turquoise),
+      borderSide: BorderSide(color: turquoise),
       borderRadius: BorderRadius.circular(10),
     ),
     errorBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: Color(0xFFE84657)),
+      borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedErrorBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: Color(0xFFE84657)),
+      borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -76,8 +77,8 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
         backgroundColor: isError
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
       ),
     );
   }
@@ -145,7 +146,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
           backgroundColor: surface,
           title: Text(
             existing == null ? 'Nueva red social' : 'Editar red social',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
           ),
           content: SizedBox(
             width: 500,
@@ -160,7 +161,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                       initialValue: platform,
                       enabled: !saving,
                       maxLength: 60,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: CompanyVisualTheme.text),
                       decoration: _decor(
                         'Plataforma (instagram, facebook, tiktok...)',
                       ),
@@ -177,7 +178,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                       initialValue: username,
                       enabled: !saving,
                       maxLength: 150,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: CompanyVisualTheme.text),
                       decoration: _decor('Usuario (opcional)'),
                       onChanged: (v) => username = v,
                     ),
@@ -188,7 +189,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                       enabled: !saving,
                       maxLength: 600,
                       keyboardType: TextInputType.url,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: CompanyVisualTheme.text),
                       decoration: _decor('URL completa (https://...)'),
                       onChanged: (v) => url = v.trim(),
                       validator: (v) {
@@ -206,7 +207,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                       initialValue: sortOrder,
                       enabled: !saving,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: CompanyVisualTheme.text),
                       decoration: _decor('Orden de visualización (0-100000)'),
                       onChanged: (v) => sortOrder = v.trim(),
                       validator: (v) {
@@ -219,10 +220,10 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Visible públicamente',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                           ),
                         ),
                         Switch(
@@ -238,7 +239,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                       const SizedBox(height: 8),
                       Text(
                         error!,
-                        style: const TextStyle(color: Color(0xFFFF8995)),
+                        style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                       ),
                     ],
                   ],
@@ -311,13 +312,13 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: surface,
-        title: const Text(
+        title: Text(
           'Eliminar red social',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: CompanyVisualTheme.text),
         ),
         content: Text(
           '¿Eliminar ${item['platform']}? Esta acción no se puede deshacer.',
-          style: const TextStyle(color: muted),
+          style: TextStyle(color: muted),
         ),
         actions: [
           TextButton(
@@ -349,13 +350,13 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
     width: double.infinity,
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+      gradient: LinearGradient(
+        colors: [CompanyVisualTheme.legacy(const Color(0xFF11242C)), CompanyVisualTheme.legacy(const Color(0xFF0A171D))],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
       borderRadius: BorderRadius.circular(19),
-      border: Border.all(color: const Color(0xFF2A414A)),
+      border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,11 +366,11 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
           runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Text(
+            Text(
               'Redes sociales',
               style: TextStyle(
                 fontSize: 20,
-                color: Colors.white,
+                color: CompanyVisualTheme.text,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -382,7 +383,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
           ],
         ),
         const SizedBox(height: 7),
-        const Text(
+        Text(
           'Enlaces y perfiles públicos del negocio.',
           style: TextStyle(color: muted),
         ),
@@ -390,18 +391,18 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
         TextField(
           controller: _search,
           onChanged: _onSearch,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: CompanyVisualTheme.text),
           decoration: _decor('Buscar plataforma, usuario o enlace')
-              .copyWith(prefixIcon: const Icon(Icons.search, color: turquoise)),
+              .copyWith(prefixIcon: Icon(Icons.search, color: turquoise)),
         ),
         const SizedBox(height: 17),
         if (_loading)
-          const Center(child: CircularProgressIndicator(color: turquoise))
+          Center(child: CircularProgressIndicator(color: turquoise))
         else if (_error != null) ...[
-          Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
+          Text(_error!, style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
           TextButton(onPressed: _load, child: const Text('Reintentar redes')),
         ] else if (_socials.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 22),
             child: Text(
               'No se encontraron redes sociales.',
@@ -414,18 +415,18 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF12242C),
+                color: CompanyVisualTheme.legacy(const Color(0xFF12242C)),
                 borderRadius: BorderRadius.circular(13),
                 border: Border.all(
                   color:
                       social['is_visible'] == true || social['is_visible'] == 1
                       ? turquoise.withValues(alpha: 0.40)
-                      : const Color(0xFF2A414A),
+                      : CompanyVisualTheme.legacy(const Color(0xFF2A414A)),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.public, color: turquoise),
+                  Icon(Icons.public, color: turquoise),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -433,22 +434,22 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                       children: [
                         Text(
                           '${social['platform']} ${social['username'] == null ? '' : '· ${social['username']}'}',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: CompanyVisualTheme.text,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 5),
                         SelectableText(
                           '${social['url']}',
-                          style: const TextStyle(color: muted, fontSize: 12),
+                          style: TextStyle(color: muted, fontSize: 12),
                         ),
                         Text(
                           social['is_visible'] == true ||
                                   social['is_visible'] == 1
                               ? 'Visible'
                               : 'Oculta',
-                          style: const TextStyle(color: muted, fontSize: 11),
+                          style: TextStyle(color: muted, fontSize: 11),
                         ),
                       ],
                     ),
@@ -456,14 +457,14 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
                   IconButton(
                     tooltip: 'Editar red social',
                     onPressed: () => _edit(social),
-                    icon: const Icon(Icons.edit_outlined, color: turquoise),
+                    icon: Icon(Icons.edit_outlined, color: turquoise),
                   ),
                   IconButton(
                     tooltip: 'Eliminar red social',
                     onPressed: () => _delete(social),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline,
-                      color: Color(0xFFE84657),
+                      color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                     ),
                   ),
                 ],
@@ -485,7 +486,7 @@ class _CompanySocialLinksSectionState extends State<CompanySocialLinksSection> {
             ),
             Text(
               'Página $_page de $_lastPage',
-              style: const TextStyle(color: muted),
+              style: TextStyle(color: muted),
             ),
             IconButton(
               tooltip: 'Página siguiente de redes',

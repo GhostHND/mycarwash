@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -24,15 +25,15 @@ class CompanyFinanceHub24K extends StatefulWidget {
 }
 
 class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
-  static const Color bg = Color(0xFF080F12);
-  static const Color surface = Color(0xFF0C1A1E);
-  static const Color panel = Color(0xFF0E2227);
-  static const Color border = Color(0xFF1D383F);
-  static const Color accent = Color(0xFF0FA7B4);
-  static const Color cyan = Color(0xFF00DCE5);
-  static const Color green = Color(0xFF00D99A);
-  static const Color red = Color(0xFFE84657);
-  static const Color muted = Color(0xFF9DB0B6);
+  static Color get bg => CompanyVisualTheme.legacy(const Color(0xFF080F12));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0C1A1E));
+  static Color get panel => CompanyVisualTheme.legacy(const Color(0xFF0E2227));
+  static Color get border => CompanyVisualTheme.legacy(const Color(0xFF1D383F));
+  static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get cyan => CompanyVisualTheme.legacy(const Color(0xFF00DCE5));
+  static Color get green => CompanyVisualTheme.legacy(const Color(0xFF00D99A));
+  static Color get red => CompanyVisualTheme.legacy(const Color(0xFFE84657));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9DB0B6));
 
   late final http.Client _client;
   late final bool _owned;
@@ -95,8 +96,8 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
         content: Text(text),
         behavior: SnackBarBehavior.floating,
         backgroundColor: error
-            ? const Color(0xFF913340)
-            : const Color(0xFF126E73),
+            ? CompanyVisualTheme.legacy(const Color(0xFF913340))
+            : CompanyVisualTheme.legacy(const Color(0xFF126E73)),
       ),
     );
   }
@@ -160,7 +161,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
 
   InputDecoration _input(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: muted),
+    labelStyle: TextStyle(color: muted),
     filled: true,
     fillColor: panel,
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(11)),
@@ -542,13 +543,13 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
   Widget _container({
     required Widget child,
     EdgeInsets padding = const EdgeInsets.all(16),
-    Color color = surface,
+    Color? color,
   }) {
     return Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? surface,
         border: Border.all(color: border),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -560,8 +561,9 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
     String eyebrow,
     String title,
     IconData icon, {
-    Color tone = cyan,
+    Color? tone,
   }) {
+    final resolvedTone = tone ?? cyan;
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 19, 0, 13),
       child: Row(
@@ -570,9 +572,9 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(9),
-              color: tone.withValues(alpha: .09),
+              color: resolvedTone.withValues(alpha: .09),
             ),
-            child: Icon(icon, color: tone, size: 19),
+            child: Icon(icon, color: resolvedTone, size: 19),
           ),
           const SizedBox(width: 12),
           Column(
@@ -581,7 +583,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
               Text(
                 eyebrow.toUpperCase(),
                 style: TextStyle(
-                  color: tone,
+                  color: resolvedTone,
                   fontSize: 10,
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.w700,
@@ -610,7 +612,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
         children: [
           Icon(icon, size: 18, color: tone),
           const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 11, color: muted)),
+          Text(title, style: TextStyle(fontSize: 11, color: muted)),
           const SizedBox(height: 5),
           Text(
             amount,
@@ -649,19 +651,19 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
     },
   );
 
-  Widget _line(String name, dynamic amount, {Color color = muted}) => Padding(
+  Widget _line(String name, dynamic amount, {Color? color}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 7),
     child: Row(
       children: [
         Expanded(
-          child: Text(name, style: const TextStyle(color: muted, fontSize: 12)),
+          child: Text(name, style: TextStyle(color: muted, fontSize: 12)),
         ),
         Flexible(
           child: Text(
             _money(amount),
             textAlign: TextAlign.right,
             style: TextStyle(
-              color: color,
+              color: color ?? muted,
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -682,7 +684,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
       style: OutlinedButton.styleFrom(
         foregroundColor: primary ? bg : cyan,
         backgroundColor: primary ? cyan : null,
-        side: const BorderSide(color: border),
+        side: BorderSide(color: border),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
       ),
       icon: Icon(icon, size: 16),
@@ -704,7 +706,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.account_balance_rounded, color: cyan),
+              Icon(Icons.account_balance_rounded, color: cyan),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -721,7 +723,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                     Text(
                       '${bank['alias']} · ${bank['account_last4'] ?? 'Cuenta bancaria'}',
                       maxLines: 2,
-                      style: const TextStyle(fontSize: 11, color: muted),
+                      style: TextStyle(fontSize: 11, color: muted),
                     ),
                   ],
                 ),
@@ -730,7 +732,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                 IconButton(
                   tooltip: 'Editar cuenta',
                   onPressed: _busy ? null : () => _editBank(bank),
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: cyan),
+                  icon: Icon(Icons.edit_outlined, size: 18, color: cyan),
                 ),
                 IconButton(
                   tooltip: active ? 'Desactivar cuenta' : 'Activar cuenta',
@@ -746,7 +748,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
               ],
             ],
           ),
-          const Divider(height: 24, color: border),
+          Divider(height: 24, color: border),
           _line('Cobros de ventas', bank['sales_in'], color: green),
           _line('Otros ingresos', bank['other_in'], color: green),
           _line('Egresos del período', bank['out'], color: red),
@@ -761,8 +763,8 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
             bank['transfer_out'],
             color: red,
           ),
-          const Divider(height: 22, color: border),
-          const Text(
+          Divider(height: 22, color: border),
+          Text(
             'SALDO INTERNO CALCULADO',
             style: TextStyle(fontSize: 10, color: cyan, letterSpacing: 1),
           ),
@@ -772,7 +774,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
             style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
           ),
           if (!configured)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
                 'Registra un saldo inicial para calcular el saldo del banco.',
@@ -792,7 +794,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
               _line('Saldo informado', closing['counted']),
               _line('Diferencia de cierre', closing['difference'], color: red),
               if (closing['post_close_change'] == true)
-                const Text(
+                Text(
                   'Aviso: existen movimientos posteriores al cierre. Revisa la conciliación.',
                   style: TextStyle(color: red, fontSize: 11),
                 ),
@@ -861,7 +863,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 6),
             child: Text(
               'Caja física',
@@ -874,7 +876,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
           ),
           Row(
             children: [
-              const Icon(Icons.point_of_sale_outlined, color: cyan),
+              Icon(Icons.point_of_sale_outlined, color: cyan),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -895,7 +897,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
               ),
             ],
           ),
-          const Divider(height: 24, color: border),
+          Divider(height: 24, color: border),
           _line('Ingresos del período', cash['in'], color: green),
           _line('Egresos del período', cash['out'], color: red),
           _line('Movimiento neto', cash['net'], color: cyan),
@@ -910,7 +912,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
             color: red,
           ),
           if (cash['session_id'] != null) ...[
-            const Divider(height: 20, color: border),
+            Divider(height: 20, color: border),
             _line('Fondo inicial de sesión', cash['opening_cash']),
             _line(
               'Efectivo esperado de sesión',
@@ -1013,7 +1015,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Traspaso interno: no es ingreso ni gasto del negocio.',
                     style: TextStyle(fontSize: 12, color: muted),
                   ),
@@ -1158,7 +1160,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                       final withdraw = item['direction'] == 'BANK_TO_CASH';
                       return ListTile(
                         dense: true,
-                        leading: const Icon(Icons.swap_horiz, color: cyan),
+                        leading: Icon(Icons.swap_horiz, color: cyan),
                         title: Text(
                           '${withdraw ? 'Banco a caja' : 'Caja a banco'} · ${_money(item['amount'])}',
                         ),
@@ -1210,7 +1212,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                 closings['difference'] ?? '0.00',
                 color: red,
               ),
-              const Text(
+              Text(
                 'El arqueo compara el efectivo contado físicamente con el esperado por la sesión. '
                 'No crea movimientos ni altera ventas.',
                 style: TextStyle(color: muted, fontSize: 11),
@@ -1237,7 +1239,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                   ),
                   Text(
                     'Sesión ${c['session_status'] ?? 'sin apertura'}',
-                    style: const TextStyle(color: muted),
+                    style: TextStyle(color: muted),
                   ),
                   _line(
                     'Efectivo esperado',
@@ -1266,7 +1268,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
           Icons.account_balance_outlined,
         ),
         _container(
-          child: const Text(
+          child: Text(
             'La conciliación compara el saldo interno con el extracto bancario. '
             'La diferencia no se registra como gasto ni como ingreso automáticamente.',
             style: TextStyle(color: muted, fontSize: 11),
@@ -1296,7 +1298,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                   ),
                   Text(
                     'Cuadre: ${bank['closing'] is Map ? bank['closing']['status'] : 'sin abrir'}',
-                    style: const TextStyle(color: muted, fontSize: 11),
+                    style: TextStyle(color: muted, fontSize: 11),
                   ),
                   if (bank['closing'] is Map &&
                       bank['closing']['status'] == 'CLOSED') ...[
@@ -1438,7 +1440,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Retirar del banco hacia efectivo o depositar efectivo en el banco. '
                 'No se consideran ventas, ingresos operativos ni gastos.',
                 style: TextStyle(color: muted, fontSize: 11),
@@ -1519,7 +1521,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'CONTROL FINANCIERO',
                     style: TextStyle(
                       color: cyan,
@@ -1539,7 +1541,7 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Movimientos reales, aperturas, cierres y conciliaciones.',
                     style: TextStyle(color: muted, fontSize: 12),
                   ),
@@ -1590,13 +1592,13 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
               ),
               Text(
                 '${_data?['from'] ?? '—'} al ${_data?['through'] ?? '—'}',
-                style: const TextStyle(color: muted, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
               ),
             ],
           ),
         ),
         if (_busy && _data == null)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(30),
             child: Center(child: CircularProgressIndicator(color: cyan)),
           )
@@ -1607,14 +1609,14 @@ class _CompanyFinanceHub24KState extends State<CompanyFinanceHub24K> {
               children: [
                 Text(
                   'No se pudieron cargar los datos: $_error',
-                  style: const TextStyle(color: red),
+                  style: TextStyle(color: red),
                 ),
                 TextButton(onPressed: _load, child: const Text('Reintentar')),
               ],
             ),
           )
         else ...[
-          if (_busy) const LinearProgressIndicator(color: cyan),
+          if (_busy) LinearProgressIndicator(color: cyan),
           const SizedBox(height: 14),
           _mainView(),
         ],

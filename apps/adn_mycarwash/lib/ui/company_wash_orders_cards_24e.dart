@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 
 typedef OrderAction = void Function(Map<String, dynamic> order);
 
@@ -48,10 +49,10 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
   final String? selectedDate;
   final ValueChanged<String?> onDate;
 
-  static const accent = Color(0xFF0FA7B4);
-  static const ink = Color(0xFF07161B);
-  static const line = Color(0xFF26525B);
-  static const faded = Color(0xFF9DB5BD);
+  static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get ink => CompanyVisualTheme.legacy(const Color(0xFF07161B));
+  static Color get line => CompanyVisualTheme.legacy(const Color(0xFF26525B));
+  static Color get faded => CompanyVisualTheme.legacy(const Color(0xFF9DB5BD));
 
   String _status(String status) => switch (status) {
     'EN_ESPERA' => 'Nueva',
@@ -64,12 +65,12 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
   };
 
   Color _statusColor(String status) => switch (status) {
-    'EN_ESPERA' => const Color(0xFF48B7F1),
-    'ASIGNADO' => const Color(0xFFF5BB43),
+    'EN_ESPERA' => CompanyVisualTheme.legacy(const Color(0xFF48B7F1)),
+    'ASIGNADO' => CompanyVisualTheme.legacy(const Color(0xFFF5BB43)),
     'EN_PROCESO' => accent,
-    'TERMINADO' => const Color(0xFF25D49A),
-    'ENTREGADO' => const Color(0xFF77C79B),
-    'CANCELADO' => const Color(0xFFE47B82),
+    'TERMINADO' => CompanyVisualTheme.legacy(const Color(0xFF25D49A)),
+    'ENTREGADO' => CompanyVisualTheme.legacy(const Color(0xFF77C79B)),
+    'CANCELADO' => CompanyVisualTheme.legacy(const Color(0xFFE47B82)),
     _ => faded,
   };
 
@@ -106,7 +107,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 12, color: faded),
+                    style: TextStyle(fontSize: 12, color: faded),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -133,7 +134,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
             ? CrossAxisAlignment.end
             : CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: faded, fontSize: 11)),
+          Text(label, style: TextStyle(color: faded, fontSize: 11)),
           const SizedBox(height: 3),
           Text(
             _value(value),
@@ -174,7 +175,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                     code,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: faded, fontSize: 11),
+                    style: TextStyle(color: faded, fontSize: 11),
                   ),
                 ),
               ),
@@ -209,7 +210,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                   color: accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: const Icon(Icons.directions_car_outlined, color: accent),
+                child: Icon(Icons.directions_car_outlined, color: accent),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -230,7 +231,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                     ),
                     Text(
                       'Placa: ${_value(order['plate'], 'Sin placa')}',
-                      style: const TextStyle(color: faded, fontSize: 12),
+                      style: TextStyle(color: faded, fontSize: 12),
                     ),
                   ],
                 ),
@@ -238,17 +239,17 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               IconButton(
                 tooltip: 'Ver detalle',
                 onPressed: () => onDetail(order),
-                icon: const Icon(Icons.visibility_outlined, color: accent),
+                icon: Icon(Icons.visibility_outlined, color: accent),
               ),
               IconButton(
                 tooltip: 'Editar',
                 onPressed: () => onEdit(order),
-                icon: const Icon(Icons.edit_outlined, color: accent),
+                icon: Icon(Icons.edit_outlined, color: accent),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(color: line),
+          Divider(color: line),
           const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,7 +279,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
+                  Text(
                     'Importe',
                     style: TextStyle(color: faded, fontSize: 11),
                   ),
@@ -286,7 +287,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                     money == null
                         ? 'Sin importe'
                         : 'L ${money.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: accent,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -307,7 +308,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                 label: const Text('Asignar lavador'),
               ),
             ),
-          const Divider(color: line),
+          Divider(color: line),
           Row(
             children: [
               Expanded(
@@ -346,7 +347,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               }),
               style: OutlinedButton.styleFrom(
                 foregroundColor: accent,
-                side: const BorderSide(color: line),
+                side: BorderSide(color: line),
               ),
             ),
           ),
@@ -369,7 +370,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'ADN PUBLICIDAD · SOFTWARE',
           style: TextStyle(color: accent, fontSize: 11),
         ),
@@ -378,7 +379,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
           'Órdenes de lavado',
           style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
         ),
-        const Text(
+        Text(
           'Control y seguimiento del estado de cada vehículo.',
           style: TextStyle(color: faded),
         ),
@@ -454,14 +455,14 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Text(
             _value(summary['scope'], 'Todas las sucursales · Historial'),
-            style: const TextStyle(fontSize: 11, color: faded),
+            style: TextStyle(fontSize: 11, color: faded),
           ),
         ),
         TextField(
           controller: search,
           onChanged: onSearch,
           decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search, color: accent),
+            prefixIcon: Icon(Icons.search, color: accent),
             hintText: 'Buscar por cliente, placa, vehículo u orden...',
             filled: true,
             fillColor: ink,
@@ -523,7 +524,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         if (loading)
-          const Center(
+          Center(
             child: Padding(
               padding: EdgeInsets.all(30),
               child: CircularProgressIndicator(color: accent),

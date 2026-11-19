@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
+import '../core/dashboard_greeting_24n27.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
@@ -29,14 +31,14 @@ class CompanyDashboard24APage extends StatefulWidget {
 }
 
 class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
-  static const Color _bg = Color(0xFF050C0F);
-  static const Color _card = Color(0xFF071E23);
-  static const Color _surface = Color(0xFF0B292F);
-  static const Color _cyan = Color(0xFF00DCE5);
-  static const Color _accent = Color(0xFF0FA7B4);
-  static const Color _white = Color(0xFFF4F7F8);
-  static const Color _muted = Color(0xFFA5B6BB);
-  static const Color _pink = Color(0xFFEC488A);
+  static Color get _bg => CompanyVisualTheme.legacy(const Color(0xFF050C0F));
+  static Color get _card => CompanyVisualTheme.legacy(const Color(0xFF071E23));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0B292F));
+  static Color get _cyan => CompanyVisualTheme.legacy(const Color(0xFF00DCE5));
+  static Color get _accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _white => CompanyVisualTheme.legacy(const Color(0xFFF4F7F8));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFFA5B6BB));
+  static Color get _pink => CompanyVisualTheme.legacy(const Color(0xFFEC488A));
 
   late final http.Client _client;
   late final bool _ownsClient;
@@ -83,7 +85,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
   Widget _vehiclePhoto(dynamic rawId, dynamic hasPhoto) {
     final id = _integer(rawId);
     if (hasPhoto != true || id <= 0) {
-      return const Icon(
+      return Icon(
         Icons.directions_car_filled_outlined,
         color: _cyan,
         size: 38,
@@ -93,7 +95,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
       future: _vehiclePhotos.putIfAbsent(id, () => _fetchVehiclePhoto(id)),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
+          return SizedBox(
             height: 54,
             child: Center(
               child: SizedBox(
@@ -106,7 +108,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
         }
         final bytes = snapshot.data;
         if (bytes == null) {
-          return const Icon(
+          return Icon(
             Icons.directions_car_filled_outlined,
             color: _cyan,
             size: 38,
@@ -120,7 +122,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
             height: 70,
             fit: BoxFit.contain,
             gaplessPlayback: true,
-            errorBuilder: (context, error, stack) => const Icon(
+            errorBuilder: (context, error, stack) => Icon(
               Icons.directions_car_filled_outlined,
               color: _cyan,
               size: 38,
@@ -140,7 +142,11 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
     _load();
     _ticker = Timer.periodic(
       const Duration(seconds: 15),
-      (_) => _load(silent: true),
+      (_) {
+        // Actualiza el saludo incluso si una consulta de red no responde.
+        if (mounted) setState(() {});
+        _load(silent: true);
+      },
     );
   }
 
@@ -232,17 +238,8 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
     return 'L ${number.toStringAsFixed(2)}';
   }
 
-  String _greeting(String name) {
-    final hour = _details?['business_hour'] is num
-        ? (_details!['business_hour'] as num).toInt()
-        : DateTime.now().hour;
-    final prefix = hour < 12
-        ? 'Buenos días'
-        : hour < 18
-        ? 'Buenas tardes'
-        : 'Buenas noches';
-    return name.trim().isEmpty ? prefix : '$prefix, $name';
-  }
+  // La API puede reportar otra zona horaria; el saludo sigue el reloj local.
+  String _greeting(String name) => dashboardGreeting24N27(DateTime.now(), name);
 
   String _displayDate(String raw) {
     final day = DateTime.tryParse(raw);
@@ -304,7 +301,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _white,
                 fontWeight: FontWeight.w800,
                 fontSize: 15,
@@ -314,7 +311,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               Text(
                 subtitle,
                 maxLines: 2,
-                style: const TextStyle(color: _muted, fontSize: 10),
+                style: TextStyle(color: _muted, fontSize: 10),
               ),
           ],
         ),
@@ -326,7 +323,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
     String title,
     IconData icon,
     String? destination, {
-    Color borderColor = _accent,
+    Color? borderColor,
     bool highlighted = false,
   }) => OutlinedButton.icon(
     key: ValueKey<String>('dashboard_action_$title'),
@@ -339,7 +336,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
       backgroundColor: highlighted ? _cyan : _card,
       foregroundColor: highlighted ? _bg : _white,
-      side: BorderSide(color: borderColor, width: 1),
+      side: BorderSide(color: borderColor ?? _accent, width: 1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
       textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
     ),
@@ -385,7 +382,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
           update = setDialogState;
           return AlertDialog(
             backgroundColor: _card,
-            title: const Text(
+            title: Text(
               'Búsqueda global',
               style: TextStyle(color: _white),
             ),
@@ -398,15 +395,15 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                     controller: input,
                     autofocus: true,
                     onSubmitted: (_) => submit(),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Cliente, placa, vehículo, reserva u orden',
                       prefixIcon: Icon(Icons.search, color: _cyan),
                     ),
                   ),
                   const SizedBox(height: 9),
-                  if (searching) const LinearProgressIndicator(color: _cyan),
+                  if (searching) LinearProgressIndicator(color: _cyan),
                   if (failure != null)
-                    Text(failure!, style: const TextStyle(color: _pink)),
+                    Text(failure!, style: TextStyle(color: _pink)),
                   if (results.isNotEmpty)
                     SizedBox(
                       height: math.min(results.length * 50.0, 270.0),
@@ -419,11 +416,11 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                             title: Text(
                               '${item['label']}',
                               maxLines: 1,
-                              style: const TextStyle(color: _white),
+                              style: TextStyle(color: _white),
                             ),
                             subtitle: Text(
                               '${item['kind']}',
-                              style: const TextStyle(color: _muted),
+                              style: TextStyle(color: _muted),
                             ),
                             onTap: () {
                               Navigator.of(dialogContext).pop();
@@ -457,9 +454,9 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
       final small = c.maxWidth < 740;
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 16),
-        decoration: const BoxDecoration(
-          color: Color(0xFF051419),
-          border: Border(bottom: BorderSide(color: Color(0xFF0B6871))),
+        decoration: BoxDecoration(
+          color: CompanyVisualTheme.legacy(const Color(0xFF051419)),
+          border: Border(bottom: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFF0B6871)))),
         ),
         child: Row(
           children: [
@@ -477,13 +474,13 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                       gaplessPlayback: true,
                     )
                   else
-                    const Icon(
+                    Icon(
                       Icons.local_car_wash_rounded,
                       color: _cyan,
                       size: 27,
                     ),
                   const SizedBox(width: 12),
-                  const SizedBox(
+                  SizedBox(
                     height: 28,
                     child: VerticalDivider(color: _accent, thickness: 1),
                   ),
@@ -499,13 +496,13 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                               : identity.companyName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _white,
                             fontSize: 17,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'Dashboard',
                           style: TextStyle(color: _muted, fontSize: 9),
                         ),
@@ -524,14 +521,14 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                   onTap: _openSearch,
                   decoration: InputDecoration(
                     isDense: true,
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.search,
                       color: _muted,
                       size: 20,
                     ),
                     hintText: 'Buscar cliente, vehículo, reserva u orden...',
-                    hintStyle: const TextStyle(color: _muted, fontSize: 11),
-                    suffixIcon: const Padding(
+                    hintStyle: TextStyle(color: _muted, fontSize: 11),
+                    suffixIcon: Padding(
                       padding: EdgeInsets.symmetric(
                         vertical: 13,
                         horizontal: 5,
@@ -555,14 +552,14 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
             IconButton(
               onPressed: null,
               tooltip: 'Notificaciones: módulo no disponible',
-              icon: const Icon(
+              icon: Icon(
                 Icons.notifications_none_outlined,
                 color: _muted,
               ),
             ),
             PopupMenuButton<String>(
               tooltip: 'Perfil',
-              icon: const Icon(Icons.account_circle_outlined, color: _cyan),
+              icon: Icon(Icons.account_circle_outlined, color: _cyan),
               color: _card,
               onSelected: (value) => widget.onNavigate(value),
               itemBuilder: (_) => [
@@ -612,7 +609,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                 children: [
                   Text(
                     _displayDate(date),
-                    style: const TextStyle(color: _muted, fontSize: 12),
+                    style: TextStyle(color: _muted, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -625,7 +622,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Esta es una vista completa de tus operaciones, reservas, ventas, producción e inventario.',
                     style: TextStyle(color: _muted, fontSize: 12),
                   ),
@@ -678,7 +675,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                           gaplessPlayback: true,
                         )
                       else
-                        const Icon(
+                        Icon(
                           Icons.storefront_outlined,
                           color: _cyan,
                           size: 40,
@@ -691,7 +688,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                         maxLines: 2,
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: _white,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -771,7 +768,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
         'Personal',
         k['staff']?.toString() ?? 'Sin datos',
         Icons.badge_outlined,
-        const Color(0xFFFFC242),
+        CompanyVisualTheme.legacy(const Color(0xFFFFC242)),
       ),
     ];
     return LayoutBuilder(
@@ -807,7 +804,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                                 label,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _muted,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -821,14 +818,14 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                           value,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _white,
                             fontSize: 21,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         const SizedBox(height: 5),
-                        const Text(
+                        Text(
                           'Sin datos comparativos',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -858,12 +855,12 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
           ),
           const SizedBox(height: 15),
           if (_details?['production'] == null)
-            const Text(
+            Text(
               'No está disponible la fuente de productividad.',
               style: TextStyle(color: _muted),
             )
           else if (rows.isEmpty)
-            const Text(
+            Text(
               'Sin lavados completados hoy.',
               style: TextStyle(color: _muted),
             )
@@ -876,7 +873,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                     backgroundColor: _surface,
                     child: Text(
                       '${i + 1}',
-                      style: const TextStyle(color: _cyan, fontSize: 11),
+                      style: TextStyle(color: _cyan, fontSize: 11),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -885,12 +882,12 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                       (rows[i]['name'] ?? '').toString(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: _white, fontSize: 11),
+                      style: TextStyle(color: _white, fontSize: 11),
                     ),
                   ),
                   Text(
                     '${rows[i]['completed']} lavados',
-                    style: const TextStyle(color: _muted, fontSize: 10),
+                    style: TextStyle(color: _muted, fontSize: 10),
                   ),
                 ],
               ),
@@ -906,7 +903,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               ),
               const SizedBox(height: 9),
             ],
-          const Text(
+          Text(
             'Participación compartida; ingresos no atribuidos.',
             style: TextStyle(color: _muted, fontSize: 9),
           ),
@@ -925,9 +922,9 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
           _title('Lavados más solicitados', Icons.donut_large),
           const SizedBox(height: 14),
           if (_details?['services'] == null)
-            const Text('Fuente no disponible.', style: TextStyle(color: _muted))
+            Text('Fuente no disponible.', style: TextStyle(color: _muted))
           else if (rows.isEmpty)
-            const Text(
+            Text(
               'Sin lavados completados hoy.',
               style: TextStyle(color: _muted),
             )
@@ -948,13 +945,13 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                         children: [
                           Text(
                             '$total',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: _white,
                               fontWeight: FontWeight.w900,
                               fontSize: 23,
                             ),
                           ),
-                          const Text(
+                          Text(
                             'Lavados hoy',
                             style: TextStyle(color: _muted, fontSize: 9),
                           ),
@@ -982,7 +979,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                                 '${rows[i]['name']}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _white,
                                   fontSize: 10,
                                 ),
@@ -990,7 +987,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                             ),
                             Text(
                               '${total == 0 ? 0 : (_integer(rows[i]['count']) * 100 / total).toStringAsFixed(1)}%',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: _muted,
                                 fontSize: 10,
                               ),
@@ -1025,7 +1022,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
           _title('Artículo más vendido', Icons.shopping_bag_outlined),
           const SizedBox(height: 20),
           if (item is! Map)
-            const Text(
+            Text(
               'Sin ventas POS confirmadas hoy.',
               style: TextStyle(color: _muted),
             )
@@ -1042,7 +1039,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               '${item['name']}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _white,
                 fontWeight: FontWeight.w700,
                 fontSize: 15,
@@ -1051,12 +1048,12 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
             const SizedBox(height: 15),
             Text(
               'Unidades vendidas: ${item['units']}',
-              style: const TextStyle(color: _muted, fontSize: 11),
+              style: TextStyle(color: _muted, fontSize: 11),
             ),
             const SizedBox(height: 5),
             Text(
               'Ingresos: ${_money(item['revenue'])}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: _cyan,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
@@ -1076,7 +1073,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
         children: [
           _title('Ventas y gastos', Icons.show_chart),
           const SizedBox(height: 10),
-          const Row(
+          Row(
             children: [
               CircleAvatar(radius: 4, backgroundColor: _cyan),
               SizedBox(width: 5),
@@ -1089,7 +1086,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
           ),
           const SizedBox(height: 9),
           if (rows.isEmpty)
-            const Text(
+            Text(
               'Sin datos para graficar.',
               style: TextStyle(color: _muted),
             )
@@ -1102,7 +1099,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               ),
             ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Últimos 7 días · ventas POS vs. egresos de caja',
             style: TextStyle(color: _muted, fontSize: 9),
           ),
@@ -1142,7 +1139,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
             subtitle: 'Total: ${_details?['bookings_total'] ?? 'Sin datos'}',
           ),
           const SizedBox(height: 13),
-          const Row(
+          Row(
             children: [
               SizedBox(
                 width: 53,
@@ -1165,14 +1162,14 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               ),
             ],
           ),
-          const Divider(color: _surface),
+          Divider(color: _surface),
           if (_details?['bookings'] == null)
-            const Text(
+            Text(
               'Datos de reservas no disponibles.',
               style: TextStyle(color: _muted),
             )
           else if (rows.isEmpty)
-            const Text(
+            Text(
               'No hay reservaciones confirmadas hoy.',
               style: TextStyle(color: _muted),
             )
@@ -1188,7 +1185,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                         width: 53,
                         child: Text(
                           '${item['time']}',
-                          style: const TextStyle(color: _white, fontSize: 10),
+                          style: TextStyle(color: _white, fontSize: 10),
                         ),
                       ),
                       Expanded(
@@ -1196,7 +1193,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                           '${item['vehicle']}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: _white, fontSize: 10),
+                          style: TextStyle(color: _white, fontSize: 10),
                         ),
                       ),
                       Expanded(
@@ -1204,7 +1201,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                           '${item['client']}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: _white, fontSize: 10),
+                          style: TextStyle(color: _white, fontSize: 10),
                         ),
                       ),
                     ],
@@ -1237,12 +1234,12 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
           ),
           const SizedBox(height: 12),
           if (_details?['active'] == null)
-            const Text(
+            Text(
               'No fue posible consultar los lavados activos.',
               style: TextStyle(color: _muted),
             )
           else if (items.isEmpty)
-            const Text(
+            Text(
               'No hay lavados en proceso en este momento.',
               style: TextStyle(color: _muted),
             )
@@ -1279,7 +1276,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                                     .toString(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _cyan,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -1297,7 +1294,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                                 '${item['vehicle']}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 11,
@@ -1310,13 +1307,13 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                                     : _rowsList(item['washers']).join(', '),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _muted,
                                   fontSize: 10,
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              const Text(
+                              Text(
                                 'En proceso · Avance no registrado',
                                 style: TextStyle(color: _cyan, fontSize: 9),
                               ),
@@ -1390,7 +1387,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                           vertical: 15,
                           horizontal: 7,
                         ),
-                        side: const BorderSide(color: _accent),
+                        side: BorderSide(color: _accent),
                         foregroundColor: _white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(11),
@@ -1409,7 +1406,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                               style: const TextStyle(fontSize: 11),
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.chevron_right,
                             color: _cyan,
                             size: 16,
@@ -1481,7 +1478,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                     ),
                   ),
                 ),
-              if (_first) const LinearProgressIndicator(color: _cyan),
+              if (_first) LinearProgressIndicator(color: _cyan),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.all(10),
@@ -1490,12 +1487,12 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                       Expanded(
                         child: Text(
                           'No se pudo actualizar parte del Dashboard: $_error',
-                          style: const TextStyle(color: _pink, fontSize: 11),
+                          style: TextStyle(color: _pink, fontSize: 11),
                         ),
                       ),
                       IconButton(
                         onPressed: () => _load(),
-                        icon: const Icon(Icons.refresh, color: _cyan),
+                        icon: Icon(Icons.refresh, color: _cyan),
                       ),
                     ],
                   ),
@@ -1515,11 +1512,11 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                     padding: const EdgeInsets.only(top: 9),
                     child: Text(
                       'Última actualización: ${TimeOfDay.fromDateTime(_updated!).format(context)}',
-                      style: const TextStyle(color: _muted, fontSize: 10),
+                      style: TextStyle(color: _muted, fontSize: 10),
                     ),
                   ),
               ] else if (!_first && _error == null)
-                const Text(
+                Text(
                   'No hay información del Dashboard.',
                   style: TextStyle(color: _muted),
                 ),
@@ -1534,13 +1531,13 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
 class _DonutPainter extends CustomPainter {
   _DonutPainter(this.values);
   final List<int> values;
-  static const colors = <Color>[
-    Color(0xFF00DCE5),
-    Color(0xFFA96CFA),
-    Color(0xFFEC488A),
-    Color(0xFF7E48EB),
-    Color(0xFF00D99A),
-    Color(0xFFFFC242),
+  static List<Color> get colors => <Color>[
+    CompanyVisualTheme.legacy(const Color(0xFF00DCE5)),
+    CompanyVisualTheme.legacy(const Color(0xFFA96CFA)),
+    CompanyVisualTheme.legacy(const Color(0xFFEC488A)),
+    CompanyVisualTheme.legacy(const Color(0xFF7E48EB)),
+    CompanyVisualTheme.legacy(const Color(0xFF00D99A)),
+    CompanyVisualTheme.legacy(const Color(0xFFFFC242)),
   ];
   @override
   void paint(Canvas canvas, Size size) {
@@ -1585,7 +1582,7 @@ class _LinesPainter extends CustomPainter {
       (v, row) =>
           math.max(v, math.max(_num(row['sales']), _num(row['expenses']))),
     );
-    final lines = [const Color(0xFF00DCE5), const Color(0xFFEC488A)];
+    final lines = [CompanyVisualTheme.legacy(const Color(0xFF00DCE5)), CompanyVisualTheme.legacy(const Color(0xFFEC488A))];
     for (var j = 0; j < 2; j++) {
       final key = j == 0 ? 'sales' : 'expenses';
       final path = Path();

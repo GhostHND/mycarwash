@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/mycarwash_session.dart';
@@ -134,7 +135,7 @@ class CompanyVehiclesGrid24C2 extends StatelessWidget {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: CompanyVisualTheme.text, fontSize: 12),
                 ),
               ),
             ),
@@ -170,8 +171,8 @@ class CompanyVehiclesGrid24C2 extends StatelessWidget {
                     '$brand $model',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: CompanyVisualTheme.text,
                       fontWeight: FontWeight.w800,
                       fontSize: 17,
                     ),
@@ -184,13 +185,13 @@ class CompanyVehiclesGrid24C2 extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: inactive ? scheme.error : const Color(0xFF23C8A0),
+                    color: inactive ? scheme.error : CompanyVisualTheme.legacy(const Color(0xFF23C8A0)),
                   ),
                 ),
                 child: Text(
                   inactive ? 'Inactivo' : 'Activo',
                   style: TextStyle(
-                    color: inactive ? scheme.error : const Color(0xFF23C8A0),
+                    color: inactive ? scheme.error : CompanyVisualTheme.legacy(const Color(0xFF23C8A0)),
                     fontSize: 11,
                   ),
                 ),

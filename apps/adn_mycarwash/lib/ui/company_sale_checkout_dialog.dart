@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -19,8 +20,8 @@ class CompanySaleCheckoutDialog extends StatefulWidget {
 }
 
 class _CompanySaleCheckoutDialogState extends State<CompanySaleCheckoutDialog> {
-  static const accent = Color(0xFF0FA7B4);
-  static const surface = Color(0xFF0A1519);
+  static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
 
   final _finalPrice = TextEditingController(text: '0.00');
   final _reason = TextEditingController();
@@ -150,7 +151,7 @@ class _CompanySaleCheckoutDialogState extends State<CompanySaleCheckoutDialog> {
   InputDecoration _dec(String text) => InputDecoration(
     labelText: text,
     filled: true,
-    fillColor: const Color(0xFF112127),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF112127)),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
   );
 
@@ -235,7 +236,7 @@ class _CompanySaleCheckoutDialogState extends State<CompanySaleCheckoutDialog> {
                 const SizedBox(height: 5),
                 Text(
                   'Total a cobrar: L ${_display(due)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     color: accent,
                     fontWeight: FontWeight.bold,
@@ -318,9 +319,9 @@ class _CompanySaleCheckoutDialogState extends State<CompanySaleCheckoutDialog> {
                     _error!,
                     style: const TextStyle(color: Colors.redAccent),
                   ),
-                const Text(
+                Text(
                   'El cobro se registrará una sola vez al confirmar la entrega.',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF9BAEB6)),
+                  style: TextStyle(fontSize: 12, color: CompanyVisualTheme.legacy(const Color(0xFF9BAEB6))),
                 ),
               ],
             );

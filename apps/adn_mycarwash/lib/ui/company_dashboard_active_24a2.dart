@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -24,8 +25,8 @@ class CompanyDashboardActive24A2 extends StatefulWidget {
 
 class _CompanyDashboardActive24A2State
     extends State<CompanyDashboardActive24A2> {
-  static const _accent = Color(0xFF0FA7B4);
-  static const _muted = Color(0xFFA6BAC2);
+  static Color get _accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFFA6BAC2));
   Timer? _timer;
   int _serial = 0;
   int _offset = 0;
@@ -114,7 +115,7 @@ class _CompanyDashboardActive24A2State
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D2229),
+        color: CompanyVisualTheme.legacy(const Color(0xFF0D2229)),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _accent.withValues(alpha: .35)),
       ),
@@ -126,31 +127,31 @@ class _CompanyDashboardActive24A2State
             spacing: 12,
             runSpacing: 8,
             children: [
-              const Text(
+              Text(
                 'Lavados activos · En vivo',
                 style: TextStyle(
                   fontSize: 18,
-                  color: Colors.white,
+                  color: CompanyVisualTheme.text,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               Text(
                 '$_total en proceso',
                 key: const ValueKey('active_total'),
-                style: const TextStyle(
+                style: TextStyle(
                   color: _accent,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               if (_total > 4)
-                const Text(
+                Text(
                   'Rotación cada 15 segundos',
                   style: TextStyle(color: _muted, fontSize: 12),
                 ),
               if (_updated != null)
                 Text(
                   'Actualizado: ${TimeOfDay.fromDateTime(_updated!).format(context)}',
-                  style: const TextStyle(color: _muted, fontSize: 11),
+                  style: TextStyle(color: _muted, fontSize: 11),
                 ),
               IconButton(
                 onPressed: _pending ? null : _fetch,
@@ -160,19 +161,19 @@ class _CompanyDashboardActive24A2State
             ],
           ),
           const SizedBox(height: 10),
-          if (_initial) const LinearProgressIndicator(color: _accent),
+          if (_initial) LinearProgressIndicator(color: _accent),
           if (_error != null)
             Text(
               'No se pudo actualizar la actividad: $_error',
-              style: const TextStyle(color: Color(0xFFECA7A7), fontSize: 12),
+              style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFECA7A7)), fontSize: 12),
             ),
           if (!_initial && _error == null && !_available)
-            const Text(
+            Text(
               'No está disponible la fuente de órdenes de lavado.',
               style: TextStyle(color: _muted),
             ),
           if (!_initial && _error == null && _available && _total == 0)
-            const Text(
+            Text(
               'No hay lavados en proceso en este momento.',
               key: ValueKey('active_empty'),
               style: TextStyle(color: _muted),
@@ -198,7 +199,7 @@ class _CompanyDashboardActive24A2State
                           key: ValueKey('active_wash_${row['id']}'),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF13323A),
+                            color: CompanyVisualTheme.legacy(const Color(0xFF13323A)),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: _accent.withValues(alpha: .3),
@@ -212,13 +213,13 @@ class _CompanyDashboardActive24A2State
                                     .toString(),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: CompanyVisualTheme.text,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
                               const SizedBox(height: 5),
-                              const Text(
+                              Text(
                                 'EN PROCESO',
                                 style: TextStyle(color: _accent, fontSize: 11),
                               ),

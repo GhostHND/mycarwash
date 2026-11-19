@@ -4,12 +4,14 @@ import 'dart:typed_data';
 import '../core/mycarwash_session.dart';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
+import '../core/company_monitor_colors_24n27.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/business_identity.dart';
 import '../core/company_business_api.dart';
 
-/// Bloque 24B.1: vista administrativa y tema editable del monitor.
+/// Vista general de lavados: comparte la identidad visual de la empresa.
 /// No configura ni otorga acceso a hardware Raspberry Pi.
 class CompanyWashMonitor24B1 extends StatefulWidget {
   const CompanyWashMonitor24B1({super.key, this.client});
@@ -20,55 +22,20 @@ class CompanyWashMonitor24B1 extends StatefulWidget {
 }
 
 class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
-  static const fields = <String, String>{
-    'primary_color': 'Acentos (antes azul/turquesa)',
-    'secondary_color': 'Color secundario',
-    'accent_color': 'Destacados',
-    'background_color': 'Fondo del monitor',
-    'surface_color': 'Fondo de tarjetas',
-    'text_color': 'Texto principal',
-    'muted_text_color': 'Texto secundario',
-    'sidebar_color': 'Panel secundario',
-    'button_color': 'Botones e indicadores',
-    'success_color': 'Estado completado',
-    'warning_color': 'Estado en espera',
-    'danger_color': 'Estado de error',
-    'border_color': 'Bordes',
-    'queue_color': 'Barra inferior de espera',
-  };
-  static const defaults = <String, String>{
-    'primary_color': '#00DCE5',
-    'secondary_color': '#0B292F',
-    'accent_color': '#00DCE5',
-    'background_color': '#050C0F',
-    'surface_color': '#071E23',
-    'text_color': '#F4F7F8',
-    'muted_text_color': '#A5B6BB',
-    'sidebar_color': '#0B292F',
-    'button_color': '#00DCE5',
-    'success_color': '#00D99A',
-    'warning_color': '#F59E0B',
-    'danger_color': '#EC488A',
-    'border_color': '#00DCE5',
-    'queue_color': '#073039',
-  };
   late final http.Client _client;
   late final bool _ownsClient;
-  late final Map<String, TextEditingController> _controllers;
   Timer? _timer;
   Timer? _clockTimer;
   OverlayEntry? _monitorOverlay;
   final Map<int, Uint8List> _vehiclePhotos = <int, Uint8List>{};
   final Set<int> _photoFailures = <int>{};
   bool _loading = true;
-  bool _saving = false;
   String? _error;
   Map<String, dynamic> _data = <String, dynamic>{};
   int _offset = 0;
   int _total = 0;
   int _queuePage = 0;
   int _workerRotation = 0;
-  bool _editing = false;
   bool _fullscreen = false;
   DateTime _clock = DateTime.now();
 
@@ -79,11 +46,8 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     super.initState();
     _ownsClient = widget.client == null;
     _client = widget.client ?? http.Client();
-    _controllers = {
-      for (final entry in fields.entries)
-        entry.key: TextEditingController(text: defaults[entry.key]),
-    };
-    _loadTheme();
+    // Un solo tema visual por empresa, compartido con todo el administrador.
+    CompanyVisualTheme.current.addListener(_onCompanyColorsChanged);
     _refresh();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
@@ -108,67 +72,18 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     _clockTimer?.cancel();
     _monitorOverlay?.remove();
     _monitorOverlay?.dispose();
-    for (final controller in _controllers.values) {
-      controller.dispose();
-    }
+    CompanyVisualTheme.current.removeListener(_onCompanyColorsChanged);
     if (_ownsClient) {
       _client.close();
     }
     super.dispose();
   }
 
-  Future<void> _loadTheme() async {
-    try {
-      final response = await _api.request('GET', '/monitor-theme-24b');
-      final raw = response['colors'];
-      if (!mounted || raw is! Map) {
-        return;
-      }
-      for (final key in fields.keys) {
-        final color = (raw[key] ?? '').toString();
-        if (RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color)) {
-          _controllers[key]!.text = color.toUpperCase();
-        }
-      }
-      setState(() {});
-    } catch (e) {
-      if (mounted) {
-        setState(() => _error = 'No se pudo cargar el tema: $e');
-      }
-    }
-  }
-
-  Future<void> _saveTheme() async {
-    if (_saving) {
-      return;
-    }
-    final values = <String, dynamic>{};
-    for (final entry in _controllers.entries) {
-      final v = entry.value.text.trim().toUpperCase();
-      if (!RegExp(r'^#[0-9A-F]{6}$').hasMatch(v)) {
-        setState(() => _error = '${fields[entry.key]}: utiliza #RRGGBB');
-        return;
-      }
-      values[entry.key] = v;
-    }
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      await _api.request('PATCH', '/monitor-theme-24b', body: values);
-      if (mounted) {
-        setState(() => _editing = false);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _error = 'No se guardaron los colores: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
-    }
+  void _onCompanyColorsChanged() {
+    if (!mounted) return;
+    setState(() {});
+    // OverlayEntry no siempre se reconstruye junto con el MaterialApp.
+    _monitorOverlay?.markNeedsBuild();
   }
 
   Future<void> _refresh() async {
@@ -197,15 +112,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     }
   }
 
-  Color _color(String name) {
-    final code = _controllers[name]?.text.trim() ?? defaults[name]!;
-    if (!RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(code)) {
-      return Color(
-        int.parse(defaults[name]!.substring(1), radix: 16) | 0xFF000000,
-      );
-    }
-    return Color(int.parse(code.substring(1), radix: 16) | 0xFF000000);
-  }
+  Color _color(String name) => CompanyMonitorColors24N27.resolve(name);
 
   Widget _businessLogo(double size) {
     return ValueListenableBuilder<BusinessIdentityData>(
@@ -226,19 +133,6 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
       },
     );
   }
-
-  Widget _panel({
-    required Widget child,
-    EdgeInsets padding = const EdgeInsets.all(14),
-  }) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
-      color: _color('surface_color'),
-      border: Border.all(color: _color('border_color').withValues(alpha: .65)),
-      borderRadius: BorderRadius.circular(18),
-    ),
-    child: child,
-  );
 
   String _name() => BusinessIdentity.current.value.companyName.trim().isEmpty
       ? 'Mi empresa'
@@ -305,7 +199,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
                 child: IconButton(
                   tooltip: 'Salir del modo monitor',
                   onPressed: _closeMonitor,
-                  icon: const Icon(Icons.fullscreen_exit, color: Colors.white),
+                  icon: Icon(Icons.fullscreen_exit, color: CompanyVisualTheme.text),
                 ),
               ),
             ],
@@ -983,72 +877,6 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     );
   }
 
-  Widget _editor() => _panel(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Personalización del monitor por empresa',
-          style: TextStyle(
-            color: _color('text_color'),
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Cambiar el color principal actualiza los elementos turquesa. Cada color se guarda por empresa, separado del tema administrativo.',
-          style: TextStyle(color: _color('muted_text_color')),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final entry in fields.entries)
-              SizedBox(
-                width: 270,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 25,
-                      height: 25,
-                      decoration: BoxDecoration(
-                        color: _color(entry.key),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _controllers[entry.key],
-                        style: TextStyle(color: _color('text_color')),
-                        decoration: InputDecoration(
-                          labelText: entry.value,
-                          labelStyle: TextStyle(
-                            color: _color('muted_text_color'),
-                          ),
-                          border: const OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: _saving ? null : _saveTheme,
-          icon: const Icon(Icons.save),
-          label: Text(_saving ? 'Guardando...' : 'Guardar colores'),
-        ),
-      ],
-    ),
-  );
-
   // 24B.1.2: el administrador aloja esta pagina en un SingleChildScrollView.
   // Su altura debe ser acotada antes de utilizar Expanded o GridView.
   @override
@@ -1070,18 +898,13 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
                 runSpacing: 4,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'Vista general de lavados',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: CompanyVisualTheme.text,
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => setState(() => _editing = !_editing),
-                    icon: const Icon(Icons.palette),
-                    label: const Text('Colores'),
                   ),
                   TextButton.icon(
                     onPressed: _openMonitor,
@@ -1110,16 +933,6 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
               child: Text(
                 _error!,
                 style: const TextStyle(color: Colors.orangeAccent),
-              ),
-            ),
-          if (_editing)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 255),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: _editor(),
-                ),
               ),
             ),
           Expanded(

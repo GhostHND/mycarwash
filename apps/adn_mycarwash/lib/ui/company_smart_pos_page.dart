@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
@@ -31,9 +32,9 @@ class CompanySmartPosPage extends StatefulWidget {
 }
 
 class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
-  static const _teal = Color(0xFF0FA7B4);
-  static const _panel = Color(0xFF0D1A1F);
-  static const _muted = Color(0xFF9CB1BB);
+  static Color get _teal => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _panel => CompanyVisualTheme.legacy(const Color(0xFF0D1A1F));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9CB1BB));
   late final http.Client _client;
   late final bool _ownsClient;
   CompanyBusinessApi get _api => CompanyBusinessApi(_client);
@@ -188,8 +189,8 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF963A47)
-            : const Color(0xFF126E75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF963A47))
+            : CompanyVisualTheme.legacy(const Color(0xFF126E75)),
       ),
     );
   }
@@ -359,7 +360,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
         decoration: BoxDecoration(
           color: _panel,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF20353D)),
+          border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF20353D))),
         ),
         child: child,
       );
@@ -376,9 +377,9 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFF142329),
+        color: CompanyVisualTheme.legacy(const Color(0xFF142329)),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFF294047)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF294047))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,7 +420,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             'SKU ${item['sku']}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: _muted, fontSize: 11),
+            style: TextStyle(color: _muted, fontSize: 11),
           ),
           const SizedBox(height: 12),
           Row(
@@ -427,7 +428,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
               Expanded(
                 child: Text(
                   'L ${item['sale_price']}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _teal,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -452,7 +453,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
             Icon(Icons.inventory_2_outlined, color: _teal, size: 21),
             SizedBox(width: 9),
@@ -465,7 +466,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           ],
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Catálogo vivo conectado con las existencias de la sucursal',
           style: TextStyle(color: _muted, fontSize: 12),
         ),
@@ -474,11 +475,11 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           key: const ValueKey('pos_search'),
           controller: _search,
           decoration: _dec('Buscar artículo por nombre o SKU')
-              .copyWith(prefixIcon: const Icon(Icons.search, color: _teal)),
+              .copyWith(prefixIcon: Icon(Icons.search, color: _teal)),
         ),
         const SizedBox(height: 14),
         if (_products.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(18),
             child: Text(
               'No hay productos con precio de venta. Revisa Inventario.',
@@ -516,7 +517,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           const SizedBox(height: 12),
           if (_wash != null) ...[
             ListTile(
-              leading: const Icon(Icons.local_car_wash_outlined, color: _teal),
+              leading: Icon(Icons.local_car_wash_outlined, color: _teal),
               title: Text(
                 'Lavado: ${_wash!['service_name']} · ${_wash!['vehicle_label']}',
               ),
@@ -528,7 +529,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             const Divider(),
           ],
           if (_cart.isEmpty && _wash == null)
-            const Text(
+            Text(
               'Agrega productos desde el catálogo.',
               style: TextStyle(color: _muted),
             ),
@@ -544,7 +545,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
                         Text('${_chosen[row.key]?['name']}', maxLines: 2),
                         Text(
                           'L ${_chosen[row.key]?['sale_price']} c/u',
-                          style: const TextStyle(fontSize: 12, color: _muted),
+                          style: TextStyle(fontSize: 12, color: _muted),
                         ),
                       ],
                     ),
@@ -603,7 +604,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             const SizedBox(height: 10),
             Text(
               'ISV (15%): L ${_money(_tax)}',
-              style: const TextStyle(color: _muted),
+              style: TextStyle(color: _muted),
             ),
             if (_fiscalLoading) const LinearProgressIndicator(),
             if (!_fiscalReady) ...[
@@ -621,12 +622,12 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
               const SizedBox(height: 5),
               Text(
                 'CAI ${_fiscalAuthorization?['cai']} · siguiente #${_fiscalAuthorization?['next_sequence']}',
-                style: const TextStyle(color: _muted, fontSize: 11),
+                style: TextStyle(color: _muted, fontSize: 11),
               ),
             ],
           ] else ...[
             const SizedBox(height: 5),
-            const Text(
+            Text(
               'Recibo interno sin valor fiscal; no agrega ISV al importe mostrado.',
               style: TextStyle(color: _muted, fontSize: 11),
             ),
@@ -634,7 +635,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           const SizedBox(height: 12),
           Text(
             'Total: L ${_money(_total)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: _teal,
@@ -648,7 +649,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
               borderRadius: BorderRadius.circular(11),
               border: Border.all(color: _teal.withValues(alpha: .3)),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.info_outline, color: _teal),
                 SizedBox(width: 9),
@@ -681,7 +682,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'La seleccion del documento no cambia las obligaciones tributarias del negocio.',
             style: TextStyle(color: _muted, fontSize: 11),
           ),
@@ -894,9 +895,9 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
       key: ValueKey<String>('pos_history_card_24l_${sale['id']}'),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFF12252B),
+        color: CompanyVisualTheme.legacy(const Color(0xFF12252B)),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFF29434B)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF29434B))),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -904,7 +905,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.receipt_long_outlined, color: _teal, size: 19),
+              Icon(Icons.receipt_long_outlined, color: _teal, size: 19),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
@@ -925,7 +926,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
                 ),
                 child: Text(
                   invoice ? 'Factura' : 'Recibo',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _teal,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -937,7 +938,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           const SizedBox(height: 7),
           Text(
             'L ${sale['total'] ?? '—'}',
-            style: const TextStyle(
+            style: TextStyle(
               color: _teal,
               fontSize: 21,
               fontWeight: FontWeight.w900,
@@ -958,12 +959,12 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
               date,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: _muted, fontSize: 11),
+              style: TextStyle(color: _muted, fontSize: 11),
             ),
           ],
           if (state.isNotEmpty) ...[
             const SizedBox(height: 5),
-            Text(state, style: const TextStyle(color: _muted, fontSize: 11)),
+            Text(state, style: TextStyle(color: _muted, fontSize: 11)),
           ],
           const SizedBox(height: 10),
           SizedBox(
@@ -974,7 +975,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
               label: const Text('Consultar comprobante'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _teal,
-                side: const BorderSide(color: Color(0xFF31545C)),
+                side: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFF31545C))),
                 visualDensity: VisualDensity.compact,
               ),
             ),
@@ -1001,7 +1002,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
         ),
         const SizedBox(height: 12),
         if (_sales.isEmpty)
-          const Text(
+          Text(
             'No hay ventas registradas.',
             style: TextStyle(color: _muted),
           ),
@@ -1057,7 +1058,7 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
           style: TextStyle(fontSize: 29, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
-        const Text(
+        Text(
           'Venta de artículos y accesorios · Inventario por sucursal',
           style: TextStyle(color: _muted),
         ),

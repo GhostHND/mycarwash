@@ -147,7 +147,7 @@ void main() {
     client.close();
   });
 
-  testWidgets('Mi Empresa conserva cinco pestanas y suma dos', (tester) async {
+  testWidgets('Mi Empresa ofrece Horarios y Redes sociales entre sus seis áreas', (tester) async {
     var gotWeek = false;
     var gotSpecial = false;
     var gotSocial = false;
@@ -184,13 +184,15 @@ void main() {
     for (final name in [
       'Información',
       'Contactos',
-      'Identidad visual',
       'Datos fiscales',
-      'Direcciones',
+      'Dirección',
       'Horarios',
+      'Redes sociales',
     ]) {
       expect(find.text(name), findsOneWidget);
     }
+    expect(find.text('Identidad visual'), findsNothing);
+    expect(find.text('Preferencias de sistema'), findsNothing);
     await tester.tap(find.text('Horarios'));
     await tester.pumpAndSettle();
     expect(gotWeek, isTrue);

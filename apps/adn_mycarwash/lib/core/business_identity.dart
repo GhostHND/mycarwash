@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'mycarwash_session.dart';
+import 'company_visual_theme.dart';
 
 class BusinessIdentityData {
   const BusinessIdentityData({
@@ -59,6 +60,7 @@ class BusinessIdentity {
   static void reset() {
     _revision++;
     current.value = const BusinessIdentityData();
+    CompanyVisualTheme.reset();
   }
 
   static Future<bool> refresh({http.Client? client}) async {
@@ -139,6 +141,7 @@ class BusinessIdentity {
         return false;
       }
 
+      CompanyVisualTheme.load(branding is Map ? branding : null);
       current.value = BusinessIdentityData(
         fontFamily: font,
         companyName: name,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
@@ -22,9 +23,9 @@ class CompanyUnifiedReportsPage extends StatefulWidget {
 }
 
 class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
-  static const accent = Color(0xFF0FA7B4);
-  static const panel = Color(0xFF102229);
-  static const muted = Color(0xFFA7B8BF);
+  static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get panel => CompanyVisualTheme.legacy(const Color(0xFF102229));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFFA7B8BF));
   late final http.Client client;
   late final bool ownsClient;
   CompanyBusinessApi get api => CompanyBusinessApi(client);
@@ -469,13 +470,13 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
       key: ValueKey('report-metric-${metric['label']}'),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF173D45), Color(0xFF0C2229)],
+          colors: [CompanyVisualTheme.legacy(const Color(0xFF173D45)), CompanyVisualTheme.legacy(const Color(0xFF0C2229))],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF28626D)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF28626D))),
         boxShadow: [
           BoxShadow(color: accent.withValues(alpha: .045), blurRadius: 16),
         ],
@@ -486,9 +487,9 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFF0B3942),
+              color: CompanyVisualTheme.legacy(const Color(0xFF0B3942)),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF23717B)),
+              border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF23717B))),
             ),
             child: Icon(
               metricIcon('${metric['label']}'),
@@ -511,7 +512,7 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                     '${metric['label']}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: muted, fontSize: 14),
+                    style: TextStyle(color: muted, fontSize: 14),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -519,8 +520,8 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                   '${metric['value']}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: CompanyVisualTheme.text,
                     fontSize: 25,
                     fontWeight: FontWeight.w700,
                   ),
@@ -543,7 +544,7 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
       decoration: BoxDecoration(
         color: panel,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF28515A)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF28515A))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -559,15 +560,15 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                 ),
               ),
               const SizedBox(width: 9),
-              const Icon(Icons.insert_chart_outlined, color: accent, size: 20),
+              Icon(Icons.insert_chart_outlined, color: accent, size: 20),
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
                   '${section['title']}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: CompanyVisualTheme.text,
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
                   ),
@@ -577,12 +578,12 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF163942),
+                  color: CompanyVisualTheme.legacy(const Color(0xFF163942)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   rows.length == 1 ? '1 registro' : '${rows.length} registros',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -592,11 +593,11 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
             ],
           ),
           const SizedBox(height: 8),
-          const Divider(height: 1, color: Color(0xFF315059)),
+          Divider(height: 1, color: CompanyVisualTheme.legacy(const Color(0xFF315059))),
           const SizedBox(height: 5),
           Expanded(
             child: rows.isEmpty
-                ? const Align(
+                ? Align(
                     alignment: Alignment.topLeft,
                     child: Padding(
                       padding: EdgeInsets.only(top: 13),
@@ -634,13 +635,13 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                                 horizontalMargin: 15,
                                 columnSpacing: 24,
                                 dividerThickness: .7,
-                                headingTextStyle: const TextStyle(
+                                headingTextStyle: TextStyle(
                                   color: accent,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                 ),
-                                dataTextStyle: const TextStyle(
-                                  color: Colors.white,
+                                dataTextStyle: TextStyle(
+                                  color: CompanyVisualTheme.text,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -673,14 +674,14 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                   ),
           ),
           if (note.isNotEmpty) ...[
-            const Divider(height: 8, color: Color(0xFF315059)),
+            Divider(height: 8, color: CompanyVisualTheme.legacy(const Color(0xFF315059))),
             Tooltip(
               message: note,
               child: Text(
                 note,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: muted, fontSize: 13),
+                style: TextStyle(color: muted, fontSize: 13),
               ),
             ),
           ],
@@ -722,8 +723,8 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             softWrap: true,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: CompanyVisualTheme.text,
               fontSize: 17,
               fontWeight: FontWeight.w700,
             ),
@@ -779,13 +780,13 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 21),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
+      gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFF123D46), Color(0xFF0B2027), Color(0xFF102229)],
+        colors: [CompanyVisualTheme.legacy(const Color(0xFF123D46)), CompanyVisualTheme.legacy(const Color(0xFF0B2027)), CompanyVisualTheme.legacy(const Color(0xFF102229))],
       ),
       borderRadius: BorderRadius.circular(17),
-      border: Border.all(color: const Color(0xFF23717B)),
+      border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF23717B))),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -795,8 +796,8 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
           height: 54,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            color: const Color(0xFF0B3038),
-            border: Border.all(color: const Color(0xFF278792)),
+            color: CompanyVisualTheme.legacy(const Color(0xFF0B3038)),
+            border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF278792))),
           ),
           child: Icon(_reportIcon24M(widget.kind), color: accent, size: 28),
         ),
@@ -810,8 +811,8 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                 titles[widget.kind] ?? 'Reportes',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: CompanyVisualTheme.text,
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
                 ),
@@ -820,10 +821,10 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
               Text(
                 _reportDescriptions24M[widget.kind] ??
                     'Información operativa de la empresa.',
-                style: const TextStyle(color: Color(0xFFD4E5E8), fontSize: 12),
+                style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFD4E5E8)), fontSize: 12),
               ),
               const SizedBox(height: 9),
-              const Text(
+              Text(
                 'Reportes por sucursal, período y fuente verificable',
                 style: TextStyle(color: muted, fontSize: 11),
               ),
@@ -853,9 +854,9 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
         visualDensity: VisualDensity.compact,
-        backgroundColor: selected ? const Color(0xFF16434B) : panel,
+        backgroundColor: selected ? CompanyVisualTheme.legacy(const Color(0xFF16434B)) : panel,
         foregroundColor: selected ? Colors.white : muted,
-        side: BorderSide(color: selected ? accent : const Color(0xFF35535C)),
+        side: BorderSide(color: selected ? accent : CompanyVisualTheme.legacy(const Color(0xFF35535C))),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -869,7 +870,7 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(right: 5),
           child: Text(
             'PERÍODO RÁPIDO',
@@ -921,9 +922,9 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D252C),
+                  color: CompanyVisualTheme.legacy(const Color(0xFF0D252C)),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF28515A)),
+                  border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF28515A))),
                 ),
                 child: Wrap(
                   spacing: 10,
@@ -1012,13 +1013,13 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
               const SizedBox(height: 12),
               _quickPeriods24M(),
               const SizedBox(height: 18),
-              if (loading) const LinearProgressIndicator(color: accent),
+              if (loading) LinearProgressIndicator(color: accent),
               if (error != null)
                 Padding(
                   padding: const EdgeInsets.all(10),
                   child: Text(
                     '$error',
-                    style: const TextStyle(color: Color(0xFFFF8D94)),
+                    style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8D94))),
                   ),
                 ),
               if (snapshot != null) ...[
@@ -1066,23 +1067,23 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF30271E),
-                      border: Border.all(color: const Color(0xFF665037)),
+                      color: CompanyVisualTheme.legacy(const Color(0xFF30271E)),
+                      border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF665037))),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.info_outline,
-                          color: Color(0xFFEAB77A),
+                          color: CompanyVisualTheme.legacy(const Color(0xFFEAB77A)),
                           size: 18,
                         ),
                         const SizedBox(width: 9),
                         Expanded(
                           child: Text(
                             w,
-                            style: const TextStyle(
-                              color: Color(0xFFE7D8C2),
+                            style: TextStyle(
+                              color: CompanyVisualTheme.legacy(const Color(0xFFE7D8C2)),
                               fontSize: 12,
                             ),
                           ),
@@ -1091,7 +1092,7 @@ class _CompanyUnifiedReportsPageState extends State<CompanyUnifiedReportsPage> {
                     ),
                   ),
                 const SizedBox(height: 13),
-                const Text(
+                Text(
                   'Los reportes operativos no sustituyen contabilidad ni documentos fiscales autorizados.',
                   style: TextStyle(color: muted, fontSize: 11),
                 ),

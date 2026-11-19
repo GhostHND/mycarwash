@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 
 import '../core/company_business_api.dart';
 
@@ -49,9 +50,9 @@ class CompanyPosCheckoutDialog extends StatefulWidget {
 }
 
 class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
-  static const teal = Color(0xFF0FA7B4);
-  static const surface = Color(0xFF0D1A1F);
-  static const muted = Color(0xFFA3B8C0);
+  static Color get teal => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get surface => CompanyVisualTheme.legacy(const Color(0xFF0D1A1F));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFFA3B8C0));
   final _search = TextEditingController();
   final _fullName = TextEditingController();
   final _document = TextEditingController();
@@ -211,7 +212,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
               ),
               Text(
                 subtitle,
-                style: const TextStyle(color: muted, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
               ),
             ],
           ),
@@ -222,7 +223,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
 
   Widget _customerSection() => widget.washOrderId != null
       ? ListTile(
-          leading: const Icon(Icons.person_outline, color: teal),
+          leading: Icon(Icons.person_outline, color: teal),
           title: Text(widget.washCustomerName ?? 'Propietario del vehículo'),
           subtitle: const Text('Cliente vinculado a la orden (no modificable)'),
         )
@@ -256,7 +257,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
             ),
             const SizedBox(height: 12),
             if (_customerMode == 'CONSUMER')
-              const Text(
+              Text(
                 'Venta sin datos personales. El comprobante mostrará «Consumidor final».',
                 style: TextStyle(color: muted, fontSize: 12),
               ),
@@ -359,7 +360,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
                 onChanged: (_) => _edited(),
               ),
               const SizedBox(height: 5),
-              const Text(
+              Text(
                 'Se registrará en Clientes únicamente cuando la venta sea confirmada.',
                 style: TextStyle(color: muted, fontSize: 12),
               ),
@@ -419,7 +420,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
           const SizedBox(height: 8),
           Text(
             'Transferencia calculada: L ${bankPart >= 0 ? _amount(bankPart) : '—'}',
-            style: const TextStyle(color: teal, fontWeight: FontWeight.w600),
+            style: TextStyle(color: teal, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
         ],
@@ -470,7 +471,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
               ),
               Text(
                 'Cambio: L ${_amount(change)}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: teal,
                   fontWeight: FontWeight.bold,
                 ),
@@ -704,9 +705,9 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
               padding: const EdgeInsets.fromLTRB(24, 22, 24, 14),
               child: Row(
                 children: [
-                  const Icon(Icons.point_of_sale, color: teal, size: 28),
+                  Icon(Icons.point_of_sale, color: teal, size: 28),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -778,8 +779,8 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
                           Expanded(
                             child: Text(
                               _status!,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: CompanyVisualTheme.text,
                                 fontSize: 12,
                               ),
                             ),
@@ -795,7 +796,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF502A32),
+                        color: CompanyVisualTheme.legacy(const Color(0xFF502A32)),
                         borderRadius: BorderRadius.circular(9),
                         border: Border.all(color: Colors.redAccent),
                       ),
@@ -813,8 +814,8 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
                               child: SingleChildScrollView(
                                 child: SelectableText(
                                   _error!,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: CompanyVisualTheme.text,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -837,7 +838,7 @@ class _CompanyPosCheckoutDialogState extends State<CompanyPosCheckoutDialog> {
                       ),
                       Text(
                         'L ${_amount(_total)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: teal,
                           fontSize: 25,
                           fontWeight: FontWeight.bold,

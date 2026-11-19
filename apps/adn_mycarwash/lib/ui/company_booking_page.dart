@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
@@ -38,10 +39,10 @@ class CompanyBookingPage extends StatefulWidget {
 }
 
 class _CompanyBookingPageState extends State<CompanyBookingPage> {
-  static const Color _turquoise = Color(0xFF0FA7B4);
-  static const Color _muted = Color(0xFF9BAEB6);
-  static const Color _border = Color(0xFF20343C);
-  static const Color _surface = Color(0xFF0A1519);
+  static Color get _turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
+  static Color get _border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
 
   late final http.Client _client;
   late final bool _ownsClient;
@@ -219,8 +220,8 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -228,15 +229,15 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
 
   InputDecoration _decoration(String label) => InputDecoration(
     labelText: label,
-    labelStyle: const TextStyle(color: _muted),
+    labelStyle: TextStyle(color: _muted),
     filled: true,
-    fillColor: const Color(0xFF111F25),
+    fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _border),
+      borderSide: BorderSide(color: _border),
       borderRadius: BorderRadius.circular(10),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(color: _turquoise),
+      borderSide: BorderSide(color: _turquoise),
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -395,7 +396,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
           backgroundColor: _surface,
           title: Text(
             existing == null ? 'Nuevo $_single' : 'Editar $_single',
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: CompanyVisualTheme.text),
           ),
           content: SizedBox(
             width: 560,
@@ -465,7 +466,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                             enabled: !saving,
                             keyboardType: TextInputType.text,
                             maxLines: field.multiline ? 3 : 1,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: CompanyVisualTheme.text),
                             decoration: _decoration(field.name).copyWith(
                               suffixIcon: field.date
                                   ? const Icon(Icons.calendar_month_outlined)
@@ -508,7 +509,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                     if (dialogError != null)
                       Text(
                         dialogError!,
-                        style: const TextStyle(color: Color(0xFFFF8995)),
+                        style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                       ),
                   ],
                 ),
@@ -750,16 +751,16 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                         children: [
                           Text(
                             _title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 23,
                               fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                              color: CompanyVisualTheme.text,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             _description,
-                            style: const TextStyle(color: _muted),
+                            style: TextStyle(color: _muted),
                           ),
                         ],
                       ),
@@ -778,12 +779,12 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                     controller: _search,
                     onChanged: _searchChanged,
                     decoration: _decoration('Buscar registros').copyWith(
-                      prefixIcon: const Icon(Icons.search, color: _turquoise),
+                      prefixIcon: Icon(Icons.search, color: _turquoise),
                     ),
                   ),
                   const SizedBox(height: 16),
                   if (_loading)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.all(24),
                       child: Center(
                         child: CircularProgressIndicator(color: _turquoise),
@@ -795,7 +796,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                       children: [
                         Text(
                           _error!,
-                          style: const TextStyle(color: Color(0xFFFF8995)),
+                          style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                         ),
                         OutlinedButton(
                           onPressed: _load,
@@ -804,7 +805,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                       ],
                     )
                   else if (_rows.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: Text(
@@ -834,7 +835,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.event_available_outlined,
                               color: _turquoise,
                             ),
@@ -845,15 +846,15 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                                 children: [
                                   Text(
                                     _summary(row),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.white,
+                                      color: CompanyVisualTheme.text,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'ID ${row['id']}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: _muted,
                                       fontSize: 11,
                                     ),
@@ -864,7 +865,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                             IconButton(
                               tooltip: 'Consultar',
                               onPressed: () => _details(row),
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.visibility_outlined,
                                 color: _muted,
                               ),
@@ -872,7 +873,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                             IconButton(
                               tooltip: 'Editar',
                               onPressed: () => _edit(row),
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.edit_outlined,
                                 color: _turquoise,
                               ),
@@ -880,9 +881,9 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                             IconButton(
                               tooltip: 'Eliminar',
                               onPressed: () => _delete(row),
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.delete_outline,
-                                color: Color(0xFFE84657),
+                                color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                               ),
                             ),
                           ],
@@ -904,7 +905,7 @@ class _CompanyBookingPageState extends State<CompanyBookingPage> {
                       ),
                       Text(
                         'Página $_page de $_pages',
-                        style: const TextStyle(color: _muted),
+                        style: TextStyle(color: _muted),
                       ),
                       IconButton(
                         tooltip: 'Página siguiente',

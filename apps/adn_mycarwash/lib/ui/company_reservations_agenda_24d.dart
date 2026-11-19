@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/business_identity.dart';
@@ -59,7 +60,7 @@ class _CompanyReservationsAgenda24DState
   Color get _accent => Theme.of(context).colorScheme.primary;
   Color get _surface => Theme.of(context).colorScheme.surface;
   Color get _edge => _accent.withValues(alpha: .47);
-  static const _muted = Color(0xFF9BAEB6);
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
 
   @override
   void initState() {
@@ -289,7 +290,7 @@ class _CompanyReservationsAgenda24DState
                 ),
               ),
               const SizedBox(height: 5),
-              const Text(
+              Text(
                 'Gestiona citas según disponibilidad de horarios, lavadores y puestos.',
                 style: TextStyle(color: _muted),
               ),
@@ -309,7 +310,7 @@ class _CompanyReservationsAgenda24DState
                         : identity.companyName,
                     maxLines: 2,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: CompanyVisualTheme.text),
                   ),
                 )
               : Image.memory(
@@ -335,10 +336,10 @@ class _CompanyReservationsAgenda24DState
       initialValue: value,
       isExpanded: true,
       dropdownColor: _surface,
-      style: const TextStyle(color: Colors.white, fontSize: 13),
+      style: TextStyle(color: CompanyVisualTheme.text, fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: _muted),
+        labelStyle: TextStyle(color: _muted),
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
       ),
@@ -367,17 +368,17 @@ class _CompanyReservationsAgenda24DState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: _muted, fontSize: 13)),
+              Text(label, style: TextStyle(color: _muted, fontSize: 13)),
               const SizedBox(height: 5),
               Text(
                 value,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: CompanyVisualTheme.text,
                   fontSize: 27,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(detail, style: const TextStyle(color: _muted, fontSize: 11)),
+              Text(detail, style: TextStyle(color: _muted, fontSize: 11)),
             ],
           ),
         ),
@@ -405,8 +406,8 @@ class _CompanyReservationsAgenda24DState
               Expanded(
                 child: Text(
                   '${_months[_month.month - 1]} ${_month.year}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: CompanyVisualTheme.text,
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
                   ),
@@ -432,7 +433,7 @@ class _CompanyReservationsAgenda24DState
                   child: Center(
                     child: Text(
                       day,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _muted,
                         fontWeight: FontWeight.bold,
                       ),
@@ -507,7 +508,7 @@ class _CompanyReservationsAgenda24DState
           const SizedBox(height: 8),
           Text(
             'Fecha seleccionada: ${_date(_selected)}',
-            style: const TextStyle(color: _muted, fontSize: 12),
+            style: TextStyle(color: _muted, fontSize: 12),
           ),
         ],
       ),
@@ -522,11 +523,11 @@ class _CompanyReservationsAgenda24DState
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Semana seleccionada',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                     fontSize: 19,
                     fontWeight: FontWeight.bold,
                   ),
@@ -575,7 +576,7 @@ class _CompanyReservationsAgenda24DState
             ],
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'Citas programadas por día · selecciona un día para ver disponibilidad.',
             style: TextStyle(color: _muted),
           ),
@@ -618,14 +619,14 @@ class _CompanyReservationsAgenda24DState
                                 children: [
                                   Text(
                                     '${_days[i]} ${day.day}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: CompanyVisualTheme.text,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   const SizedBox(height: 6),
                                   if (bookings.isEmpty)
-                                    const Text(
+                                    Text(
                                       'Sin citas',
                                       style: TextStyle(
                                         color: _muted,
@@ -648,7 +649,7 @@ class _CompanyReservationsAgenda24DState
                                   if (bookings.length > 5)
                                     Text(
                                       '+${bookings.length - 5}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: _muted,
                                         fontSize: 10,
                                       ),
@@ -673,16 +674,16 @@ class _CompanyReservationsAgenda24DState
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Horarios disponibles',
           style: TextStyle(
-            color: Colors.white,
+            color: CompanyVisualTheme.text,
             fontSize: 19,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 6),
-        Text(_date(_selected), style: const TextStyle(color: _muted)),
+        Text(_date(_selected), style: TextStyle(color: _muted)),
         const SizedBox(height: 18),
         if (_slotsBusy)
           const Center(child: CircularProgressIndicator())
@@ -690,7 +691,7 @@ class _CompanyReservationsAgenda24DState
           Text(
             _availabilityMessage ??
                 'No hay horarios disponibles para esta fecha y servicio.',
-            style: const TextStyle(color: _muted),
+            style: TextStyle(color: _muted),
           )
         else
           LayoutBuilder(
@@ -731,8 +732,8 @@ class _CompanyReservationsAgenda24DState
                               children: [
                                 Text(
                                   '${slot['time']}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: CompanyVisualTheme.text,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 17,
                                   ),
@@ -798,18 +799,18 @@ class _CompanyReservationsAgenda24DState
             children: [
               Text(
                 brand.isEmpty ? 'Vehículo registrado' : brand,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: CompanyVisualTheme.text,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 'Placa: $plate',
-                style: const TextStyle(color: _muted, fontSize: 12),
+                style: TextStyle(color: _muted, fontSize: 12),
               ),
               Text(
                 '${row['client_name'] ?? 'Cliente no disponible'}',
-                style: const TextStyle(color: _muted, fontSize: 12),
+                style: TextStyle(color: _muted, fontSize: 12),
               ),
             ],
           );
@@ -818,11 +819,11 @@ class _CompanyReservationsAgenda24DState
             children: [
               Text(
                 '${row['local_date'] ?? ''}  ${row['start_time'] ?? ''}',
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: CompanyVisualTheme.text),
               ),
               Text(
                 '${row['service_name'] ?? 'Servicio'}',
-                style: const TextStyle(color: _muted),
+                style: TextStyle(color: _muted),
               ),
             ],
           );
@@ -852,9 +853,9 @@ class _CompanyReservationsAgenda24DState
                     await _reload();
                   }
                 },
-                icon: const Icon(
+                icon: Icon(
                   Icons.event_busy_outlined,
-                  color: Color(0xFFE84657),
+                  color: CompanyVisualTheme.legacy(const Color(0xFFE84657)),
                   size: 20,
                 ),
               ),
@@ -905,11 +906,11 @@ class _CompanyReservationsAgenda24DState
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'Próximas reservas',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: CompanyVisualTheme.text,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -925,7 +926,7 @@ class _CompanyReservationsAgenda24DState
         if (_busy)
           const Center(child: CircularProgressIndicator())
         else if (_reservations.isEmpty)
-          const Text(
+          Text(
             'No hay próximas reservas',
             style: TextStyle(color: _muted),
           )
@@ -1050,7 +1051,7 @@ class _CompanyReservationsAgenda24DState
                 Expanded(
                   child: Text(
                     _error!,
-                    style: const TextStyle(color: Color(0xFFFF8995)),
+                    style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995))),
                   ),
                 ),
                 TextButton(onPressed: _reload, child: const Text('Reintentar')),

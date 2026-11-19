@@ -154,7 +154,7 @@ void main() {
     client.close();
   });
 
-  testWidgets('Mi Empresa conserva siete pestanas y muestra Preferencias', (
+  testWidgets('Configuración contiene Identidad visual y Preferencias del sistema', (
     tester,
   ) async {
     var preferencesRequested = false;
@@ -177,21 +177,18 @@ void main() {
       }
       throw StateError('Petición no esperada: ${request.url.path}');
     });
-    await tester.pumpWidget(app(CompanySettingsPage(client: client)));
+    await tester.pumpWidget(app(CompanySettingsPage(client: client, configurationOnly: true)));
     await tester.pumpAndSettle();
     for (final tab in [
-      'Información',
-      'Contactos',
       'Identidad visual',
-      'Datos fiscales',
-      'Direcciones',
-      'Horarios',
-      'Redes sociales',
-      'Preferencias',
+      'Preferencias de sistema',
     ]) {
       expect(find.text(tab), findsOneWidget);
     }
-    final tab = find.text('Preferencias');
+    expect(find.text('Información'), findsNothing);
+    expect(find.text('Datos fiscales'), findsNothing);
+    expect(find.text('2 áreas de configuración'), findsOneWidget);
+    final tab = find.text('Preferencias de sistema');
     await tester.ensureVisible(tab);
     await tester.tap(tab);
     await tester.pumpAndSettle();

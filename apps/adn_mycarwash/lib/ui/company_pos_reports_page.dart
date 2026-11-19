@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
@@ -15,9 +16,9 @@ class CompanyPosReportsPage extends StatefulWidget {
 }
 
 class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
-  static const Color accent = Color(0xFF0FA7B4);
-  static const Color panel = Color(0xFF0F2026);
-  static const Color muted = Color(0xFF9DB0B8);
+  static Color get accent => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get panel => CompanyVisualTheme.legacy(const Color(0xFF0F2026));
+  static Color get muted => CompanyVisualTheme.legacy(const Color(0xFF9DB0B8));
   late final http.Client _client;
   late final bool _ownsClient;
   CompanyBusinessApi get _api => CompanyBusinessApi(_client);
@@ -170,7 +171,7 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(color: muted, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
               ),
             ),
           ],
@@ -178,8 +179,8 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
         const SizedBox(height: 12),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: CompanyVisualTheme.text,
             fontWeight: FontWeight.bold,
             fontSize: 23,
           ),
@@ -201,8 +202,8 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: CompanyVisualTheme.text,
             fontWeight: FontWeight.w700,
             fontSize: 16,
           ),
@@ -237,16 +238,16 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Reportes Smart POS',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: CompanyVisualTheme.text,
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 5),
-              const Text(
+              Text(
                 'Ventas confirmadas · Filtros por sucursal y período',
                 style: TextStyle(color: muted),
               ),
@@ -307,13 +308,13 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                 ],
               ),
               const SizedBox(height: 18),
-              if (_loading) const LinearProgressIndicator(color: accent),
+              if (_loading) LinearProgressIndicator(color: accent),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Text(
                     'No se pudo cargar el reporte: $_error',
-                    style: const TextStyle(color: Color(0xFFFF9CA4)),
+                    style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF9CA4))),
                   ),
                 ),
               if (report != null) ...[
@@ -347,7 +348,7 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                 _section(
                   'Ventas por día',
                   daily.isEmpty
-                      ? const Text(
+                      ? Text(
                           'No hay ventas confirmadas en este período.',
                           style: TextStyle(color: muted),
                         )
@@ -366,7 +367,7 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                                         Expanded(
                                           child: Text(
                                             '${row['day']} · ${row['sales_count']} ventas',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               color: muted,
                                               fontSize: 12,
                                             ),
@@ -374,8 +375,8 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                                         ),
                                         Text(
                                           'L ${row['total']}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: CompanyVisualTheme.text,
                                           ),
                                         ),
                                       ],
@@ -408,7 +409,7 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                     final left = _section(
                       'Cobros por canal',
                       methods.isEmpty
-                          ? const Text(
+                          ? Text(
                               'Sin cobros',
                               style: TextStyle(color: muted),
                             )
@@ -421,17 +422,17 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                                     contentPadding: EdgeInsets.zero,
                                     title: Text(
                                       '${row['channel']}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: CompanyVisualTheme.text,
                                       ),
                                     ),
                                     subtitle: Text(
                                       '${row['payment_count']} movimientos',
-                                      style: const TextStyle(color: muted),
+                                      style: TextStyle(color: muted),
                                     ),
                                     trailing: Text(
                                       'L ${row['amount']}',
-                                      style: const TextStyle(color: accent),
+                                      style: TextStyle(color: accent),
                                     ),
                                   ),
                               ],
@@ -440,7 +441,7 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                     final right = _section(
                       'Tipo de documento',
                       docs.isEmpty
-                          ? const Text(
+                          ? Text(
                               'Sin documentos',
                               style: TextStyle(color: muted),
                             )
@@ -455,17 +456,17 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                                       row['document_type'] == 'FISCAL_INVOICE'
                                           ? 'Factura'
                                           : 'Recibo',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: CompanyVisualTheme.text,
                                       ),
                                     ),
                                     subtitle: Text(
                                       '${row['sales_count']} ventas',
-                                      style: const TextStyle(color: muted),
+                                      style: TextStyle(color: muted),
                                     ),
                                     trailing: Text(
                                       'L ${row['total']}',
-                                      style: const TextStyle(color: accent),
+                                      style: TextStyle(color: accent),
                                     ),
                                   ),
                               ],
@@ -491,7 +492,7 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                 _section(
                   'Los 10 productos más vendidos',
                   products.isEmpty
-                      ? const Text(
+                      ? Text(
                           'Sin artículos vendidos',
                           style: TextStyle(color: muted),
                         )
@@ -503,22 +504,22 @@ class _CompanyPosReportsPageState extends State<CompanyPosReportsPage> {
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(
                                   '${row['name']}',
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(color: CompanyVisualTheme.text),
                                 ),
                                 subtitle: Text(
                                   'SKU: ${row['sku']} · Unidades: ${row['quantity']}',
-                                  style: const TextStyle(color: muted),
+                                  style: TextStyle(color: muted),
                                 ),
                                 trailing: Text(
                                   'L ${row['gross_line_amount']}',
-                                  style: const TextStyle(color: accent),
+                                  style: TextStyle(color: accent),
                                 ),
                               ),
                           ],
                         ),
                 ),
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   'Reporte operativo de ventas Smart POS confirmadas. '
                   'No incluye cobros de lavados ni equivale a estados contables oficiales.',
                   style: TextStyle(color: muted, fontSize: 12),

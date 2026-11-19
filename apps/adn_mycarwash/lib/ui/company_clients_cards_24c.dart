@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 
 /// Cuadrícula exclusiva de Clientes; las operaciones CRUD siguen en la página
 /// existente. El tema procede de ThemeData (sin colores de marca incrustados).
@@ -39,7 +40,7 @@ class CompanyClientsCardGrid24C extends StatelessWidget {
   Widget _card(BuildContext context, Map<String, dynamic> row) {
     final scheme = Theme.of(context).colorScheme;
     final active = row['is_active'] != false && row['is_active'] != 0;
-    final statusColor = active ? const Color(0xFF1CB88D) : scheme.error;
+    final statusColor = active ? CompanyVisualTheme.legacy(const Color(0xFF1CB88D)) : scheme.error;
     final border = Color.lerp(accent, scheme.surface, 0.48)!;
     final name = _value(row['full_name'], 'Sin nombre');
     return Container(

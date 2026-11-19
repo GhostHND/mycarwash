@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -182,11 +183,11 @@ class _CompanyVehiclePhotoField24C2State
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'Fotografía del vehículo',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            style: TextStyle(color: CompanyVisualTheme.text, fontWeight: FontWeight.w700),
           ),
         ),
         const SizedBox(height: 7),
@@ -194,7 +195,7 @@ class _CompanyVehiclePhotoField24C2State
           height: 140,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF15262C),
+            color: CompanyVisualTheme.legacy(const Color(0xFF15262C)),
             borderRadius: BorderRadius.circular(12),
           ),
           child: _loading

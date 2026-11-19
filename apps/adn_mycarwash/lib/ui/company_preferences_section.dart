@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
-import 'receipt_print_preview.dart';
 
 /// Configuración del negocio, independiente de las preferencias del usuario.
 class CompanyPreferencesSection extends StatefulWidget {
@@ -21,10 +21,10 @@ class CompanyPreferencesSection extends StatefulWidget {
 }
 
 class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
-  static const _turquoise = Color(0xFF0FA7B4);
-  static const _surface = Color(0xFF0A1519);
-  static const _border = Color(0xFF20343C);
-  static const _muted = Color(0xFF9BAEB6);
+  static Color get _turquoise => CompanyVisualTheme.legacy(const Color(0xFF0FA7B4));
+  static Color get _surface => CompanyVisualTheme.legacy(const Color(0xFF0A1519));
+  static Color get _border => CompanyVisualTheme.legacy(const Color(0xFF20343C));
+  static Color get _muted => CompanyVisualTheme.legacy(const Color(0xFF9BAEB6));
   static const _path = '/settings/preferences';
 
   static const _dateFormats = <String, String>{
@@ -148,8 +148,8 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
       SnackBar(
         content: Text(text),
         backgroundColor: error
-            ? const Color(0xFF9C3541)
-            : const Color(0xFF126F75),
+            ? CompanyVisualTheme.legacy(const Color(0xFF9C3541))
+            : CompanyVisualTheme.legacy(const Color(0xFF126F75)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -204,25 +204,25 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
       labelText: label,
       hintText: hint,
       helperText: helper,
-      labelStyle: const TextStyle(color: _muted),
-      hintStyle: const TextStyle(color: _muted),
-      helperStyle: const TextStyle(color: _muted),
+      labelStyle: TextStyle(color: _muted),
+      hintStyle: TextStyle(color: _muted),
+      helperStyle: TextStyle(color: _muted),
       filled: true,
-      fillColor: const Color(0xFF111F25),
+      fillColor: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
       enabledBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: _border),
+        borderSide: BorderSide(color: _border),
         borderRadius: BorderRadius.circular(10),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: _turquoise),
+        borderSide: BorderSide(color: _turquoise),
         borderRadius: BorderRadius.circular(10),
       ),
       errorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFFE84657)),
+        borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
         borderRadius: BorderRadius.circular(10),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: Color(0xFFE84657)),
+        borderSide: BorderSide(color: CompanyVisualTheme.legacy(const Color(0xFFE84657))),
         borderRadius: BorderRadius.circular(10),
       ),
     );
@@ -243,7 +243,7 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
       key: ValueKey(keyName),
       controller: controller,
       enabled: !_saving,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: CompanyVisualTheme.text),
       decoration: _decoration(label, hint: hint, helper: helper),
       keyboardType: keyboard,
       maxLines: maxLines,
@@ -264,7 +264,7 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
       initialValue: value,
       isExpanded: true,
       dropdownColor: _surface,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: CompanyVisualTheme.text),
       decoration: _decoration(label),
       items: values.entries
           .map(
@@ -289,8 +289,8 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
       width: double.infinity,
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: const Color(0xFF12242C),
-        border: Border.all(color: const Color(0xFF2A414A)),
+        color: CompanyVisualTheme.legacy(const Color(0xFF12242C)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
@@ -310,10 +310,10 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
               Expanded(
                 child: Text(
                   heading,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: CompanyVisualTheme.text,
                   ),
                 ),
               ),
@@ -394,34 +394,34 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF11242C), Color(0xFF0A171D)],
+        gradient: LinearGradient(
+          colors: [CompanyVisualTheme.legacy(const Color(0xFF11242C)), CompanyVisualTheme.legacy(const Color(0xFF0A171D))],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: const Color(0xFF2A414A)),
+        border: Border.all(color: CompanyVisualTheme.legacy(const Color(0xFF2A414A))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Preferencias empresariales',
             style: TextStyle(
-              color: Colors.white,
+              color: CompanyVisualTheme.text,
               fontWeight: FontWeight.w800,
               fontSize: 20,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Configuración general de este negocio. No modifica las '
             'preferencias personales ni la identidad oficial de ADN.',
             style: TextStyle(color: _muted),
           ),
           const SizedBox(height: 22),
           if (_loading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(28),
               child: Center(
                 child: CircularProgressIndicator(color: _turquoise),
@@ -431,7 +431,7 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_error!, style: const TextStyle(color: Color(0xFFFF8995))),
+                Text(_error!, style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _load,
@@ -524,36 +524,19 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
                     ),
                   ]),
                   const SizedBox(height: 18),
-                  AnimatedBuilder(
-                    animation: Listenable.merge([
-                      _footer,
-                      _currency,
-                      _decimals,
-                    ]),
-                    builder: (context, child) => ReceiptPrintPreview(
-                      paper: _paper,
-                      businessName: widget.companyName,
-                      currencyCode: _currency.text,
-                      decimalPlaces: int.tryParse(_decimals.text.trim()) ?? 2,
-                      dateFormat: _dateFormat,
-                      timeFormat: _timeFormat,
-                      footer: _footer.text,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
                   Material(
-                    color: const Color(0xFF111F25),
+                    color: CompanyVisualTheme.legacy(const Color(0xFF111F25)),
                     borderRadius: BorderRadius.circular(10),
                     child: SwitchListTile(
                       key: const ValueKey('preferences_sound_alerts'),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                       ),
-                      title: const Text(
+                      title: Text(
                         'Alertas sonoras',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: CompanyVisualTheme.text),
                       ),
-                      subtitle: const Text(
+                      subtitle: Text(
                         'Preferencia guardada; su aplicación a notificaciones '
                         'se integrará en una etapa posterior.',
                         style: TextStyle(color: _muted),
@@ -570,11 +553,11 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
                     key: const ValueKey('preferences_save'),
                     onPressed: _saving ? null : _save,
                     icon: _saving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 17,
                             height: 17,
                             child: CircularProgressIndicator(
-                              color: Colors.white,
+                              color: CompanyVisualTheme.text,
                               strokeWidth: 2,
                             ),
                           )
@@ -592,7 +575,7 @@ class _CompanyPreferencesSectionState extends State<CompanyPreferencesSection> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
+                  Text(
                     'Los valores se guardan en MySQL para esta empresa. '
                     'Su aplicación global a impresión, moneda, tema y avisos '
                     'se implementará en etapas posteriores.',
