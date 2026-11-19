@@ -168,6 +168,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -204,18 +205,15 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          // 24N.7.3: la misma foto real de Reservadas en todas las ordenes.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 43,
-                height: 43,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(Icons.directions_car_outlined, color: accent),
+              SizedBox(
+                key: ValueKey('order_vehicle_photo_${order['id']}'),
+                child: _reservationVehiclePhoto(order['vehicle_id']),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,29 +223,77 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
                         order['vehicle_label'],
                         'Vehículo no identificado',
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      'Placa: ${_value(order['plate'], 'Sin placa')}',
-                      style: TextStyle(color: faded, fontSize: 12),
+                    const SizedBox(height: 7),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: accent),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.badge_outlined, size: 15, color: accent),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                _value(order['plate'], 'Sin placa'),
+                                softWrap: true,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Ver detalle',
+                          onPressed: () => onDetail(order),
+                          icon: Icon(Icons.visibility_outlined, color: accent),
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton(
+                          tooltip: 'Editar',
+                          onPressed: () => onEdit(order),
+                          icon: Icon(Icons.edit_outlined, color: accent),
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-              IconButton(
-                tooltip: 'Ver detalle',
-                onPressed: () => onDetail(order),
-                icon: Icon(Icons.visibility_outlined, color: accent),
-              ),
-              IconButton(
-                tooltip: 'Editar',
-                onPressed: () => onEdit(order),
-                icon: Icon(Icons.edit_outlined, color: accent),
               ),
             ],
           ),
@@ -297,7 +343,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 24),
           if (state == 'EN_ESPERA' || state == 'ASIGNADO')
             SizedBox(
               width: double.infinity,
@@ -899,22 +945,21 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
         else
           LayoutBuilder(
             builder: (context, constraints) {
-              final effectiveColumns = constraints.maxWidth >= 1080
+              final columns = constraints.maxWidth >= 1080
                   ? 3
                   : constraints.maxWidth >= 650
                   ? 2
                   : 1;
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: orders.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: effectiveColumns,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  mainAxisExtent: 393,
-                ),
-                itemBuilder: (_, i) => _card(orders[i]),
+              const spacing = 12.0;
+              final cardWidth =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (final order in orders)
+                    SizedBox(width: cardWidth, child: _card(order)),
+                ],
               );
             },
           ),
