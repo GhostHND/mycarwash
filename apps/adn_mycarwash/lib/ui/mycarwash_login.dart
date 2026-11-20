@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/mycarwash_session.dart';
 import '../core/business_identity.dart';
-import 'master_console_24n8.dart';
+import 'master_office_24n9.dart';
 
 typedef DashboardCallback = Future<void> Function(BuildContext context);
 
@@ -572,7 +572,7 @@ class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
               child: TextButton.icon(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => const MasterConsole24N8(),
+                    builder: (_) => const MasterOffice24N9(),
                   ),
                 ),
                 icon: const Icon(Icons.admin_panel_settings_outlined, size: 17),

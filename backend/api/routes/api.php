@@ -317,3 +317,6 @@ Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyMod
 
 // 24N.8 - Administracion propia de MyCarWash
 require __DIR__.'/master_24n8.php';
+
+// BLOQUE 24N.9.1 - Panel maestro con dashboard y suscripciones.
+require __DIR__.'/master_office_24n9.php';
