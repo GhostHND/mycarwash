@@ -825,7 +825,7 @@ class _CompanyPosTemplateDesignerState
           ),
           const SizedBox(height: 7),
           const Text(
-            '100 % = ajustar página · Vista del PDF real · Datos ficticios · '
+            '100 % = ajustar página · Vista previa del diseño · Información ilustrativa · '
             'No genera ventas ni consume CAI.',
             style: TextStyle(color: Color(0xFF9CB1BB), fontSize: 11),
           ),

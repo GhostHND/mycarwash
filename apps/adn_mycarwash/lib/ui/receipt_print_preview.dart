@@ -183,15 +183,15 @@ class _ReceiptPrintPreviewState extends State<ReceiptPrintPreview> {
               ),
             ],
             const Divider(height: 24, color: Color(0xFF555555)),
-            Text('Orden de ejemplo: DEMO-001'),
+            Text('Orden: VISTA PREVIA'),
             Text('Fecha: $_date · Hora: $_time'),
-            const Text('Cliente: Consumidor final (ejemplo)'),
+            const Text('Cliente: Consumidor final (muestra)'),
             const Divider(height: 24, color: Color(0xFF555555)),
             _line('1 × Lavado exterior', _money(150), size),
             _line('1 × Aspirado', _money(50), size),
             const Divider(height: 24, color: Color(0xFF555555)),
             if (_fiscal) ...[
-              _line('Base gravada (ejemplo)', _money(taxableBase), size),
+              _line('Base gravada (muestra)', _money(taxableBase), size),
               _line('ISV 15 % incluido', _money(includedTax), size),
             ] else ...[
               _line('Servicios', _money(sampleTotal), size),
@@ -203,7 +203,7 @@ class _ReceiptPrintPreviewState extends State<ReceiptPrintPreview> {
               strong: true,
             ),
             const SizedBox(height: 8),
-            const Text('Forma de pago: Efectivo (ejemplo)'),
+            const Text('Forma de pago: Efectivo (muestra)'),
             const Divider(height: 24, color: Color(0xFF555555)),
             if (widget.footer.trim().isNotEmpty) ...[
               Text(widget.footer.trim(), textAlign: TextAlign.center),
@@ -211,7 +211,7 @@ class _ReceiptPrintPreviewState extends State<ReceiptPrintPreview> {
             ],
             Text(
               _fiscal
-                  ? 'SIMULACIÓN. REQUIERE CAI VIGENTE Y DATOS FISCALES REALES.'
+                  ? 'VISTA PREVIA SIN VALIDEZ FISCAL. REQUIERE CAI VIGENTE.'
                   : 'COMPROBANTE OPERATIVO. NO SUSTITUYE FACTURA FISCAL.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -241,7 +241,7 @@ class _ReceiptPrintPreviewState extends State<ReceiptPrintPreview> {
         ),
         const SizedBox(height: 8),
         Text(
-          '$_paperLabel · Ejemplo ficticio. Se adapta al papel y a las preferencias.',
+          '$_paperLabel · Vista ilustrativa. No corresponde a una venta registrada.',
           style: const TextStyle(color: _muted, fontSize: 12),
         ),
         const SizedBox(height: 12),
@@ -257,7 +257,7 @@ class _ReceiptPrintPreviewState extends State<ReceiptPrintPreview> {
             ),
             ChoiceChip(
               key: const ValueKey('receipt_preview_fiscal'),
-              label: const Text('Factura con CAI (simulación)'),
+              label: const Text('Factura con CAI (vista previa)'),
               selected: _fiscal,
               onSelected: (_) => setState(() => _fiscal = true),
             ),

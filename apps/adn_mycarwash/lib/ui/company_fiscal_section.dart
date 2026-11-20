@@ -3,6 +3,7 @@ import '../core/company_visual_theme.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/company_business_api.dart';
+import 'company_pos_fiscal_settings_dialog.dart';
 
 class CompanyFiscalSection extends StatefulWidget {
   const CompanyFiscalSection({super.key, required this.client});
@@ -43,12 +44,21 @@ class _CompanyFiscalSectionState extends State<CompanyFiscalSection> {
   bool _taxExempt = false;
   String? _error;
 
+  // La autorización CAI es de cada sucursal. Reutilizamos la misma API
+  // que Smart POS; no se crea un registro fiscal paralelo.
+  List<Map<String, dynamic>> _caiBranches = [];
+  int? _caiBranchId;
+  Map<String, dynamic>? _caiSettings;
+  bool _caiBusy = false;
+  String? _caiError;
+
   CompanyBusinessApi get _api => CompanyBusinessApi(widget.client);
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadCaiBranches();
   }
 
   @override
@@ -130,6 +140,200 @@ class _CompanyFiscalSectionState extends State<CompanyFiscalSection> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+
+  int? _caiInt(dynamic value) => int.tryParse('${value ?? ''}');
+
+  Future<void> _loadCaiBranches() async {
+    if (_caiBusy) return;
+    setState(() {
+      _caiBusy = true;
+      _caiError = null;
+    });
+    try {
+      final response = await _api.request('GET', '/pos/options');
+      final data = response['data'];
+      if (data is! Map || data['branches'] is! List) {
+        throw const FormatException('No se recibió el catálogo de sucursales.');
+      }
+      final branches = (data['branches'] as List)
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .where((item) => _caiInt(item['id']) != null)
+          .toList();
+      if (!mounted) return;
+      final previous = _caiBranchId;
+      final stillExists = branches.any((b) => _caiInt(b['id']) == previous);
+      final current = stillExists
+          ? previous
+          : (branches.isNotEmpty ? _caiInt(branches.first['id']) : null);
+      setState(() {
+        _caiBranches = branches;
+        _caiBranchId = current;
+        _caiSettings = null;
+        _caiBusy = false;
+      });
+      if (current != null) await _loadCaiSettings();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _caiError = 'No se pudo consultar las sucursales: $e';
+        _caiBusy = false;
+      });
+    }
+  }
+
+  Future<void> _loadCaiSettings() async {
+    final branchId = _caiBranchId;
+    if (branchId == null) return;
+    setState(() {
+      _caiBusy = true;
+      _caiError = null;
+    });
+    try {
+      final response = await _api.request(
+        'GET', '/pos/fiscal-settings',
+        query: {'branch_id': '$branchId'},
+      );
+      if (!mounted || branchId != _caiBranchId) return;
+      final data = response['data'];
+      if (data is! Map) {
+        throw const FormatException('La API fiscal no devolvió un registro válido.');
+      }
+      setState(() => _caiSettings = Map<String, dynamic>.from(data));
+    } catch (e) {
+      if (!mounted || branchId != _caiBranchId) return;
+      setState(() => _caiError = 'No se pudo consultar la autorización: $e');
+    } finally {
+      if (mounted && branchId == _caiBranchId) {
+        setState(() => _caiBusy = false);
+      }
+    }
+  }
+
+  Future<void> _editCaiSettings() async {
+    final branchId = _caiBranchId;
+    if (_caiBusy || branchId == null) return;
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CompanyPosFiscalSettingsDialog(
+        api: _api, branchId: branchId,
+      ),
+    );
+    if (!mounted) return;
+    if (saved == true) {
+      await _loadCaiSettings();
+      _notify('Configuración CAI actualizada.');
+    }
+  }
+
+  Widget _caiSection() {
+    final hasCai = (_caiSettings?['cai'] ?? '').toString().trim().isNotEmpty;
+    final available = _caiSettings?['available'] == true;
+    final nextNumber = _caiSettings?['next_sequence'];
+    final expiry = _caiSettings?['expires_on'];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: CompanyVisualTheme.legacy(const Color(0xFF101F25)),
+        border: Border.all(color: border),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Icon(Icons.receipt_long_outlined, color: turquoise, size: 25),
+              Text('Autorización de facturación CAI',
+                style: TextStyle(color: CompanyVisualTheme.text,
+                  fontSize: 18, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text('Consulta y modifica el CAI y rango autorizado de cada sucursal. '
+               'Los comprobantes ya emitidos no deben renumerarse.',
+            style: TextStyle(color: muted)),
+          const SizedBox(height: 15),
+          if (_caiBranches.isNotEmpty)
+            DropdownButtonFormField<int>(
+              value: _caiBranchId,
+              isExpanded: true,
+              dropdownColor: CompanyVisualTheme.legacy(const Color(0xFF172B33)),
+              decoration: _decoration('Sucursal que emite facturas'),
+              items: [
+                for (final item in _caiBranches)
+                  DropdownMenuItem<int>(
+                    value: _caiInt(item['id']),
+                    child: Text((item['name'] ?? 'Sucursal #${item['id']}').toString(),
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: CompanyVisualTheme.text)),
+                  ),
+              ],
+              onChanged: _caiBusy ? null : (id) {
+                setState(() {
+                  _caiBranchId = id;
+                  _caiSettings = null;
+                });
+                _loadCaiSettings();
+              },
+            ),
+          if (_caiBusy) ...[
+            const SizedBox(height: 12),
+            LinearProgressIndicator(color: turquoise),
+          ],
+          if (_caiError != null) ...[
+            const SizedBox(height: 10),
+            SelectableText(_caiError!,
+              style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFFF8995)))),
+            TextButton.icon(
+              onPressed: _caiBusy ? null : _loadCaiBranches,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar consulta'),
+            ),
+          ],
+          if (!_caiBusy && _caiError == null) ...[
+            const SizedBox(height: 11),
+            Text(
+              _caiBranchId == null
+                  ? 'No hay sucursales disponibles.'
+                  : !hasCai
+                      ? 'No hay un CAI registrado para esta sucursal.'
+                      : 'CAI: ${_caiSettings!['cai']}  •  '
+                        'Siguiente: ${nextNumber ?? 'No disponible'}  •  '
+                        'Vencimiento: ${expiry ?? 'No disponible'}',
+              style: TextStyle(color: CompanyVisualTheme.text,
+                fontWeight: FontWeight.w600),
+            ),
+            if (hasCai && !available) ...[
+              const SizedBox(height: 6),
+              Text('La autorización no figura disponible para emitir facturas. '
+                   'Revise su vigencia, rango y permisos antes de facturar.',
+                style: TextStyle(color: CompanyVisualTheme.legacy(const Color(0xFFF5BD70)))),
+            ],
+          ],
+          const SizedBox(height: 15),
+          FilledButton.icon(
+            key: const ValueKey('company_fiscal_edit_cai_button'),
+            onPressed: (_caiBusy || _caiBranchId == null || _caiError != null)
+                ? null : _editCaiSettings,
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Editar CAI y rangos'),
+            style: FilledButton.styleFrom(
+              backgroundColor: turquoise,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   InputDecoration _decoration(String label) => InputDecoration(
@@ -323,6 +527,8 @@ class _CompanyFiscalSectionState extends State<CompanyFiscalSection> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+            _caiSection(),
           ],
         ),
       ),

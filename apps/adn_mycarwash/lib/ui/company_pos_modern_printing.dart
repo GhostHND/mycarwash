@@ -236,7 +236,7 @@ class CompanyPosModernPrinting {
       ),
       if (demonstration)
         txt(
-          'PRUEBA / SIN VALIDEZ FISCAL',
+          'VISTA PREVIA / SIN VALIDEZ FISCAL',
           style: small.copyWith(color: PdfColors.red),
           align: pw.TextAlign.right,
         ),
@@ -367,7 +367,7 @@ class CompanyPosModernPrinting {
       if (demonstration) {
         blocks.add(
           txt(
-            'PRUEBA SIN VALIDEZ FISCAL',
+            'VISTA PREVIA - SIN VALIDEZ FISCAL',
             style: strong,
             align: pw.TextAlign.center,
           ),
@@ -598,7 +598,7 @@ class CompanyPosModernPrinting {
         child: txt(
           invoice
               ? (demonstration
-                    ? 'DOCUMENTO DE PRUEBA - SIN VALIDEZ FISCAL'
+                    ? 'VISTA PREVIA - SIN VALIDEZ FISCAL'
                     : 'DOCUMENTO FISCAL')
               : 'DOCUMENTO INTERNO SIN VALOR FISCAL',
           style: small,

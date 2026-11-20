@@ -224,7 +224,7 @@ class CompanyPosAdvancedPrinting {
                   ),
                 if (fake)
                   text(
-                    'DOCUMENTO DE PRUEBA - SIN VALIDEZ FISCAL',
+                    'VISTA PREVIA - SIN VALIDEZ FISCAL',
                     style: fine.copyWith(fontWeight: pw.FontWeight.bold),
                     align: pw.TextAlign.center,
                   ),

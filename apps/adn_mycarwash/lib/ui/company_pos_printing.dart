@@ -210,7 +210,7 @@ class CompanyPosPrinting {
           if (demo || clearlyFictitious) {
             blocks.add(
               footer(
-                'VISTA PREVIA / DATOS DE PRUEBA - SIN VALIDEZ FISCAL',
+                'VISTA PREVIA - SIN VALIDEZ FISCAL',
                 prominent: true,
               ),
             );
@@ -373,7 +373,7 @@ class CompanyPosPrinting {
       blocks.add(footer('DOCUMENTO INTERNO SIN VALOR FISCAL', prominent: true));
     }
     if ((demo || clearlyFictitious) && invoice) {
-      blocks.add(footer('SIMULACIÓN SIN CAI AUTORIZADO', prominent: true));
+      blocks.add(footer('VISTA PREVIA SIN CAI AUTORIZADO - SIN VALIDEZ FISCAL', prominent: true));
     }
     final pdf = pw.Document();
     pdf.addPage(
@@ -413,23 +413,23 @@ class CompanyPosPrinting {
     Map<String, dynamic> design,
   ) {
     return <String, dynamic>{
-      'id': 'DEMO',
+      'id': 'VISTA_PREVIA',
       'company_name': 'MI NEGOCIO',
       'document_type': type,
       'document_design': design,
       'posted_at': '2026-11-17 12:00:00',
-      'fiscal_legal_name': 'EMPRESA DEMOSTRACIÓN',
+      'fiscal_legal_name': 'EMPRESA DE MUESTRA',
       'fiscal_rtn': 'NO APLICA',
-      'fiscal_number': 'SIMULACIÓN',
+      'fiscal_number': 'SIN EMITIR',
       'fiscal_cai': 'NO APLICA',
       'fiscal_range_start': 'N/A',
       'fiscal_range_end': 'N/A',
       'fiscal_expires_on': 'N/A',
-      'customer_name': 'Cliente de ejemplo',
+      'customer_name': 'Cliente de muestra',
       'customer_identity': '0000000000',
       'customer_phone': '0000-0000',
       'customer_email': 'cliente@ejemplo.test',
-      'customer_address': 'Dirección de prueba',
+      'customer_address': 'Dirección de muestra',
       'lines': [
         {
           'name_snapshot': 'Aromatizante',
