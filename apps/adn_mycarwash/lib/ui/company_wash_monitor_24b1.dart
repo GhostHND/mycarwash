@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:convert';
 
 import '../core/mycarwash_session.dart';
 
@@ -16,8 +17,9 @@ import '../core/company_business_api.dart';
 /// Vista general de lavados: comparte la identidad visual de la empresa.
 /// No configura ni otorga acceso a hardware Raspberry Pi.
 class CompanyWashMonitor24B1 extends StatefulWidget {
-  const CompanyWashMonitor24B1({super.key, this.client});
+  const CompanyWashMonitor24B1({super.key, this.client, this.kioskKey});
   final http.Client? client;
+  final String? kioskKey;
 
   @override
   State<CompanyWashMonitor24B1> createState() => _CompanyWashMonitor24B1State();
@@ -50,6 +52,7 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
   int _queuePage = 0;
   int _workerRotation = 0;
   bool _fullscreen = false;
+  Map<String, String> _kioskColors = <String, String>{};
   DateTime _clock = DateTime.now();
 
   CompanyBusinessApi get _api => CompanyBusinessApi(_client);
@@ -61,6 +64,12 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     _client = widget.client ?? http.Client();
     // Un solo tema visual por empresa, compartido con todo el administrador.
     CompanyVisualTheme.current.addListener(_onCompanyColorsChanged);
+    if (widget.kioskKey != null) {
+      _bootstrapKiosk();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openMonitor();
+      });
+    }
     _refresh();
     _refreshDeviceWeather();
     _weatherTimer = Timer.periodic(const Duration(minutes: 10), (_) => _refreshDeviceWeather());
@@ -152,8 +161,10 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     if (_refreshInFlight) return;
     _refreshInFlight = true;
     try {
-      final response = await _api.request('GET', '/dashboard/monitor-24b2',
-        query: _deviceLocation);
+      final response = widget.kioskKey == null
+          ? await _api.request('GET', '/dashboard/monitor-24b2',
+              query: _deviceLocation)
+          : await _kioskGet('/monitor');
       final raw = response['data'];
       if (!mounted || raw is! Map) {
         return;
@@ -184,7 +195,64 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
     }
   }
 
-  Color _color(String name) => CompanyMonitorColors24N27.resolve(name);
+  Color _color(String name) {
+    final custom = _kioskColors[name];
+    if (custom != null && RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(custom)) {
+      return Color(0xFF000000 | int.parse(custom.substring(1), radix: 16));
+    }
+    return CompanyMonitorColors24N27.resolve(name);
+  }
+
+  static const String _kioskBase = 'http://127.0.0.1:8787/api/index.php/api/v1';
+
+  Future<Map<String, dynamic>> _kioskGet(String endpoint) async {
+    final key = widget.kioskKey;
+    if (key == null || key != 'local') {
+      throw StateError('Dispositivo no vinculado.');
+    }
+    final response = await _client.get(
+      Uri.parse('$_kioskBase/kiosk/rpi01c$endpoint'),
+      headers: {'Accept': 'application/json', 'X-MCW-Kiosk-Key': key},
+    ).timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200) {
+      throw StateError('Monitor no autorizado (HTTP ${response.statusCode}).');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Respuesta de monitoreo inválida.');
+    }
+    return decoded;
+  }
+
+  Future<void> _bootstrapKiosk() async {
+    try {
+      final data = await _kioskGet('/bootstrap');
+      if (!mounted) return;
+      final colors = data['colors'];
+      final newColors = <String, String>{};
+      if (colors is Map) {
+        for (final entry in colors.entries) {
+          if (entry.key is String && entry.value is String) {
+            newColors[entry.key as String] = entry.value as String;
+          }
+        }
+      }
+      BusinessIdentity.current.value = BusinessIdentityData(
+        companyName: (data['company_name'] ?? 'Mi empresa').toString(),
+      );
+      setState(() => _kioskColors = newColors);
+      final logo = await _client.get(
+        Uri.parse('$_kioskBase/kiosk/rpi01c/logo'),
+        headers: {'X-MCW-Kiosk-Key': widget.kioskKey!},
+      ).timeout(const Duration(seconds: 15));
+      if (mounted && logo.statusCode == 200 &&
+          logo.bodyBytes.isNotEmpty && logo.bodyBytes.length <= 2097152) {
+        BusinessIdentity.setLogoBytes(logo.bodyBytes);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Vinculación del monitor: $error');
+    }
+  }
 
   Widget _businessLogo(double size) {
     return ValueListenableBuilder<BusinessIdentityData>(
@@ -238,11 +306,14 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
         continue;
       }
       try {
-        final url = Uri.parse(
-          '${MyCarWashSession.apiBaseUrl}/companies/${MyCarWashSession.companyId}/media/vehicles/$id/file',
-        );
+        final url = widget.kioskKey == null
+            ? Uri.parse(
+                '${MyCarWashSession.apiBaseUrl}/companies/${MyCarWashSession.companyId}/media/vehicles/$id/file')
+            : Uri.parse('$_kioskBase/kiosk/rpi01c/photos/$id');
         final res = await _client
-            .get(url, headers: MyCarWashSession.headers)
+            .get(url, headers: widget.kioskKey == null
+                ? MyCarWashSession.headers
+                : {'X-MCW-Kiosk-Key': widget.kioskKey!})
             .timeout(const Duration(seconds: 12));
         if (!mounted) {
           return;
@@ -270,15 +341,16 @@ class _CompanyWashMonitor24B1State extends State<CompanyWashMonitor24B1> {
           child: Stack(
             children: [
               Positioned.fill(child: _monitor()),
-              Positioned(
-                right: 6,
-                top: 4,
-                child: IconButton(
-                  tooltip: 'Salir del modo monitor',
-                  onPressed: _closeMonitor,
-                  icon: Icon(Icons.fullscreen_exit, color: CompanyVisualTheme.text),
+              if (widget.kioskKey == null)
+                Positioned(
+                  right: 6,
+                  top: 4,
+                  child: IconButton(
+                    tooltip: 'Salir del modo monitor',
+                    onPressed: _closeMonitor,
+                    icon: Icon(Icons.fullscreen_exit, color: CompanyVisualTheme.text),
+                  ),
                 ),
-              ),
             ],
           ),
         ),

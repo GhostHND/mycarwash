@@ -147,6 +147,7 @@ class MasterControl24N8Controller extends Controller {
                 'master_customer_id'=>$d['customer_id']??null,'master_plan_id'=>$d['plan_id']??null,
                 'status'=>'pending','due_date'=>$d['due_date']??null,'grace_days'=>4,
                 'timezone'=>'America/Tegucigalpa','created_at'=>$now,'updated_at'=>$now]);
+            \App\Support\OwnerOperationalPermissionsH049::syncForOwner((int)$company, (int)$roleId);
             return $company;
         },3);
         $this->audit($request,'company.created','company:'.$created);

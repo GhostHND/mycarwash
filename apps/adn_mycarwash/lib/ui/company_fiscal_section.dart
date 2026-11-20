@@ -197,11 +197,15 @@ class _CompanyFiscalSectionState extends State<CompanyFiscalSection> {
         query: {'branch_id': '$branchId'},
       );
       if (!mounted || branchId != _caiBranchId) return;
+      // H04.10.1: API CAI sin autorizacion es estado valido.
       final data = response['data'];
-      if (data is! Map) {
+      if (data == null && response['available'] == false) {
+        setState(() => _caiSettings = null);
+      } else if (data is Map) {
+        setState(() => _caiSettings = Map<String, dynamic>.from(data));
+      } else {
         throw const FormatException('La API fiscal no devolvió un registro válido.');
       }
-      setState(() => _caiSettings = Map<String, dynamic>.from(data));
     } catch (e) {
       if (!mounted || branchId != _caiBranchId) return;
       setState(() => _caiError = 'No se pudo consultar la autorización: $e');
@@ -324,7 +328,7 @@ class _CompanyFiscalSectionState extends State<CompanyFiscalSection> {
             onPressed: (_caiBusy || _caiBranchId == null || _caiError != null)
                 ? null : _editCaiSettings,
             icon: const Icon(Icons.edit_outlined),
-            label: const Text('Editar CAI y rangos'),
+            label: Text(hasCai ? 'Editar CAI y rangos' : 'Configurar autorización CAI'),
             style: FilledButton.styleFrom(
               backgroundColor: turquoise,
               foregroundColor: Colors.white,

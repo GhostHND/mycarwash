@@ -1,0 +1,3 @@
+H04.10.2
+main.dart.js SHA256=F009E0F4BF0F835F7A51C582797AE7E390BCBE54E3C327C07D64FF6EB7B866A1
+API=https://mycarwash.adnpublicidad.site/api/index.php/api/v1

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -11,6 +12,7 @@ import 'ui/company_attendance_station_24n4.dart';
 import 'ui/mycarwash_login.dart';
 import 'ui/company_billing_alerts_24n8.dart';
 import 'ui/company_settings_page.dart';
+import 'ui/company_monitor_devices_rpi01g_page.dart';
 import 'ui/company_operations_page.dart';
 import 'ui/company_wash_workflow_page.dart';
 import 'ui/company_wash_monitor_24b1.dart';
@@ -104,7 +106,13 @@ class MyCarWashApp extends StatelessWidget {
             child: child ?? const SizedBox.shrink(),
           );
         },
-        home: MyCarWashLoginScreen(
+        home: kIsWeb && Uri.base.queryParameters['mcw_kiosk'] == 'local'
+            ? (Uri.base.host == '127.0.0.1' && Uri.base.port == 8787
+                ? CompanyWashMonitor24B1(
+                    kioskKey: Uri.base.queryParameters['mcw_kiosk'])
+                : const Scaffold(
+                    body: Center(child: Text('Dispositivo no vinculado.'))))
+            : MyCarWashLoginScreen(
           onEnterDashboard: (context) async {
             await Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
@@ -222,6 +230,7 @@ const _menu = [
   _NavItem('Sitio web', Icons.language_outlined),
   _NavItem('Mi Empresa', Icons.business_outlined),
   _NavItem('Configuración', Icons.settings_outlined),
+  _NavItem('Pantallas de monitoreo', Icons.tv_outlined),
   _NavItem('Usuarios', Icons.manage_accounts_outlined),
   _NavItem('Smart POS', Icons.point_of_sale_outlined),
   _NavItem('Historial de ventas', Icons.receipt_long_outlined),
@@ -308,6 +317,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
   _CompactNavGroup('Mi empresa', Icons.business_outlined, [
     'Mi Empresa',
     'Configuración',
+    'Pantallas de monitoreo',
   ]),
   _CompactNavGroup('Usuarios', Icons.manage_accounts_outlined, ['Usuarios']),
   _CompactNavGroup('Sitio web', Icons.language_outlined, ['Sitio web']),
@@ -413,6 +423,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
       return 'company';
     }
     if (destination == 'Mi Empresa' ||
+        destination == 'Pantallas de monitoreo' ||
         destination == 'Configuración' ||
         destination == 'Sitio web') {
       return 'company';
@@ -783,6 +794,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
         configurationOnly: true,
         initialSection: 2,
       );
+    }
+    if (destination == 'Pantallas de monitoreo') {
+      return const CompanyMonitorDevicesRpi01gPage();
     }
     if (destination == 'Usuarios') {
       return const CompanyUsers24N2Page();

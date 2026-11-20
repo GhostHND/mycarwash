@@ -9,6 +9,22 @@ use App\Http\Controllers\Api\V1\CompanyBusinessDetailsController;
 use App\Http\Controllers\Api\V1\BusinessLogoController;
 use Illuminate\Support\Facades\Route;
 
+// RPI-01C: rutas de dispositivo exclusivamente de lectura (clave limitada al monitor).
+Route::prefix('v1/kiosk/rpi01c')->middleware('throttle:120,1')->group(function (): void {
+    Route::get('/bootstrap', [\App\Http\Controllers\Api\V1\MonitorDeviceRpi01cController::class, 'bootstrap']);
+    Route::get('/monitor', [\App\Http\Controllers\Api\V1\MonitorDeviceRpi01cController::class, 'monitor']);
+    Route::get('/photos/{vehicle}', [\App\Http\Controllers\Api\V1\MonitorDeviceRpi01cController::class, 'photo'])->whereNumber('vehicle');
+    Route::get('/logo', [\App\Http\Controllers\Api\V1\MonitorDeviceRpi01cController::class, 'logo']);
+});
+// Vinculación inicial desde cuenta propietaria autenticada.
+Route::prefix('v1/companies/{company}/monitor-devices-rpi01c')
+    ->middleware(['auth:sanctum', \App\Http\Middleware\CompanyModuleAccess24N2::class])
+    ->group(function (): void {
+        Route::get('/', [\App\Http\Controllers\Api\V1\MonitorDeviceRpi01cController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\V1\MonitorDeviceRpi01cController::class, 'issue']);
+        Route::delete('/{device}', [\App\Http\Controllers\Api\V1\MonitorDeviceRpi01cController::class, 'revoke'])->whereNumber('device');
+    });
+
 Route::prefix('v1')->group(function (): void {
 
     Route::post(

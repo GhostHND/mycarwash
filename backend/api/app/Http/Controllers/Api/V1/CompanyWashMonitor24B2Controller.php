@@ -33,6 +33,17 @@ final class CompanyWashMonitor24B2Controller extends Controller
             'latitude' => ['required_with:longitude', 'numeric', 'between:-90,90'],
             'longitude' => ['required_with:latitude', 'numeric', 'between:-180,180'],
         ]);
+        return $this->renderMonitor($company, $validated);
+    }
+
+    /** Uso exclusivo interno: el controlador de dispositivo verifica clave y sucursal. */
+    public function forKiosk(int $company, int $branch): JsonResponse
+    {
+        return $this->renderMonitor($company, ['branch_id' => $branch]);
+    }
+
+    private function renderMonitor(int $company, array $validated): JsonResponse
+    {
         $deviceCoordinates = isset($validated['latitude'], $validated['longitude'])
             ? ['latitude' => (float) $validated['latitude'],
                'longitude' => (float) $validated['longitude']] : null;

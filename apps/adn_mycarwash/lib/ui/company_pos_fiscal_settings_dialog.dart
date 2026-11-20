@@ -91,12 +91,17 @@ class _CompanyPosFiscalSettingsDialogState
         'GET', '/pos/fiscal-settings',
         query: {'branch_id': '${widget.branchId}'},
       );
-      final data = response['data'];
-      if (data is! Map) {
+      // H04.10.1: primera autorizacion CAI, sin registro preexistente.
+      final rawData = response['data'];
+      if (rawData is! Map &&
+          !(rawData == null && response['available'] == false)) {
         throw const FormatException(
           'La API fiscal no devolvió la información de la sucursal.',
         );
       }
+      final Map<dynamic, dynamic> data = rawData is Map
+          ? rawData
+          : <String, dynamic>{};
       if (!mounted) return;
       final cai = _value(data, 'cai');
       final exists = cai.trim().isNotEmpty;
