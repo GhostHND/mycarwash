@@ -786,11 +786,12 @@ class _DashboardPreviewState extends State<DashboardPreview> {
         },
       );
     }
-    if (_menu[selected].title == 'Mi Empresa') {
-      return const CompanySettingsPage();
+    if (destination == 'Mi Empresa') {
+      return const CompanySettingsPage(key: ValueKey<String>('company_my_business_page'));
     }
     if (destination == 'Configuración') {
       return const CompanySettingsPage(
+        key: ValueKey<String>('company_configuration_page'),
         configurationOnly: true,
         initialSection: 2,
       );

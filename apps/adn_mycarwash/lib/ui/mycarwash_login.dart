@@ -23,10 +23,19 @@ class MyCarWashLoginScreen extends StatefulWidget {
 }
 
 class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
-  static const _api = String.fromEnvironment(
-    'MYCARWASH_API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000/api/v1',
-  );
+  // Flutter Web administrativo: URL absoluta del API publicado.
+  // Evitar Uri.base / base href: en Web podrian resolver a rutas del frontend.
+  // Android, iOS y escritorio conservan su dart-define.
+  static String get _api {
+    if (kIsWeb) {
+      return 'https://mycarwash.adnpublicidad.site/api/index.php/api/v1';
+    }
+    const configured = String.fromEnvironment(
+      'MYCARWASH_API_BASE_URL',
+      defaultValue: 'http://127.0.0.1:8000/api/v1',
+    );
+    return configured;
+  }
 
   static const _turquoise = Color(0xFF0FA7B4);
   static const _coral = Color(0xFFE84657);
