@@ -377,7 +377,31 @@ final class CompanyUnifiedReportsController extends Controller
             } else $this->unavailable($warnings, 'recepciones de compra');
             $warnings[]='Los pedidos y recepciones no implican pago al proveedor. Entradas manuales de inventario son operaciones diferentes.';
         }
-        if ($kind === 'overview') $warnings[] = 'Los totales POS, de lavados y caja son conceptos distintos; no deben sumarse entre sí. Resumen operativo, no balance contable.';
+        // B25L: costo de mano de obra devengado, no movimiento de caja.
+        // No incorporarlo como gasto de caja para evitar una doble deducción.
+        if (in_array($kind, ['overview', 'staff'], true)) {
+            $commissionRequest = Request::create($request->url(), 'GET', [
+                'from' => $from, 'to' => $to,
+                ...($branch !== null ? ['branch_id' => $branch] : []),
+            ]);
+            $commissionRequest->setUserResolver(fn () => $request->user());
+            try {
+                $result = app(CompanyCommissionReportB25LController::class)
+                    ->index($commissionRequest, $company)->getData(true);
+                $report = $result['data'] ?? null;
+                if (is_array($report)) {
+                    $metrics[] = $this->metric('Gasto en comisiones devengadas', $report['total_recognized'], 'HNL');
+                    $metrics[] = $this->metric('Comisiones pendientes de asistencia', $report['total_pending'], 'HNL');
+                    $sections[] = $this->section('Comisiones por lavador',
+                        ['name'=>'Lavador','recognized'=>'Comisión reconocida HNL','pending'=>'Pendiente HNL','recognized_services'=>'Servicios reconocidos'],
+                        $report['employees'] ?? [],
+                        'Gasto de personal devengado, no necesariamente pagado. No sumar de nuevo a salidas de caja.');
+                }
+            } catch (\Throwable $e) {
+                $warnings[] = 'No se pudo conciliar el costo de comisiones en el período.';
+            }
+        }
+        if ($kind === 'overview') $warnings[] = 'Ingresos, comisiones devengadas y movimientos de caja son conceptos distintos. El costo de comisiones no debe descontarse dos veces.';
         if (count($sections) === 0 && count($metrics) === 0) $warnings[] = 'Sin datos verificables para este reporte y período.';
         $identity = $this->companyIdentity($company, $branch, $warnings);
         return response()->json(['data' => [

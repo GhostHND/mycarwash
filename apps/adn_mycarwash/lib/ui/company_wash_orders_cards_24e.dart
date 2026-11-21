@@ -747,7 +747,7 @@ class CompanyWashOrdersCards24E extends StatelessWidget {
               key: const ValueKey('workflow_create'),
               onPressed: onCreate,
               icon: const Icon(Icons.add),
-              label: const Text('Nueva orden / Reserva'),
+              label: const Text('Nueva orden de lavado'),
             ),
             OutlinedButton.icon(
               onPressed: loading ? null : onRefresh,

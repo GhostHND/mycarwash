@@ -254,13 +254,27 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
     if (widget.module == WashModule.queue) {
       return;
     }
-    if (widget.module == WashModule.orders && existing == null) {
-      final created = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => CompanyNewOrderB25B(api: _api, options: _options()),
-      );
-      if (created == true && mounted) _load();
+    if (widget.module == WashModule.orders) {
+      try {
+        Map<String, dynamic>? full;
+        if (existing != null) {
+          final result = await _api.request('GET', '/workflow/orders/${existing['id']}');
+          full = Map<String, dynamic>.from(result['data'] as Map);
+          if (full['vehicle_id'] != null) {
+            try {
+              final v = await _api.request('GET', '/vehicles/${full['vehicle_id']}');
+              if (v['data'] is Map) full['selected_vehicle_b25h'] = Map<String, dynamic>.from(v['data'] as Map);
+            } catch (_) { /* Fallback to vehicle label from order */ }
+          }
+        }
+        if (!mounted) return;
+        final created = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => CompanyNewOrderB25B(api: _api, options: _options(), existing: full),
+        );
+        if (created == true && mounted) _load();
+      } catch (e) { _notice('$e', error: true); }
       return;
     }
     final form = GlobalKey<FormState>();
@@ -706,7 +720,7 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
       });
       _load();
     },
-    onCreate: _newReservation24N7,
+    onCreate: () => _edit(),
     onRefresh: _load,
     onPage: (newPage) {
       _page = newPage;
@@ -729,6 +743,8 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
     },
   );
 
+  // La reserva anterior permanece disponible para su propio flujo de agenda.
+  // ignore: unused_element
   Future<void> _newReservation24N7() async {
     final date = await showDialog<String>(
       context: context,

@@ -53,11 +53,18 @@ class _AttendanceCardsState extends State<CompanyAttendanceReportsB25D>{
     }catch(e){if(mounted)setState(()=>error='$e');}
     finally{if(mounted)setState(()=>busy=false);}
   }
+  // Las fechas del servidor son UTC; la hora publica se muestra en Honduras
+  // y en formato de 12 horas (a. m. / p. m.), independiente del navegador.
   String clock(dynamic input){
-    if(input==null)return 'Sin salida';
-    final text='$input';
-    final value=DateTime.tryParse(text.endsWith('Z')||text.contains('+')?text:'${text}Z')?.toLocal();
-    return value==null?text:'${value.hour.toString().padLeft(2,'0')}:${value.minute.toString().padLeft(2,'0')}';
+    if(input==null || '$input'.trim().isEmpty)return 'Sin salida';
+    final text='$input'.trim();
+    final utc=DateTime.tryParse(text.endsWith('Z') ||
+      RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(text) ? text : '${text}Z');
+    if(utc==null)return text;
+    final local=utc.toUtc().subtract(const Duration(hours:6));
+    final h=local.hour%12==0?12:local.hour%12;
+    final suffix=local.hour<12?'a. m.':'p. m.';
+    return '$h:${local.minute.toString().padLeft(2,'0')} $suffix';
   }
   int minutes(Map<String,dynamic> row){
     final a=DateTime.tryParse('${row['check_in_at']??''}');
@@ -194,7 +201,7 @@ class _AttendanceCardsState extends State<CompanyAttendanceReportsB25D>{
           pw.Text('Reporte de asistencia',style:pw.TextStyle(fontSize:20,fontWeight:pw.FontWeight.bold,color:secondary)),
           pw.SizedBox(height:5),
           pw.Text('Empleado: $employeeLabel',style:const pw.TextStyle(fontSize:10)),
-          pw.Text('Generado: ${DateTime.now().toLocal().toString().substring(0,16)}',style:const pw.TextStyle(fontSize:8,color:PdfColors.grey700)),
+          pw.Text('Generado: ${clock(DateTime.now().toUtc().toIso8601String())}',style:const pw.TextStyle(fontSize:8,color:PdfColors.grey700)),
           pw.SizedBox(height:15),
           pw.Row(children:[
             _pdfMetric('Registros','${data.length}',accent),

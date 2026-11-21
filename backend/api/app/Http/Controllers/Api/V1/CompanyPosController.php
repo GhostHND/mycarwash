@@ -195,13 +195,28 @@ class CompanyPosController extends Controller
                 return $v;
             });
         if (($sale->wash_order_id ?? null) !== null) {
-            $lines->prepend([
-                'id' => null, 'item_id' => null, 'sku_snapshot' => 'LAVADO',
-                'name_snapshot' => $sale->wash_service_snapshot ?? 'Lavado de vehículo',
-                'unit_snapshot' => 'servicio', 'quantity' => '1.000',
-                'unit_price' => $this->money($this->cents($sale->wash_price_snapshot)),
-                'line_total' => $this->money($this->cents($sale->wash_price_snapshot)),
-            ]);
+            $serviceLines = \Illuminate\Support\Facades\Schema::hasTable('wash_order_service_lines_b25')
+                ? DB::table('wash_order_service_lines_b25')->where('company_id',$company)
+                    ->where('order_id',$sale->wash_order_id)->orderBy('line_order')
+                    ->get(['service_name','price']) : collect();
+            if ($serviceLines->isNotEmpty()) {
+                foreach ($serviceLines->reverse() as $line) {
+                    $lines->prepend([
+                        'id'=>null, 'item_id'=>null, 'sku_snapshot'=>'LAVADO',
+                        'name_snapshot'=>$line->service_name, 'unit_snapshot'=>'servicio',
+                        'quantity'=>'1.000', 'unit_price'=>$this->money($this->cents($line->price)),
+                        'line_total'=>$this->money($this->cents($line->price)),
+                    ]);
+                }
+            } else {
+                $lines->prepend([
+                    'id'=>null,'item_id'=>null,'sku_snapshot'=>'LAVADO',
+                    'name_snapshot'=>$sale->wash_service_snapshot ?? 'Lavado de vehículo',
+                    'unit_snapshot'=>'servicio','quantity'=>'1.000',
+                    'unit_price'=>$this->money($this->cents($sale->wash_price_snapshot)),
+                    'line_total'=>$this->money($this->cents($sale->wash_price_snapshot)),
+                ]);
+            }
         }
         $payments = DB::table('pos_sale_payments')->where('company_id', $company)->where('sale_id', $saleId)
             ->orderBy('id')->get(['id', 'channel', 'amount', 'reference', 'cash_session_id', 'bank_account_id'])
@@ -347,7 +362,11 @@ class CompanyPosController extends Controller
             ->where('id', $vehicle->client_id)->whereNull('deleted_at')->where('is_active', true)->first() : null;
         if (!$customer) throw ValidationException::withMessages(['order' => 'No hay propietario activo vinculado al vehículo.']);
         $service = DB::table('wash_services')->where('company_id', $company)->where('id', $wash->service_id)->value('name');
+        $detailsB25 = \Illuminate\Support\Facades\Schema::hasTable('wash_order_service_lines_b25')
+            ? DB::table('wash_order_service_lines_b25')->where('company_id',$company)
+                ->where('order_id',$order)->orderBy('line_order')->get(['service_name','price']) : collect();
         return response()->json(['data' => [
+            'service_lines' => $detailsB25,
             'order_id' => $wash->id, 'version' => $wash->version, 'branch_id' => $wash->branch_id,
             'customer_id' => $customer->id, 'customer_name' => $customer->full_name,
             'vehicle_label' => trim(($vehicle->brand ?? '').' '.($vehicle->model ?? '')),
@@ -438,6 +457,11 @@ class CompanyPosController extends Controller
                 }
                 $washService = DB::table('wash_services')->where('company_id', $company)
                     ->where('id', $wash->service_id)->value('name');
+                if (\Illuminate\Support\Facades\Schema::hasTable('wash_order_service_lines_b25')) {
+                    $lineNames = DB::table('wash_order_service_lines_b25')->where('company_id',$company)
+                        ->where('order_id',$wash->id)->orderBy('line_order')->pluck('service_name');
+                    if ($lineNames->isNotEmpty()) $washService = $lineNames->implode(' + ');
+                }
                 $washPriceCents = $this->cents($wash->quoted_price, 'quoted_price');
             }
             $lineRows = []; $subtotal = $washPriceCents;

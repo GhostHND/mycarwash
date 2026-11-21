@@ -82,37 +82,6 @@ class CompanyServiceTariffFields24F2 extends StatefulWidget {
 
 class _CompanyServiceTariffFields24F2State
     extends State<CompanyServiceTariffFields24F2> {
-  final _newCategory = TextEditingController();
-
-  @override
-  void dispose() {
-    _newCategory.dispose();
-    super.dispose();
-  }
-
-  void _addCategory() {
-    final name = _newCategory.text.trim();
-    if (name.isEmpty || name.length > 60) {
-      return;
-    }
-    final duplicate = widget.draft.controllers.keys.any(
-      (type) => type.toLowerCase() == name.toLowerCase(),
-    );
-    if (duplicate) {
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(
-          content: Text('La categoría ya existe. Actívala en la lista.'),
-        ),
-      );
-      return;
-    }
-    setState(() {
-      widget.draft.controllers[name] = TextEditingController();
-      widget.draft.enabled.add(name);
-      _newCategory.clear();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
@@ -190,30 +159,6 @@ class _CompanyServiceTariffFields24F2State
             ),
           ),
         ],
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _newCategory,
-                maxLength: 60,
-                decoration: const InputDecoration(
-                  labelText: 'Otra categoría registrada',
-                  hintText: 'Ej. Furgoneta',
-                  border: OutlineInputBorder(),
-                  counterText: '',
-                ),
-                onSubmitted: (_) => _addCategory(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: 'Agregar categoría',
-              onPressed: _addCategory,
-              icon: const Icon(Icons.add_circle_outline),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
         const Text(
           'El tipo debe coincidir con el registrado en el vehículo. Una categoría sin tarifa activa no tendrá precio específico.',
         ),

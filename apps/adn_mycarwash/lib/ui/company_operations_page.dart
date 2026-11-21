@@ -59,6 +59,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _rows = [];
+  Map<int, String> _todayCommissions = {};
 
   CompanyBusinessApi get _api => CompanyBusinessApi(_client);
 
@@ -184,11 +185,30 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
               : '10',
         },
       );
+      Map<int, String> commissions = {};
+      if (widget.catalog == OperationsCatalog.employees) {
+        try {
+          final today = DateTime.now();
+          final d = '${today.year.toString().padLeft(4,'0')}-${today.month.toString().padLeft(2,'0')}-${today.day.toString().padLeft(2,'0')}';
+          final report = await _api.request('GET', '/commissions/report-b25l',
+            query: {'from': d, 'to': d});
+          final payload = report['data'];
+          if (payload is Map && payload['employees'] is List) {
+            for (final row in (payload['employees'] as List).whereType<Map>()) {
+              final id = int.tryParse('${row['employee_id']}');
+              if (id != null) commissions[id] = '${row['recognized'] ?? '0.00'}';
+            }
+          }
+        } catch (_) {
+          // El listado de empleados no depende de la disponibilidad de reportes.
+        }
+      }
       if (!mounted || version != _version) {
         return;
       }
       final data = result['data'];
       setState(() {
+        _todayCommissions = commissions;
         _rows = data is List
             ? data
                   .whereType<Map>()
@@ -627,6 +647,8 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                             key: ValueKey('operations_${field.key}'),
                             controller: controllers[field.key],
                             enabled: !saving,
+                            onChanged: widget.catalog == OperationsCatalog.services && field.key == 'name'
+                                ? (_) => update(() {}) : null,
                             maxLines: field.multiline ? 3 : 1,
                             keyboardType: field.numeric
                                 ? const TextInputType.numberWithOptions(
@@ -706,7 +728,8 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                         ),
                         const SizedBox(height: 12),
                       ],
-                      if (widget.catalog == OperationsCatalog.services) ...[
+                      if (widget.catalog == OperationsCatalog.services &&
+                          (!['otro', 'otros servicios'].contains(controllers['name']?.text.trim().toLowerCase()))) ...[
                         CompanyServiceTariffFields24F2(
                           draft: serviceTariffDraft24F2,
                         ),
@@ -830,8 +853,9 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                               );
                             }
                             persistedServiceId24F2 = serviceId;
-                            final prices = serviceTariffDraft24F2
-                                .validatedPrices();
+                            final prices = ['otro', 'otros servicios'].contains(controllers['name']?.text.trim().toLowerCase())
+                                ? <Map<String, dynamic>>[]
+                                : serviceTariffDraft24F2.validatedPrices();
                             await _api.request(
                               'PATCH',
                               '/services/$serviceId/vehicle-prices',
@@ -1121,6 +1145,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
               else if (widget.catalog == OperationsCatalog.employees)
                 CompanyEmployeesGrid24C3(
                   rows: _rows,
+                  commissionsToday: _todayCommissions,
                   client: _client,
                   onEdit: _edit,
                   onArchive: _delete,

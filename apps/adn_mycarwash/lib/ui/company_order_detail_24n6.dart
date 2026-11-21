@@ -119,19 +119,27 @@ class _CompanyOrderDetail24N6State extends State<CompanyOrderDetail24N6> {
   String _date(dynamic value, String fallback) {
     final text = _read(value, '');
     if (text.isEmpty) return fallback;
-    final parsed = DateTime.tryParse(text.replaceFirst(' ', 'T'));
-    if (parsed == null) return text;
+    final valueUtc = DateTime.tryParse(
+      text.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(text)
+          ? text.replaceFirst(' ', 'T')
+          : '${text.replaceFirst(' ', 'T')}Z',
+    );
+    if (valueUtc == null) return text;
+    final parsed = valueUtc.toUtc().subtract(const Duration(hours: 6));
     String two(int v) => v.toString().padLeft(2, '0');
+    final hour = parsed.hour % 12 == 0 ? 12 : parsed.hour % 12;
+    final period = parsed.hour < 12 ? 'a. m.' : 'p. m.';
     return '${two(parsed.day)}/${two(parsed.month)}/${parsed.year} '
-        '${two(parsed.hour)}:${two(parsed.minute)}:${two(parsed.second)}';
+        '$hour:${two(parsed.minute)}:${two(parsed.second)} $period';
   }
 
   double? _progress(Map<String, dynamic> row) {
     final status = '${row['status'] ?? ''}';
     if (status == 'TERMINADO' || status == 'ENTREGADO') return 1;
     if (status != 'EN_PROCESO') return 0;
+    final startText = '${row['started_at'] ?? ''}'.replaceFirst(' ', 'T');
     final started = DateTime.tryParse(
-      '${row['started_at'] ?? ''}'.replaceFirst(' ', 'T'),
+      startText.isEmpty ? startText : (startText.endsWith('Z') ? startText : '${startText}Z'),
     );
     final minutes = double.tryParse('${row['estimated_minutes'] ?? ''}');
     if (started == null || minutes == null || minutes <= 0) return null;
@@ -307,6 +315,46 @@ class _CompanyOrderDetail24N6State extends State<CompanyOrderDetail24N6> {
     }));
   }
 
+  Widget _serviceLinesB25H(Map<String, dynamic> order) {
+    final raw = order['service_lines_b25'];
+    if (raw is! List || raw.isEmpty) return const SizedBox.shrink();
+    final lines = raw.whereType<Map>().toList();
+    final total = lines.fold<double>(0, (sum, line) =>
+        sum + (double.tryParse('${line['price']}') ?? 0));
+    final commission = lines.fold<double>(0, (sum, line) =>
+        sum + (double.tryParse('${line['commission_amount']}') ?? 0));
+    return _panel(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [Icon(Icons.format_list_bulleted, color: _accent),
+        const SizedBox(width: 10), Expanded(child: Text('Servicios de esta orden',
+          style: TextStyle(color: _text, fontSize: 20, fontWeight: FontWeight.w800)))]),
+      const SizedBox(height: 12),
+      for (var i = 0; i < lines.length; i++) ...[
+        if (i > 0) Divider(color: _line),
+        LayoutBuilder(builder: (context, size) {
+          final line = lines[i];
+          final service = _read(line['service_name'], 'Servicio ${i+1}');
+          return Wrap(spacing: 16, runSpacing: 7, alignment: WrapAlignment.spaceBetween, children: [
+            SizedBox(width: size.maxWidth > 650 ? size.maxWidth * .36 : size.maxWidth,
+              child: Text(service, style: TextStyle(color: _text, fontWeight: FontWeight.w700))),
+            Text('Precio: ${_money(line['price'])}', style: TextStyle(color: _text)),
+            Text('Comisión: ${line['commission_percent'] ?? 0} %', style: TextStyle(color: _muted)),
+            Text('Importe comisión: ${_money(line['commission_amount'])}', style: TextStyle(color: _accent)),
+          ]);
+        }),
+      ],
+      Divider(color: _line),
+      Wrap(spacing: 24, runSpacing: 8, children: [
+        Text('Total del cliente: L ${total.toStringAsFixed(2)}',
+          style: TextStyle(color: _text, fontWeight: FontWeight.bold)),
+        Text('Comisión prevista: L ${commission.toStringAsFixed(2)}',
+          style: TextStyle(color: _accent, fontWeight: FontWeight.bold)),
+      ]),
+      const SizedBox(height: 5),
+      Text('La comisión prevista no implica pago autorizado: requiere asistencia válida y trabajo terminado.',
+        style: TextStyle(color: _muted, fontSize: 11)),
+    ]));
+  }
+
   Widget _timeline() {
     final events = _history;
     return _panel(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -479,6 +527,8 @@ class _CompanyOrderDetail24N6State extends State<CompanyOrderDetail24N6> {
                         ],
                         const SizedBox(height: 13),
                         _information(row),
+                        const SizedBox(height: 13),
+                        _serviceLinesB25H(row),
                         const SizedBox(height: 13),
                         _timeline(),
                       ]);

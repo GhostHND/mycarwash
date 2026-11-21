@@ -114,7 +114,9 @@ class CompanyEmployeesGrid24C3 extends StatelessWidget {
     required this.client,
     required this.onEdit,
     required this.onArchive,
+    this.commissionsToday = const {},
   });
+  final Map<int, String> commissionsToday;
   final List<Map<String, dynamic>> rows;
   final http.Client client;
   final ValueChanged<Map<String, dynamic>> onEdit;
@@ -186,13 +188,15 @@ class CompanyEmployeesGrid24C3 extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                inactive ? 'Inactivo' : 'Activo',
-                style: TextStyle(
-                  color: inactive ? scheme.error : CompanyVisualTheme.legacy(const Color(0xFF27CC9D)),
-                  fontSize: 14,
-                ),
-              ),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(inactive ? 'Inactivo' : 'Activo',
+                  style: TextStyle(color: inactive ? scheme.error :
+                    CompanyVisualTheme.legacy(const Color(0xFF27CC9D)), fontSize: 14)),
+                const SizedBox(height: 5),
+                Text('Comisión hoy: L ${commissionsToday[id] ?? '0.00'}',
+                  style: TextStyle(color: scheme.primary, fontSize: 12,
+                    fontWeight: FontWeight.w700)),
+              ]),
             ],
           ),
           const SizedBox(height: 9),
@@ -292,7 +296,7 @@ class CompanyEmployeesGrid24C3 extends StatelessWidget {
         runSpacing: gap,
         children: [
           for (final row in rows)
-            SizedBox(width: w, height: 510, child: _card(context, row)),
+            SizedBox(width: w, height: 542, child: _card(context, row)),
         ],
       );
     },

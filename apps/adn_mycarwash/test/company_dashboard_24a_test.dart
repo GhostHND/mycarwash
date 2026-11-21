@@ -46,8 +46,10 @@ void main() {
                 ],
                 'kpis': {
                   'sales_today': '1250.00',
+                  'services_today': '1250.00',
+                  'commissions_today': '400.00',
                   'expenses_today': '150.00',
-                  'balance_today': '1100.00',
+                  'balance_today': '700.00',
                   'active_washes': 2,
                   'bookings_today': 3,
                   'clients': 12,
@@ -92,7 +94,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Dashboard'), findsOneWidget);
       expect(find.textContaining('Usuario Autenticado'), findsOneWidget);
-      expect(find.text('Ventas de hoy'), findsOneWidget);
+      expect(find.text('Servicios'), findsWidgets);
+      expect(find.text('Balance comisiones'), findsOneWidget);
+      expect(find.text('Gastos'), findsWidgets);
+      expect(find.text('Balance de hoy'), findsOneWidget);
       expect(find.text('L 1250.00'), findsOneWidget);
       expect(find.text('Lavados activos'), findsOneWidget);
       expect(tester.takeException(), isNull);

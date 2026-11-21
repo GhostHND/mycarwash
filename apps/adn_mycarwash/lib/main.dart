@@ -10,6 +10,7 @@ import 'ui/company_users_24n2_page.dart';
 import 'ui/washer_mobile_24n4.dart';
 import 'ui/company_attendance_station_24n4.dart';
 import 'ui/company_attendance_reports_b25d.dart';
+import 'ui/company_commission_report_b25l.dart';
 import 'ui/company_roster_bulk_b25d.dart';
 import 'ui/mycarwash_login.dart';
 import 'ui/company_billing_alerts_24n8.dart';
@@ -214,6 +215,7 @@ const _menu = [
   _NavItem('Turnos de trabajo', Icons.work_history_outlined),
   _NavItem('Asignaciones de turnos', Icons.assignment_ind_outlined),
   _NavItem('Reporte mensual de asistencia', Icons.calendar_month_outlined),
+  _NavItem('Reporte de comisiones', Icons.payments_outlined),
   _NavItem('Bloqueos de agenda', Icons.event_busy_outlined),
   _NavItem('Inventario', Icons.inventory_2_outlined),
   _NavItem('Categorías de inventario', Icons.category_outlined),
@@ -317,6 +319,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
     'Reporte de clientes',
     'Reporte de personal',
     'Reporte mensual de asistencia',
+    'Reporte de comisiones',
     'Reporte fiscal',
     'Reporte de compras',
   ]),
@@ -732,6 +735,9 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     }
     if (destination == 'Historial de asistencia') {
       return const CompanyAttendanceReportsB25D(monthlyReport: false);
+    }
+    if (destination == 'Reporte de comisiones') {
+      return const CompanyCommissionReportB25L();
     }
     if (destination == 'Reporte mensual de asistencia') {
       return const CompanyAttendanceReportsB25D(monthlyReport: true);

@@ -59,7 +59,7 @@ final class CompanyDashboardController extends Controller
             throw ValidationException::withMessages(['branch_id' => 'Sucursal no disponible.']);
         }
         // Si se elige una sucursal, la fecha se interpreta en su zona horaria.
-        $timezone = (string) config('app.timezone', 'UTC');
+        $timezone = 'America/Tegucigalpa';
         if ($branch !== null && Schema::hasColumn('branches', 'timezone')) {
             $candidate = (string) (DB::table('branches')->where('company_id', $company)
                 ->where('id', $branch)->value('timezone') ?? '');
@@ -116,6 +116,8 @@ final class CompanyDashboardController extends Controller
                 $warnings[] = 'Catálogo de '.$metric.': fuente no disponible.';
             }
         }
+        $financialB25J = CompanyDashboardFinanceB25J::summary($company, $branch, $timezone);
+        $warnings = array_merge($warnings, $financialB25J['warnings']);
         $allBranches = DB::table('branches')->where('company_id', $company)->where('is_active',true)
             ->orderBy('name')->get(['id','name'])->map(fn($row)=>['id'=>(int)$row->id,'name'=>$row->name])->all();
         return response()->json(['data' => [
@@ -125,14 +127,16 @@ final class CompanyDashboardController extends Controller
             'scope' => ['company_id'=>$company,'branch_id'=>$branch],
             'branches' => $allBranches,
             'kpis' => [
-                'sales_today' => $moneySales, 'expenses_today' => $moneyExpenses,
-                'balance_today' => $moneySales !== null && $moneyExpenses !== null
-                    ? $this->currency((float)$moneySales - (float)$moneyExpenses) : null,
+                'sales_today' => $moneySales, // Compatibilidad API anterior; POS de artículos.
+                'services_today' => $financialB25J['services_today'],
+                'commissions_today' => $financialB25J['commissions_today'],
+                'expenses_today' => $financialB25J['expenses_today'],
+                'balance_today' => $financialB25J['balance_today'],
                 'active_washes' => $washActive, 'bookings_today' => $bookingsToday,
                 'clients' => $catalogue['clients'], 'vehicles' => $catalogue['vehicles'],
                 'staff' => $catalogue['staff'],
             ],
-            'balance_note' => 'Ventas confirmadas Smart POS menos egresos de caja registrados. No incluye cobros de lavados ni constituye utilidad neta.',
+            'balance_note' => 'Servicios cobrados menos comisiones con asistencia validada y gastos de caja categorizados. No incluye ventas de artículos ni equivale a utilidad contable.',
             'warnings' => $warnings,
         ]]);
     }

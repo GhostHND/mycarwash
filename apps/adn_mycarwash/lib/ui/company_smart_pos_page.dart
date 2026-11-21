@@ -526,6 +526,16 @@ class _CompanySmartPosPageState extends State<CompanySmartPosPage> {
               ),
               trailing: const Icon(Icons.lock_outline, size: 18),
             ),
+            if (_wash!['service_lines'] is List &&
+                (_wash!['service_lines'] as List).isNotEmpty)
+              ...(_wash!['service_lines'] as List).whereType<Map>().map((line) => Padding(
+                padding: const EdgeInsets.only(left: 48, right: 8, bottom: 5),
+                child: Row(children: [
+                  Expanded(child: Text('${line['service_name'] ?? ''}',
+                    overflow: TextOverflow.ellipsis)),
+                  Text('L ${line['price'] ?? '0.00'}'),
+                ]),
+              )),
             const Divider(),
           ],
           if (_cart.isEmpty && _wash == null)

@@ -39,7 +39,7 @@ final class CompanyDashboardVisual24A3Controller extends Controller
             ->where('id', $branch)->where('is_active', true)->exists()) {
             throw ValidationException::withMessages(['branch_id' => 'Sucursal no disponible.']);
         }
-        $tz = (string) config('app.timezone', 'UTC');
+        $tz = 'America/Tegucigalpa';
         if ($branch !== null && Schema::hasColumn('branches', 'timezone')) {
             $candidate = (string) (DB::table('branches')->where('company_id', $company)->where('id', $branch)->value('timezone') ?? '');
             if (in_array($candidate, timezone_identifiers_list(), true)) $tz = $candidate;
@@ -191,13 +191,17 @@ final class CompanyDashboardVisual24A3Controller extends Controller
                 'vehicle'=>trim(($r->brand??'').' '.($r->model??'')),
                 'washers'=>$names[(int)$r->id]??[], 'progress'=>null,'stage'=>null])->all();
         } else $warnings[]='Lavados en vivo detallados no disponibles';
+        $financialB25J = CompanyDashboardFinanceB25J::summary($company, $branch, $tz);
+        $trend = $financialB25J['trend'];
+        $production = $financialB25J['production'];
+        $warnings = array_merge($warnings, $financialB25J['warnings']);
         return response()->json(['data'=>[
             'date'=>$today, 'timezone'=>$tz, 'business_hour'=>(int)$now->format('G'), 'scope'=>['company_id'=>$company,'branch_id'=>$branch],
             'production'=>$production,'services'=>$services,'top_item'=>$topItem,
             'trend'=>array_values($trend),'bookings'=>$bookings,'bookings_total'=>$bookingsTotal,
             'active'=>$active,'active_total'=>$activeTotal,'active_offset'=>$offset,
-            'production_note'=>'Cada lavador participante recibe un conteo de orden; no se distribuyen ingresos sin regla registrada.',
-            'trend_note'=>'Ventas Smart POS confirmadas y egresos de caja; no incluye cobros de lavados.',
+            'production_note'=>'Comisiones por servicio cobradas y atribuibles al lavador principal con asistencia registrada en la fecha del trabajo.',
+            'trend_note'=>'Últimos 7 días: servicios cobrados, gastos categorizados y comisiones con asistencia.',
             'warnings'=>$warnings,
         ]]);
     }

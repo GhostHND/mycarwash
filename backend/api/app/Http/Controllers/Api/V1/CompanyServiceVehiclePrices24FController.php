@@ -64,6 +64,12 @@ class CompanyServiceVehiclePrices24FController extends Controller {
         $v=$request->validate(['prices'=>['required','array','max:60'],
             'prices.*.vehicle_type'=>['required','string','max:60'],
             'prices.*.price'=>['required','numeric','between:0,9999999999.99','decimal:0,2']]);
+        $isOther = mb_strtolower(trim((string) DB::table('wash_services')->where('company_id',$company)
+            ->where('id',$service)->value('name'))) === 'otro' || mb_strtolower(trim((string) DB::table('wash_services')->where('company_id',$company)
+            ->where('id',$service)->value('name'))) === 'otros servicios';
+        if ($isOther && count($v['prices']) > 0) {
+            throw ValidationException::withMessages(['prices'=>'Otro utiliza un precio base fijo, sin tarifas por vehículo.']);
+        }
         $rows=[]; $seen=[];
         foreach ($v['prices'] as $r) {
             $type=trim($r['vehicle_type']); $key=mb_strtolower($type);

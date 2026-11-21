@@ -163,6 +163,21 @@ class CompanyOperationsController extends Controller
             }
         }
         if ($resource === 'services' && isset($data['name'])) {
+            if ($create && $this->isCustomName((string) $data['name'])) {
+                throw ValidationException::withMessages(['name' =>
+                    'Otros Servicios se crea automáticamente. Actualiza el catálogo.']);
+            }
+            if (!$create && $id !== null) {
+                $currentName = (string)$this->row('services', $company, $id)->name;
+                if ($this->isCustomName($currentName) && !$this->isCustomName((string)$data['name'])) {
+                    throw ValidationException::withMessages(['name' =>
+                        'No puedes renombrar el servicio permanente Otros Servicios.']);
+                }
+                if (!$this->isCustomName($currentName) && $this->isCustomName((string)$data['name'])) {
+                    throw ValidationException::withMessages(['name' =>
+                        'Otros Servicios es un servicio único del sistema.']);
+                }
+            }
             $query = $this->scoped('services', $company)->where('name', $data['name']);
             if ($id !== null) $query->where('id', '!=', $id);
             if ($query->exists()) {
@@ -186,7 +201,8 @@ class CompanyOperationsController extends Controller
             $result['client_name'] = $this->scoped('clients', $company)
                 ->where('id', $record->client_id)->value('full_name');
         }
-        if ($resource === 'services' && \Illuminate\Support\Facades\Schema::hasTable('service_vehicle_prices')) {
+        if ($resource === 'services' && \Illuminate\Support\Facades\Schema::hasTable('service_vehicle_prices')
+            && !$this->isCustomName((string)$record->name) && mb_strtolower(trim((string)$record->name)) !== 'otro') {
             $result['vehicle_prices'] = DB::table('service_vehicle_prices')->where('company_id', $company)
                 ->where('service_id', $record->id)->orderBy('vehicle_type')
                 ->get(['vehicle_type','price'])->toArray();
@@ -194,10 +210,44 @@ class CompanyOperationsController extends Controller
         return $result;
     }
 
+    /** Servicio especial permanente de la empresa: creado una sola vez al consultar el catálogo. */
+    private function ensureCustomService(int $company): void
+    {
+        DB::transaction(function () use ($company): void {
+            // Serializa altas simultáneas del catálogo para evitar tarjetas duplicadas.
+            DB::table('companies')->where('id', $company)->lockForUpdate()->first();
+            $records = DB::table('wash_services')->where('company_id', $company)
+                ->whereRaw('LOWER(TRIM(name)) = ?', ['otros servicios'])
+                ->orderBy('id')->get();
+            if ($records->isEmpty()) {
+                DB::table('wash_services')->insert([
+                    'company_id' => $company,
+                    'name' => 'Otros Servicios',
+                    'description' => 'Trabajos personalizados: el nombre y el precio se definen en cada orden.',
+                    'price' => '0.00', 'duration_minutes' => 1,
+                    'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+                return;
+            }
+            // Si estaba archivado/inactivo, reactivar el más antiguo conservando su ID.
+            $master = $records->first();
+            DB::table('wash_services')->where('id', $master->id)
+                ->update(['name' => 'Otros Servicios', 'deleted_at' => null,
+                    'is_active' => true, 'price' => '0.00', 'updated_at' => now()]);
+            // Se conservan entradas duplicadas históricas, sin alterar sus referencias.
+        });
+    }
+
+    private function isCustomName(string $name): bool
+    {
+        return mb_strtolower(trim($name)) === 'otros servicios';
+    }
+
     public function index(Request $request, int $company, string $resource): JsonResponse
     {
         $this->authorizeCompany($request, $company, 'company.view');
         $spec = $this->spec($resource);
+        if ($resource === 'services') $this->ensureCustomService($company);
         $input = $request->validate([
             'q' => ['sometimes', 'nullable', 'string', 'max:150'],
             'page' => ['sometimes', 'integer', 'min:1'],
@@ -244,6 +294,13 @@ class CompanyOperationsController extends Controller
         $this->authorizeCompany($request, $company, 'company.update');
         $this->row($resource, $company, $record);
         $data = $this->validateInput($request, $resource, $company, false, $record);
+        if ($resource === 'services' && $this->isCustomName((string)$this->row('services', $company, $record)->name)) {
+            // No se puede desactivar, eliminar ni cambiar la identidad del comodín.
+            $data['name'] = 'Otros Servicios';
+            $data['is_active'] = true;
+            $data['price'] = '0.00';
+            $data['duration_minutes'] = 1;
+        }
         if (($data['is_active'] ?? true) === false) {
             if (in_array($resource, ['vehicles', 'services'], true) &&
                 \Illuminate\Support\Facades\Schema::hasTable('wash_bookings')) {
@@ -268,7 +325,10 @@ class CompanyOperationsController extends Controller
     public function destroy(Request $request, int $company, string $resource, int $record): JsonResponse
     {
         $this->authorizeCompany($request, $company, 'company.update');
-        $this->row($resource, $company, $record);
+        $existing = $this->row($resource, $company, $record);
+        if ($resource === 'services' && $this->isCustomName((string)$existing->name)) {
+            return response()->json(['message' => 'Otros Servicios es permanente y no puede archivarse.'], 409);
+        }
         if (in_array($resource, ['vehicles', 'services'], true) &&
             \Illuminate\Support\Facades\Schema::hasTable('wash_bookings')) {
             $field = $resource === 'vehicles' ? 'vehicle_id' : 'service_id';

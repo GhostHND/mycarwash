@@ -224,6 +224,8 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
 
   static int _integer(dynamic raw) =>
       raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
+  static double _num(dynamic raw) =>
+      raw is num ? raw.toDouble() : double.tryParse('$raw') ?? 0;
   static List<Map<String, dynamic>> _rows(dynamic raw) => raw is List
       ? raw.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList()
       : <Map<String, dynamic>>[];
@@ -723,13 +725,19 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
         : <String, dynamic>{};
     final elements = <(String, String, IconData, Color)>[
       (
-        'Ventas de hoy',
-        _money(k['sales_today']),
+        'Servicios',
+        _money(k['services_today']),
         Icons.shopping_cart_outlined,
         _cyan,
       ),
       (
-        'Gastos de hoy',
+        'Balance comisiones',
+        _money(k['commissions_today']),
+        Icons.account_balance_wallet_outlined,
+        _cyan,
+      ),
+      (
+        'Gastos',
         _money(k['expenses_today']),
         Icons.payments_outlined,
         _pink,
@@ -774,9 +782,9 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
     return LayoutBuilder(
       builder: (context, c) {
         final cols = c.maxWidth >= 1300
-            ? 8
+            ? 9
             : c.maxWidth >= 770
-            ? 4
+            ? 3
             : c.maxWidth >= 350
             ? 2
             : 1;
@@ -851,7 +859,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
           _title(
             'Producción por lavador',
             Icons.person_outline,
-            subtitle: 'Hoy · Lavados completados por participante',
+            subtitle: 'Hoy · Comisiones generadas con asistencia',
           ),
           const SizedBox(height: 15),
           if (_details?['production'] == null)
@@ -886,7 +894,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
                     ),
                   ),
                   Text(
-                    '${rows[i]['completed']} lavados',
+                    '${_money(rows[i]['commission'])} · ${rows[i]['services'] ?? 0} servicios',
                     style: TextStyle(color: _muted, fontSize: 10),
                   ),
                 ],
@@ -894,8 +902,8 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               const SizedBox(height: 3),
               LinearProgressIndicator(
                 value:
-                    _integer(rows[i]['completed']) /
-                    math.max(1, _integer(rows.first['completed'])),
+                    _num(rows[i]['commission']) /
+                    math.max(1, _num(rows.first['commission'])),
                 color: _cyan,
                 backgroundColor: _surface,
                 minHeight: 5,
@@ -904,7 +912,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
               const SizedBox(height: 9),
             ],
           Text(
-            'Participación compartida; ingresos no atribuidos.',
+            'Solo comisiones con asistencia y cobro verificados.',
             style: TextStyle(color: _muted, fontSize: 9),
           ),
         ],
@@ -1071,17 +1079,21 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _title('Ventas y gastos', Icons.show_chart),
+          _title('Servicios, gastos y comisiones', Icons.show_chart),
           const SizedBox(height: 10),
           Row(
             children: [
               CircleAvatar(radius: 4, backgroundColor: _cyan),
               SizedBox(width: 5),
-              Text('Ventas POS', style: TextStyle(color: _muted, fontSize: 10)),
+              Text('Servicios', style: TextStyle(color: _muted, fontSize: 10)),
               SizedBox(width: 10),
-              CircleAvatar(radius: 4, backgroundColor: _pink),
+              CircleAvatar(radius: 4, backgroundColor: const Color(0xFFE84657)),
               SizedBox(width: 5),
               Text('Gastos', style: TextStyle(color: _muted, fontSize: 10)),
+              SizedBox(width: 10),
+              CircleAvatar(radius: 4, backgroundColor: const Color(0xFFFFC242)),
+              SizedBox(width: 5),
+              Text('Comisiones', style: TextStyle(color: _muted, fontSize: 10)),
             ],
           ),
           const SizedBox(height: 9),
@@ -1100,7 +1112,7 @@ class _CompanyDashboard24APageState extends State<CompanyDashboard24APage> {
             ),
           const SizedBox(height: 8),
           Text(
-            'Últimos 7 días · ventas POS vs. egresos de caja',
+            'Últimos 7 días · servicios cobrados, gastos y comisiones',
             style: TextStyle(color: _muted, fontSize: 9),
           ),
         ],
@@ -1580,11 +1592,11 @@ class _LinesPainter extends CustomPainter {
     final maxV = rows.fold<double>(
       1,
       (v, row) =>
-          math.max(v, math.max(_num(row['sales']), _num(row['expenses']))),
+          math.max(v, math.max(_num(row['services']), math.max(_num(row['expenses']), _num(row['commissions'])))),
     );
-    final lines = [CompanyVisualTheme.legacy(const Color(0xFF00DCE5)), CompanyVisualTheme.legacy(const Color(0xFFEC488A))];
-    for (var j = 0; j < 2; j++) {
-      final key = j == 0 ? 'sales' : 'expenses';
+    final lines = [const Color(0xFF00DCE5), const Color(0xFFE84657), const Color(0xFFFFC242)];
+    for (var j = 0; j < 3; j++) {
+      final key = ['services', 'expenses', 'commissions'][j];
       final path = Path();
       var drawn = false;
       for (var i = 0; i < rows.length; i++) {

@@ -377,8 +377,10 @@ class _CompanyWasherPortal24N3State extends State<CompanyWasherPortal24N3> {
     final parsed = DateTime.tryParse(raw.replaceFirst(' ', 'T') +
         (raw.endsWith('Z') || raw.contains('+') ? '' : 'Z'));
     if (parsed == null) return raw;
-    final local = parsed.toLocal();
-    return '${_date(local)} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    final local = parsed.toUtc().subtract(const Duration(hours: 6));
+    final h = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final period = local.hour < 12 ? 'a. m.' : 'p. m.';
+    return '${_date(local)} $h:${local.minute.toString().padLeft(2, '0')} $period';
   }
 
   Widget _attendancePage({required bool history}) {
