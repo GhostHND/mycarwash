@@ -406,7 +406,21 @@ class CompanyWasherPortal24N3Controller extends Controller
                     if (hash_equals($digits,$code)) { $point = $candidate; $usedSlot = $slot; break 2; }
                 }
             }
-            abort_unless($point, 422, 'Código manual inválido o vencido.');
+            // B25E: código numérico permanente del punto, siempre vinculado
+            // a una sesión autenticada, compañía y punto activo.
+            if (!$point) {
+                foreach ($points as $candidate) {
+                    $secret = Crypt::decryptString($candidate->secret_encrypted);
+                    $digest = hash_hmac('sha256', "MCW:ATT:MANUAL:2:$company:{$candidate->id}", $secret);
+                    $digits = str_pad((string) (hexdec(substr($digest, 0, 8)) % 100000000), 8, '0', STR_PAD_LEFT);
+                    if (hash_equals($digits, $code)) {
+                        $point = $candidate;
+                        $usedSlot = 0;
+                        break;
+                    }
+                }
+            }
+            abort_unless($point, 422, 'Código manual inválido.');
         } else {
             abort(422, 'Código de asistencia no reconocido.');
         }

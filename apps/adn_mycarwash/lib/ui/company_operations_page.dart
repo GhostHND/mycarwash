@@ -113,7 +113,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
       _FieldSpec('identity_document', 'Documento de identidad'),
       _FieldSpec('phone', 'Teléfono'),
       _FieldSpec('email', 'Correo electrónico'),
-      _FieldSpec('hire_date', 'Fecha de ingreso (AAAA-MM-DD)'),
+      _FieldSpec('hire_date', 'Fecha de ingreso'),
       _FieldSpec('commission_percent', 'Comisión habitual por servicio (%)', numeric: true),
       _FieldSpec('notes', 'Observaciones', multiline: true),
     ],
@@ -569,6 +569,57 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                                 return 'Tipo no disponible en Servicios.';
                               }
                               return null;
+                            },
+                          )
+                        else if (widget.catalog == OperationsCatalog.employees &&
+                            field.key == 'hire_date')
+                          TextFormField(
+                            key: const ValueKey('operations_hire_date'),
+                            controller: controllers['hire_date'],
+                            readOnly: true,
+                            enabled: !saving,
+                            style: TextStyle(color: CompanyVisualTheme.text),
+                            decoration: _decoration('Fecha de ingreso').copyWith(
+                              suffixIcon: Icon(
+                                Icons.calendar_month_outlined,
+                                color: _turquoise,
+                              ),
+                              hintText: 'Seleccionar fecha',
+                            ),
+                            onTap: () async {
+                              final now = DateTime.now();
+                              final current = DateTime.tryParse(
+                                controllers['hire_date']!.text.trim(),
+                              );
+                              final initial = current != null &&
+                                      !current.isAfter(now) &&
+                                      !current.isBefore(DateTime(1900))
+                                  ? current
+                                  : now;
+                              final selected = await showDatePicker(
+                                context: dialogContext,
+                                initialDate: initial,
+                                firstDate: DateTime(1900),
+                                lastDate: now,
+                                helpText: 'Fecha de ingreso del empleado',
+                                cancelText: 'Cancelar',
+                                confirmText: 'Seleccionar',
+                                builder: (context, child) => Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: Theme.of(context).colorScheme.copyWith(
+                                      primary: _turquoise,
+                                    ),
+                                  ),
+                                  child: child!,
+                                ),
+                              );
+                              if (selected == null || !dialogContext.mounted) {
+                                return;
+                              }
+                              controllers['hire_date']!.text =
+                                  '${selected.year.toString().padLeft(4, '0')}-'
+                                  '${selected.month.toString().padLeft(2, '0')}-'
+                                  '${selected.day.toString().padLeft(2, '0')}';
                             },
                           )
                         else

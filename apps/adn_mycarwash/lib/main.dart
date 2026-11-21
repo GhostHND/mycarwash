@@ -9,6 +9,8 @@ import 'core/mycarwash_session.dart';
 import 'ui/company_users_24n2_page.dart';
 import 'ui/washer_mobile_24n4.dart';
 import 'ui/company_attendance_station_24n4.dart';
+import 'ui/company_attendance_reports_b25d.dart';
+import 'ui/company_roster_bulk_b25d.dart';
 import 'ui/mycarwash_login.dart';
 import 'ui/company_billing_alerts_24n8.dart';
 import 'ui/company_settings_page.dart';
@@ -203,6 +205,7 @@ const _menu = [
   _NavItem('Vehículos', Icons.directions_car_outlined),
   _NavItem('Empleados', Icons.badge_outlined),
   _NavItem('Punto de asistencia QR', Icons.qr_code_2_outlined),
+  _NavItem('Historial de asistencia', Icons.fact_check_outlined),
   _NavItem('Servicios', Icons.design_services_outlined),
   _NavItem('Puestos de lavado', Icons.grid_view_outlined),
   _NavItem('Órdenes de lavado', Icons.local_car_wash_outlined),
@@ -210,6 +213,7 @@ const _menu = [
   _NavItem('Cola de lavado', Icons.view_list_outlined),
   _NavItem('Turnos de trabajo', Icons.work_history_outlined),
   _NavItem('Asignaciones de turnos', Icons.assignment_ind_outlined),
+  _NavItem('Reporte mensual de asistencia', Icons.calendar_month_outlined),
   _NavItem('Bloqueos de agenda', Icons.event_busy_outlined),
   _NavItem('Inventario', Icons.inventory_2_outlined),
   _NavItem('Categorías de inventario', Icons.category_outlined),
@@ -275,6 +279,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
   _CompactNavGroup('Personal', Icons.badge_outlined, [
     'Empleados',
     'Punto de asistencia QR',
+    'Historial de asistencia',
     'Turnos de trabajo',
     'Asignaciones de turnos',
   ]),
@@ -311,6 +316,7 @@ const _compactNavGroups20_1 = <_CompactNavGroup>[
     'Reporte de inventario',
     'Reporte de clientes',
     'Reporte de personal',
+    'Reporte mensual de asistencia',
     'Reporte fiscal',
     'Reporte de compras',
   ]),
@@ -428,6 +434,7 @@ class _DashboardPreviewState extends State<DashboardPreview> {
         destination == 'Sitio web') {
       return 'company';
     }
+    if (destination == 'Historial de asistencia') return 'staff';
     if (destination.startsWith('Reporte') ||
         destination == 'Resumen de reportes') {
       return 'reports';
@@ -722,6 +729,15 @@ class _DashboardPreviewState extends State<DashboardPreview> {
     }
     if (destination == 'Punto de asistencia QR') {
       return const CompanyAttendanceStation24N4();
+    }
+    if (destination == 'Historial de asistencia') {
+      return const CompanyAttendanceReportsB25D(monthlyReport: false);
+    }
+    if (destination == 'Reporte mensual de asistencia') {
+      return const CompanyAttendanceReportsB25D(monthlyReport: true);
+    }
+    if (destination == 'Asignaciones de turnos') {
+      return const CompanyRosterBulkB25D();
     }
     if (destination == 'Dashboard') {
       return CompanyDashboard24APage(

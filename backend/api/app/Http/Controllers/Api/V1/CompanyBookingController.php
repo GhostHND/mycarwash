@@ -519,6 +519,54 @@ class CompanyBookingController extends Controller
         return $this->decorated($resource,$company,$this->row($resource,$company,$id));
     }
 
+    /** B25D: asignar varios turnos a un lavador, atómicamente. No crea turnos nuevos. */
+    public function bulkRosterB25D(Request $request, int $company): JsonResponse
+    {
+        $this->authorizeCompany($request, $company, 'company.update');
+        $v = $request->validate([
+            'employee_id' => ['required','integer','min:1'],
+            'shift_ids' => ['required','array','min:1','max:21'],
+            'shift_ids.*' => ['required','integer','min:1','distinct'],
+            'effective_from' => ['required','date_format:Y-m-d'],
+            'effective_to' => ['nullable','date_format:Y-m-d','after_or_equal:effective_from'],
+            'notes' => ['nullable','string','max:500'],
+        ]);
+        $ids = array_map('intval', $v['shift_ids']);
+        $employee = (int)$v['employee_id'];
+        $from = $v['effective_from'];
+        $to = $v['effective_to'] ?? null;
+        $count = DB::transaction(function () use ($company,$ids,$employee,$from,$to,$v): int {
+            // Bloqueo por empresa serializa las operaciones masivas concurrentes.
+            DB::table('companies')->where('id',$company)->lockForUpdate()->first();
+            $shifts = $this->scoped('shifts',$company)->whereIn('id',$ids)->where('is_active',true)->get()->keyBy('id');
+            if ($shifts->count() !== count($ids)) {
+                throw ValidationException::withMessages(['shift_ids'=>'Uno de los turnos no existe o no está activo.']);
+            }
+            $validated = [];
+            foreach ($ids as $id) {
+                $shift = $this->validateRoster($company,$id,$employee,$from,$to);
+                $this->branch($company,(int)$shift->branch_id,true);
+                foreach ($validated as $previous) {
+                    if ((int)$previous->day_of_week === (int)$shift->day_of_week &&
+                        $previous->starts_at < $shift->ends_at && $previous->ends_at > $shift->starts_at) {
+                        throw ValidationException::withMessages(['shift_ids'=>'Hay turnos seleccionados que se superponen el mismo día.']);
+                    }
+                }
+                $validated[] = $shift;
+            }
+            $now = now();
+            foreach ($validated as $shift) {
+                DB::table('staff_shift_assignments')->insert([
+                    'company_id'=>$company,'branch_id'=>$shift->branch_id,'shift_id'=>$shift->id,
+                    'employee_id'=>$employee,'effective_from'=>$from,'effective_to'=>$to,
+                    'notes'=>$v['notes']??null,'is_active'=>true,'created_at'=>$now,'updated_at'=>$now,
+                ]);
+            }
+            return count($validated);
+        });
+        return response()->json(['message'=>'Turnos asignados correctamente.','created'=>$count],201);
+    }
+
     public function store(Request $request,int $company,string $resource):JsonResponse
     {
         $this->authorizeCompany($request,$company,'company.update'); $this->table($resource);

@@ -244,6 +244,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', \App\Http\Middleware\CompanyMod
     Route::get('/companies/{company}/schedule/daily-24d2', [\App\Http\Controllers\Api\V1\CompanyBookingDaily24D2Controller::class, 'overview'])->whereNumber('company');
     Route::post('/companies/{company}/schedule/daily-24d2/reminder-read', [\App\Http\Controllers\Api\V1\CompanyBookingDaily24D2Controller::class, 'acknowledgeTomorrow'])->whereNumber('company');
     Route::post('/companies/{company}/schedule/daily-24d2/{booking}/assign', [\App\Http\Controllers\Api\V1\CompanyBookingDaily24D2Controller::class, 'assign'])->whereNumber('company')->whereNumber('booking');
+    Route::post('/companies/{company}/schedule/roster-bulk-b25d', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'bulkRosterB25D'])->whereNumber('company');
     Route::get('/companies/{company}/schedule/options', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'options'])->whereNumber('company');
     Route::get('/companies/{company}/schedule/bookings/{booking}/history', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'history'])->whereNumber('company')->whereNumber('booking');
     Route::get('/companies/{company}/schedule/{resource}', [\App\Http\Controllers\Api\V1\CompanyBookingController::class, 'index'])->whereNumber('company')->where('resource','bookings|blocks|shifts|roster');
