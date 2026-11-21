@@ -39,11 +39,14 @@ class CompanyAttendanceStation24N4Controller extends Controller
         }
         $slot = intdiv(time(),120);
         $signature = hash_hmac('sha256', "$company:{$point->id}:$slot",Crypt::decryptString($point->secret_encrypted));
-        $qr = "MCW:ATT:1:$company:{$point->id}:$slot:".substr($signature,0,40);
+        // Firma estática por punto: imprimible. El escaneo sigue requiriendo
+        // sesión autenticada de empleado y validaciones del servidor.
+        $staticSignature = hash_hmac('sha256', "MCW:ATT:2:$company:{$point->id}", Crypt::decryptString($point->secret_encrypted));
+        $qr = "MCW:ATT:2:$company:{$point->id}:".substr($staticSignature,0,40);
         $manual = str_pad((string)(hexdec(substr($signature,0,8)) % 100000000),8,'0',STR_PAD_LEFT);
         return response()->json(['point_id' => $point->id, 'name' => $point->name,
             'qr_payload' => $qr, 'manual_code' => $manual,
             'expires_at' => gmdate('c',($slot+1)*120),
-            'refresh_seconds' => 120]);
+            'refresh_seconds' => 120, 'qr_permanent' => true]);
     }
 }

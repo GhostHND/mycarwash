@@ -11,6 +11,7 @@ import 'company_workflow_cards_24f.dart';
 import 'company_wash_orders_cards_24e.dart';
 import 'company_order_detail_24n6.dart';
 import 'company_new_order_reservation_24n7.dart';
+import 'company_new_order_b25b.dart';
 
 enum WashModule { bays, orders, assignments, queue }
 
@@ -251,6 +252,15 @@ class _CompanyWashWorkflowPageState extends State<CompanyWashWorkflowPage> {
 
   Future<void> _edit([Map<String, dynamic>? existing]) async {
     if (widget.module == WashModule.queue) {
+      return;
+    }
+    if (widget.module == WashModule.orders && existing == null) {
+      final created = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => CompanyNewOrderB25B(api: _api, options: _options()),
+      );
+      if (created == true && mounted) _load();
       return;
     }
     final form = GlobalKey<FormState>();

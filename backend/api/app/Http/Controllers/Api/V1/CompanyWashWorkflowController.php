@@ -113,6 +113,14 @@ class CompanyWashWorkflowController extends Controller
             $data['bay_name'] = $row->bay_id ? DB::table('wash_bays')->where('company_id', $company)
                 ->where('id', $row->bay_id)->value('name') : null;
             $data['service_name'] = $service?->name;
+            // B25B: la orden conserva su servicio principal para clientes antiguos.
+            // Las lineas detalladas son la fuente de precios y comisiones nuevas.
+            if (\Illuminate\Support\Facades\Schema::hasTable('wash_order_service_lines_b25')) {
+                $data['service_lines_b25'] = DB::table('wash_order_service_lines_b25')
+                    ->where('company_id', $company)->where('order_id', $row->id)
+                    ->orderBy('line_order')->get();
+            }
+
             $data['assignments'] = DB::table('wash_assignments as a')
                 ->join('employees as e', 'e.id', '=', 'a.employee_id')
                 ->where('a.company_id', $company)->where('a.order_id', $row->id)->where('a.is_active', true)
@@ -192,6 +200,11 @@ class CompanyWashWorkflowController extends Controller
                 'branch_id' => ['required', 'integer', 'min:1'],
                 'vehicle_id' => ['required', 'integer', 'min:1'],
                 'service_id' => ['required', 'integer', 'min:1'],
+                'service_lines_b25' => ['sometimes', 'array', 'min:1', 'max:20'],
+                'service_lines_b25.*.service_id' => ['nullable', 'integer', 'min:1'],
+                'service_lines_b25.*.service_name' => ['nullable', 'string', 'max:150'],
+                'service_lines_b25.*.price' => ['required_with:service_lines_b25', 'numeric', 'between:0,9999999999.99', 'decimal:0,2'],
+                'service_lines_b25.*.commission_percent' => ['required_with:service_lines_b25', 'numeric', 'between:0,100', 'decimal:0,2'],
                 'bay_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
                 'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
             ]),
@@ -219,7 +232,47 @@ class CompanyWashWorkflowController extends Controller
                 }
                 $snapshot = $this->validateReferences($company, (int) $data['vehicle_id'], (int) $data['service_id']);
                 $this->validBay($company, (int) $data['branch_id'], isset($data['bay_id']) ? (int) $data['bay_id'] : null);
-                $data['quoted_price'] = $snapshot['price'];
+                $lineRowsB25 = [];
+                if (isset($data['service_lines_b25'])) {
+                    $linesB25 = $data['service_lines_b25'];
+                    if ((int)($linesB25[0]['service_id'] ?? 0) !== (int)$data['service_id']) {
+                        throw ValidationException::withMessages(['service_lines_b25' => 'El primer servicio debe coincidir con el principal.']);
+                    }
+                    foreach ($linesB25 as $position => $lineB25) {
+                        $serviceIdB25 = isset($lineB25['service_id']) ? (int)$lineB25['service_id'] : null;
+                        $nameB25 = trim((string)($lineB25['service_name'] ?? ''));
+                        if ($serviceIdB25 !== null) {
+                            $serviceB25 = DB::table('wash_services')->where('company_id', $company)
+                                ->where('id', $serviceIdB25)->whereNull('deleted_at')->where('is_active', true)->first();
+                            if (!$serviceB25) throw ValidationException::withMessages(['service_lines_b25' => 'Servicio no disponible en la empresa.']);
+                            $nameB25 = mb_strtolower(trim((string)$serviceB25->name)) === 'otro' && $nameB25 !== ''
+                                ? $nameB25 : $serviceB25->name;
+                            if (mb_strtolower(trim((string)$serviceB25->name)) === 'otro' && $nameB25 === 'Otro') {
+                                throw ValidationException::withMessages(['service_lines_b25' => 'Escribe el nombre del servicio Otro.']);
+                            }
+                        } elseif ($nameB25 === '') {
+                            throw ValidationException::withMessages(['service_lines_b25' => 'Indica el nombre del servicio Otro.']);
+                        }
+                        $priceCents = (int) round(((float)$lineB25['price']) * 100);
+                        $commissionBasisPoints = (int) round(((float)$lineB25['commission_percent']) * 100);
+                        $amountCents = (int) round($priceCents * $commissionBasisPoints / 10000);
+                        $lineRowsB25[] = [
+                            'company_id' => $company, 'service_id' => $serviceIdB25,
+                            'service_name' => $nameB25,
+                            'price' => number_format($priceCents / 100, 2, '.', ''),
+                            'commission_percent' => number_format($commissionBasisPoints / 100, 2, '.', ''),
+                            'commission_amount' => number_format($amountCents / 100, 2, '.', ''),
+                            'line_order' => $position,
+                            'created_at' => now(), 'updated_at' => now(),
+                        ];
+                    }
+                    $data['quoted_price'] = number_format(array_sum(array_map(
+                        static fn($line) => (int) round((float)$line['price'] * 100), $lineRowsB25
+                    )) / 100, 2, '.', '');
+                } else {
+                    $data['quoted_price'] = $snapshot['price'];
+                }
+                unset($data['service_lines_b25']);
                 $data['estimated_minutes'] = $snapshot['duration'];
                 $data['public_id'] = (string) Str::uuid();
                 $data['tracking_code'] = 'MCW-'.strtoupper(bin2hex(random_bytes(10)));
@@ -264,7 +317,20 @@ class CompanyWashWorkflowController extends Controller
             $data['created_at'] = now();
             $data['updated_at'] = now();
             $id = DB::table($this->table($resource))->insertGetId($data);
-            if ($resource === 'orders') $this->event($company, $id, null, 'EN_ESPERA', null, (int) $request->user()->id);
+            if ($resource === 'assignments') {
+                DB::table('wash_order_service_lines_b25')->where('company_id', $company)
+                    ->where('order_id', $data['order_id'])->whereNull('commission_employee_id')
+                    ->update(['commission_employee_id' => (int)$data['employee_id'], 'updated_at' => now()]);
+            }
+            if ($resource === 'orders') {
+                if (!empty($lineRowsB25)) {
+                    foreach ($lineRowsB25 as $lineB25) {
+                        $lineB25['order_id'] = $id;
+                        DB::table('wash_order_service_lines_b25')->insert($lineB25);
+                    }
+                }
+                $this->event($company, $id, null, 'EN_ESPERA', null, (int) $request->user()->id);
+            }
             return $this->decorated($resource, $company, $this->row($resource, $company, $id));
         });
         return response()->json(['message' => 'Registro creado.', 'data' => $result], 201);

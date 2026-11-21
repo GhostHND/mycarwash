@@ -114,6 +114,7 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
       _FieldSpec('phone', 'Teléfono'),
       _FieldSpec('email', 'Correo electrónico'),
       _FieldSpec('hire_date', 'Fecha de ingreso (AAAA-MM-DD)'),
+      _FieldSpec('commission_percent', 'Comisión habitual por servicio (%)', numeric: true),
       _FieldSpec('notes', 'Observaciones', multiline: true),
     ],
     OperationsCatalog.services => const [
@@ -714,8 +715,10 @@ class _CompanyOperationsPageState extends State<CompanyOperationsPage> {
                         final payload = <String, dynamic>{'is_active': active};
                         for (final field in _fields) {
                           final text = controllers[field.key]!.text.trim();
-                          if (field.key == 'price') {
-                            payload[field.key] = double.parse(text);
+                          if (field.key == 'price' || field.key == 'commission_percent') {
+                            payload[field.key] = field.key == 'commission_percent' && text.isEmpty
+                                ? (double.tryParse('${existing?['commission_percent'] ?? 40}') ?? 40.0)
+                                : double.parse(text);
                           } else if (field.key == 'duration_minutes' ||
                               field.key == 'year') {
                             payload[field.key] = text.isEmpty

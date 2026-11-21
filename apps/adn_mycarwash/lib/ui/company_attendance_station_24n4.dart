@@ -140,7 +140,7 @@ class _CompanyAttendanceStation24N4State
                             style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold,
                                 color: foreground)),
                         const SizedBox(height: 6),
-                        Text('Actualización automática · válido durante ${remaining}s',
+                        Text('QR permanente e imprimible · código manual cambia en ${remaining}s',
                             style: TextStyle(color: CompanyVisualTheme.muted)),
                       ],
                       const SizedBox(height: 12),
@@ -154,8 +154,8 @@ class _CompanyAttendanceStation24N4State
                 ),
               ),
               const SizedBox(height: 12),
-              Text('Los códigos son temporales, vinculados a esta empresa y '
-                  'validados en el servidor. No imprimas ni compartas un código fijo.',
+              Text('El QR de este punto es permanente y puede imprimirse. '
+                  'El código manual sigue siendo temporal. Requiere sesión de empleado autorizada.',
                   style: TextStyle(color: CompanyVisualTheme.muted)),
             ],
           ),

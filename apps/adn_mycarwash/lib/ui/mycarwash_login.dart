@@ -23,17 +23,17 @@ class MyCarWashLoginScreen extends StatefulWidget {
 }
 
 class _MyCarWashLoginScreenState extends State<MyCarWashLoginScreen> {
-  // Flutter Web administrativo: URL absoluta del API publicado.
-  // Evitar Uri.base / base href: en Web podrian resolver a rutas del frontend.
-  // Android, iOS y escritorio conservan su dart-define.
+  // Produccion Web: API publica de Hostinger, independiente del base href.
+  // Desarrollo local y aplicaciones nativas: usar --dart-define.
   static String get _api {
-    if (kIsWeb) {
-      return 'https://mycarwash.adnpublicidad.site/api/index.php/api/v1';
-    }
     const configured = String.fromEnvironment(
       'MYCARWASH_API_BASE_URL',
       defaultValue: 'http://127.0.0.1:8000/api/v1',
     );
+    if (kIsWeb &&
+        Uri.base.host.toLowerCase() == 'mycarwash.adnpublicidad.site') {
+      return 'https://mycarwash.adnpublicidad.site/api/index.php/api/v1';
+    }
     return configured;
   }
 

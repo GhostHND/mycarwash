@@ -29,7 +29,7 @@ class CompanyOperationsController extends Controller
         'employees' => [
             'table' => 'employees',
             'search' => ['full_name', 'identity_document', 'phone', 'email', 'position'],
-            'fields' => ['full_name', 'identity_document', 'phone', 'email', 'position', 'hire_date', 'notes', 'is_active'],
+            'fields' => ['full_name', 'identity_document', 'phone', 'email', 'position', 'hire_date', 'commission_percent', 'notes', 'is_active'],
         ],
         'services' => [
             'table' => 'wash_services',
@@ -122,6 +122,7 @@ class CompanyOperationsController extends Controller
                 'email' => ['sometimes', 'nullable', 'email', 'max:190'],
                 'position' => ['sometimes', Rule::in(['washer', 'supervisor', 'cashier', 'manager', 'other'])],
                 'hire_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+                'commission_percent' => ['sometimes', 'numeric', 'between:0,100', 'decimal:0,2'],
                 'notes' => ['sometimes', 'nullable', 'string', 'max:4000'],
                 'is_active' => ['sometimes', 'boolean'],
             ],

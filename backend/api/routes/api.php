@@ -61,6 +61,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/companies/{company}/washer/photo/{kind}/{record}', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'photo'])->whereNumber('company')->where('kind','vehicles|employees')->whereNumber('record');
         Route::post('/companies/{company}/washer/attendance/scan', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'scanAttendance'])->whereNumber('company');
         Route::get('/companies/{company}/attendance-points/station', [\App\Http\Controllers\Api\V1\CompanyAttendanceStation24N4Controller::class, 'station'])->whereNumber('company');
+        Route::get('/companies/{company}/attendance/report-b25', [\App\Http\Controllers\Api\V1\CompanyAttendanceReportB25Controller::class, 'index'])->whereNumber('company');
         Route::get('/companies/{company}/washer/agenda', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'agenda'])->whereNumber('company');
         Route::get('/companies/{company}/washer/me', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'me'])->whereNumber('company');
         Route::patch('/companies/{company}/washer/me', [\App\Http\Controllers\Api\V1\CompanyWasherPortal24N3Controller::class, 'updateMe'])->whereNumber('company');

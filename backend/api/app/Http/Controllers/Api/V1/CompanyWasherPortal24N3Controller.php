@@ -375,8 +375,19 @@ class CompanyWasherPortal24N3Controller extends Controller
         $code = trim($input['code']);
         $point = null;
         $usedSlot = null;
-        // QR: MCW:ATT:1:<empresa>:<punto>:<slot UTC 2 min>:<hmac>
-        if (preg_match('/^MCW:ATT:1:(\d+):(\d+):(\d+):([a-f0-9]{40})$/i', $code, $matches)) {
+        // QR permanente firmado por punto. No autentica por sí solo al empleado.
+        if (preg_match('/^MCW:ATT:2:(\d+):(\d+):([a-f0-9]{40})$/i', $code, $matches)) {
+            abort_unless((int) $matches[1] === $company, 422, 'QR de otra empresa.');
+            $point = DB::table('washer_attendance_points_24n4')->where('company_id',$company)
+                ->where('id',(int)$matches[2])->where('is_active',true)->first();
+            abort_unless($point, 422, 'Punto de asistencia no autorizado.');
+            $expected = hash_hmac('sha256', "MCW:ATT:2:$company:{$point->id}", Crypt::decryptString($point->secret_encrypted));
+            abort_unless(hash_equals(substr($expected,0,40),strtolower($matches[3])), 422, 'Código QR no válido.');
+            $usedSlot = 0; // identificador estable; limitadores por empleado y jornada siguen activos.
+        } elseif (preg_match('/^MCW:ATT:1:(\d+):(\d+):(\d+):([a-f0-9]{40})$/i', $code, $matches)) {
+            // Compatibilidad con QR temporal anterior.
+
+
             abort_unless((int) $matches[1] === $company, 422, 'QR de otra empresa.');
             $point = DB::table('washer_attendance_points_24n4')->where('company_id',$company)
                 ->where('id',(int)$matches[2])->where('is_active',true)->first();
